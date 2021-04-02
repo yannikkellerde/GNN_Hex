@@ -107,6 +107,7 @@ class Graph_game():
         return [x[1] for x in actions]
     
     def make_move(self,square_node):
+        win=False
         if type(square_node) == int:
             square_node = self.view.vertex(square_node)
         del_nodes = [square_node]
@@ -122,9 +123,13 @@ class Graph_game():
                         del_nodes.append(sq_node)
                     lost_neighbors[i]+=1
                 del_nodes.append(wp_node)
+            if wp_node.out_degree() == 1 and owner in ("f",self.onturn):
+                win=True
+            
         for del_node in del_nodes:
             self.view.vp.f[del_node] = False
         self.view.gp["b"] = not self.view.gp["b"]
+        return win
 
     def negate_onturn(self,onturn):
         return "b" if onturn=="w" else ("w" if onturn=="b" else onturn)

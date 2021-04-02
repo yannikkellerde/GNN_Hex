@@ -9,11 +9,12 @@ import numpy as np
 def convert(graphs):
     node_feat_shape = 3
     n_nodes = np.array([g.num_vertices() for g in graphs])
-    node_features = np.zeros((np.sum(n_nodes,node_feat_shape)))
-    n_edges = np.array([g.num_edges() for g in graphs])
+    node_features = np.zeros((np.sum(n_nodes),node_feat_shape))
+    n_edges = np.array([g.num_edges()*2 for g in graphs])
     edge_features = None
     receivers = np.empty((np.sum(n_edges),),dtype=np.int32)
     senders = np.empty_like(receivers)
+    labels = np.zeros(np.sum(n_nodes),dtype=np.bool)
     global_features = None
     vertex_count = 0
     edge_count = 0
@@ -27,12 +28,16 @@ def convert(graphs):
                 node_features[vertex_count][1] = 1
             elif (own_val == 2 and not blackturn) or (own_val == 3 and blackturn):
                 node_features[vertex_count][2] = 1
+            labels[vertex_count] = graph.vp.w[node]
             vertex_count += 1
         for edge in graph.get_edges():
             receivers[edge_count] = edge[1]
             senders[edge_count] = edge[0]
             edge_count += 1
+            receivers[edge_count] = edge[0]
+            senders[edge_count] = edge[1]
+            edge_count += 1
 
-    GN = gn.GraphTuple(nodes=node_features,edges=None,globals=None,receivers=receivers,
-                       senders=senders,n_edges=n_edges,n_nodes=n_nodes)
-    return GN
+    GN = gn.graphs.GraphsTuple(nodes=node_features,edges=None,globals=None,receivers=receivers,
+                       senders=senders,n_edge=n_edges,n_node=n_nodes)
+    return GN,labels

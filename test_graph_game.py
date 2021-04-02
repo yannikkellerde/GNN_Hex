@@ -2,8 +2,24 @@ import networkx as nx
 from graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game
 from solve_graph_tools import PN_search
 import time
-from ai_api import Ai_api
 from functools import reduce
+from convert_graph import convert
+import pickle
+
+def test_graph_nets():
+    game = Qango6x6()
+    game.board.position = list( "ffffwf"
+                                "wbwfbf"
+                                "ffffff"
+                                "ffffwf"
+                                "wbwfbf"
+                                "ffffwf")
+    game.board.onturn = "b"
+    game.graph_from_board()
+    game.hashme()
+    game.draw_me(-1)
+    gn_graph = convert([game.view,game.view])
+    print(gn_graph)
 
 def test_moving():
     game = Tic_tac_toe()
@@ -164,6 +180,7 @@ if __name__ == "__main__":
     #test_threat_search()
     #test_pos_from_graph()
     #test_win_thread_search()
-    display_wsn()
+    #display_wsn()
     #test_ai_api()
     #test_json_game()
+    test_graph_nets()
