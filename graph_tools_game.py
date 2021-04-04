@@ -1,5 +1,6 @@
 import math
 from copy import copy,deepcopy
+from typing import NamedTuple
 from functools import reduce
 from collections import defaultdict
 import time
@@ -9,6 +10,11 @@ import time
 
 from graph_tool.all import *
 from graph_tools_hashing import wl_hash
+
+class Graph_Store(NamedTuple):
+    owner_map:VertexPropertyMap
+    filter_map:VertexPropertyMap
+    blackturn:bool
 
 class Graph_game():
     graph: Graph
@@ -29,14 +35,16 @@ class Graph_game():
     def hashme(self):
         wl_hash(self.view,self.view.vp.o,iterations=3)
 
-    def load_storage(self,storage):
-        self.graph.vp.f = storage[1].copy()
+    def load_storage(self,storage:Graph_Store):
+        self.graph.vp.f = storage.filter_map.copy()
         self.view = GraphView(self.graph,vfilt=self.graph.vp.f)
-        self.view.vp.o = storage[0].copy()
-        self.view.gp["b"] = storage[2]
+        self.view.vp.o = storage.owner_map.copy()
+        self.view.gp["b"] = storage.blackturn
 
-    def extract_storage(self):
-        return (self.view.vp.o.copy(),self.view.vp.f.copy(),self.view.gp["b"])
+    def extract_storage(self) -> Graph_Store:
+        return Graph_Store(owner_map = self.view.vp.o.copy(),
+                           filter_map = self.view.vp.f.copy(),
+                           blackturn = self.view.gp["b"])
 
     def graph_from_board(self):
         self.board.node_map = dict()
