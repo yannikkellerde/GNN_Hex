@@ -2,6 +2,7 @@ import numpy as np
 from typing import NamedTuple,Union,Callable
 from graph_tool.all import Graph
 from graph_tools_game import Graph_game,Graph_Store
+import util
 
 class Leafnode(NamedTuple):
     move:int
@@ -23,9 +24,12 @@ def upper_confidence_bound(node:Node,exploration_constant:float):
 class MCTS():
     def __init__(self,game:Graph_game,NN:Callable[[Graph],[np.ndarray,np.ndarray,float]]):
         self.game = game
-        self.root = Leafnode(storage=self.game.extract_storage(),parent=None,done=False)
+        self.root = Leafnode(move=-1,parent=None,done=False)
         self.exploration_constant = 1
         self.NN = NN
+    def reset(self,storage:Graph_Store):
+        self.game.load_storage(storage)
+        self.root = Leafnode(move=-1,parent=None,done=False)
     def choose_child(self,node:Node):
         return np.argmax(upper_confidence_bound(node,self.exploration_constant))
     def select_most_promising(self):
@@ -35,7 +39,7 @@ class MCTS():
             child_index = self.choose_child(node)
             node = node.children[child_index]
             path.append(child_index)
-        if node!=self.root:
+        if node!=self.root and not node.done:
             self.game.load_storage(node.parent.storage)
             node.done = self.game.make_move(node.move)
         return path,node
@@ -74,3 +78,9 @@ class MCTS():
             else:
                 value = self.expand(leaf)
             self.backtrack(path,value)
+    def extract_result(self,temperature):
+        assert isinstance(self.root,Node)
+        if temperature == 0:
+            return util.get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
+        else:
+            return self.root.visits**(1/temperature)
