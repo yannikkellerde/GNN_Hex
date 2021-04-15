@@ -13,6 +13,7 @@ class Node(NamedTuple):
     parent:Union[Node,None]
     storage:Graph_Store
     children:tuple
+    moves:Union[None,np.ndarray]
     priors:np.ndarray
     visits:np.ndarray
     total_value:np.ndarray
@@ -22,7 +23,7 @@ def upper_confidence_bound(node:Node,exploration_constant:float):
     return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)))/(1+node.visits))
 
 class MCTS():
-    def __init__(self,game:Graph_game,NN:Callable[[Graph],[np.ndarray,np.ndarray,float]]):
+    def __init__(self,game:Graph_game,NN:Callable[[Graph],(np.ndarray,np.ndarray,float)]):
         self.game = game
         self.root = Leafnode(move=-1,parent=None,done=False)
         self.exploration_constant = 1
@@ -52,10 +53,13 @@ class MCTS():
                     priors=probs,
                     visits=np.zeros(probs.shape,dtype=int),
                     total_value=np.zeros_like(probs),
+                    moves=moves if leafnode==self.root else None
                     Q = np.zeros_like(probs))
         for child in children:
             child.parent = node
         leafnode.parent.children[leafnode.parent.children.index(leafnode)] = node
+        if leafnode == self.root:
+            self.root = node
         return value
     def backtrack(self,path,value):
         node = self.root
@@ -81,6 +85,8 @@ class MCTS():
     def extract_result(self,temperature):
         assert isinstance(self.root,Node)
         if temperature == 0:
-            return util.get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
+            probs = util.get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
         else:
-            return self.root.visits**(1/temperature)
+            powered = self.root.visits**(1/temperature))
+            probs = powered/np.sum(powered)
+        return self.root.moves,probs

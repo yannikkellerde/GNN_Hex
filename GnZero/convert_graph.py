@@ -1,12 +1,13 @@
 """Convert a graph-tool graphs into a graph network GraphTuple
-Graph Features: None
+Graph Features: Zero
 Node Features: IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn => 3D
-Edge Features: None
+Edge Features: Zero
 """
 import graph_nets as gn
 import numpy as np
+from graph_tool.all import Graph
 
-def convert(graphs):
+def convert_graph(graphs:Iterable[Graph]):
     node_feat_shape = 3
     n_nodes = np.array([g.num_vertices() for g in graphs])
     node_features = np.zeros((np.sum(n_nodes),node_feat_shape))
@@ -40,4 +41,6 @@ def convert(graphs):
 
     GN = gn.graphs.GraphsTuple(nodes=node_features,edges=None,globals=None,receivers=receivers,
                        senders=senders,n_edge=n_edges,n_node=n_nodes)
+    GN = gn.utils_tf.set_zero_edge_features(GN)
+    GN = gn.utils_tf.set_zero_global_features(GN)
     return GN,labels
