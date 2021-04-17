@@ -1,13 +1,9 @@
+from __future__ import annotations
 import numpy as np
 from typing import NamedTuple,Union,Callable
 from graph_tool.all import Graph
-from graph_tools_game import Graph_game,Graph_Store
-import util
-
-class Leafnode(NamedTuple):
-    move:int
-    parent:Node
-    done:bool
+from game.graph_tools_game import Graph_game,Graph_Store
+import GNZero.util as util
 
 class Node(NamedTuple):
     parent:Union[Node,None]
@@ -18,6 +14,11 @@ class Node(NamedTuple):
     visits:np.ndarray
     total_value:np.ndarray
     Q:np.ndarray
+
+class Leafnode(NamedTuple):
+    move:int
+    parent:Node
+    done:bool
 
 def upper_confidence_bound(node:Node,exploration_constant:float):
     return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)))/(1+node.visits))
@@ -53,7 +54,7 @@ class MCTS():
                     priors=probs,
                     visits=np.zeros(probs.shape,dtype=int),
                     total_value=np.zeros_like(probs),
-                    moves=moves if leafnode==self.root else None
+                    moves=moves if leafnode==self.root else None,
                     Q = np.zeros_like(probs))
         for child in children:
             child.parent = node
@@ -87,6 +88,6 @@ class MCTS():
         if temperature == 0:
             probs = util.get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
         else:
-            powered = self.root.visits**(1/temperature))
+            powered = self.root.visits**(1/temperature)
             probs = powered/np.sum(powered)
         return self.root.moves,probs

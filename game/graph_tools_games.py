@@ -1,11 +1,11 @@
 from graph_tools_game import Graph_game
 from graph_board_game import Board_game
-from util import findfivers, findsquares, remove_useless_wsn
+from PN_Search.util import findfivers, findsquares, remove_useless_wsn
 from graph_tool.all import *
 import json
 from collections import defaultdict
 import os,sys
-base_path = os.path.abspath(os.path.dirname(__file__))
+base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 
 class Json_game(Graph_game):
     def __init__(self,json_path):

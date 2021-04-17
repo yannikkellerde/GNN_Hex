@@ -1,5 +1,4 @@
 import math
-import psutil
 import os,sys
 
 
@@ -33,6 +32,7 @@ def findfivers(squares):
                 winsquarenums.add(frozenset({s,s+perrow-1,s+2*(perrow-1),s+3*(perrow-1),s+4*(perrow-1)}))
     return winsquarenums
 
+"""
 def resources_avaliable():
     memory = psutil.virtual_memory()
     if memory.percent > 97:
@@ -46,3 +46,4 @@ def provide_room_num():
     if room_num > 1e7:
         room_num = 0
     return room_num
+"""

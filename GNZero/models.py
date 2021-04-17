@@ -23,13 +23,13 @@ from __future__ import print_function
 
 from graph_nets import modules
 from graph_nets import utils_tf
+from graph_nets.graphs import GraphsTuple
 from six.moves import range
 import sonnet as snt
 from functools import partial
 import numpy as np
 from graph_tool.all import Graph
-from GnZero.convert_graph import convert_graph
-
+from GNZero.convert_graph import convert_graph
 
 def make_mlp_model(latent_size=16,num_layers=2):
     """Instantiates a new MLP, followed by LayerNorm.
@@ -44,8 +44,6 @@ def make_mlp_model(latent_size=16,num_layers=2):
             snt.nets.MLP([latent_size] * num_layers, activate_final=True),
             snt.LayerNorm(axis=-1, create_offset=True, create_scale=True)
     ])
-
-def make_output_transform
 
 
 class MLPGraphIndependent(snt.Module):
@@ -126,6 +124,16 @@ class NN_interface():
         self.num_processing_steps = num_processing_steps
 
     def do_policy_and_value(self,graph:Graph) -> (np.ndarray,np.ndarray,float):
-        graph_tup = convert_graph([graph])
-        outputs = self.model(graph_tup,num_processing_steps)[-1]
-        
+        graph_tup,vertexmap = convert_graph([graph])
+        output = self.model(graph_tup,self.num_processing_steps)[-1]
+        moves = []
+        probs = []
+        for node_features,vertex_ind in zip(output.nodes,vertexmap):
+            if vertex_ind!=-1:
+                moves.append(vertex_ind)
+                probs.append(node_features[0])
+        probs = np.array(probs)
+        moves = np.array(moves,dtype=int)
+        probs = probs/np.sum(probs)
+        value = output.globals[0]
+        return moves,probs,value

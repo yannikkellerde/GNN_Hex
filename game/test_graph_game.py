@@ -3,7 +3,7 @@ from graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_g
 from solve_graph_tools import PN_search
 import time
 from functools import reduce
-from convert_graph import convert
+from convert_graph import convert_graph
 import pickle
 
 def test_graph_nets():
@@ -18,7 +18,7 @@ def test_graph_nets():
     game.graph_from_board()
     game.hashme()
     game.draw_me(-1)
-    gn_graph = convert([game.view,game.view])
+    gn_graph = convert_graph([game.view,game.view])
     print(gn_graph)
 
 def test_moving():
