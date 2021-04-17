@@ -1,20 +1,13 @@
-"""Convert graph-tool graphs into a graph network GraphTuple
-Graph Features: Zero
-Node Features: IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn
-Edge Features: Zero
-"""
-import graph_nets as gn
+import torch
+from torch_geometric import Data
 import numpy as np
-from typing import Iterable
 from graph_tool.all import Graph
-import tensorflow as tf
 
-def convert_graph(graphs:Iterable[Graph]):
-    """Convert graph-tool graphs for graph_tools_games into a graph network GraphTuple
+
+def convert_graph(graph:Graph):
+    """Convert a graph-tool graph for a graph_tools_game into torch_geometric data
     
-    The GraphTuple stores the following Graph, Node and Edge features extracted
-    from the input graphs:
-
+    The torch_geometric data stores the follwing features from the input graphs:
     Graph Features: None
     Node Features: (IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn)
     Edge Features: None
@@ -23,49 +16,41 @@ def convert_graph(graphs:Iterable[Graph]):
         graphs: An iterable of graph-tool graphs for graph_tools_games
 
     Returns:
-        A GraphTuple representing the information from all input graphs and
-        vertexmap, which is a list with the same lenght as the number of nodes
+        A torch_geometric Data object representing the information from an input graph and
+        vertexmap, which is a list with the same length as the number of nodes
         in the GraphTuple that stores the index of the corresponding vertex for
         each graph-tools vertex that represents a square
     """
     node_feat_shape = 3
-    n_nodes = np.array([g.num_vertices() for g in graphs])
-    node_features = np.zeros((np.sum(n_nodes),node_feat_shape))
-    n_edges = np.array([g.num_edges()*2 for g in graphs])
-    receivers = np.empty((np.sum(n_edges),),dtype=np.int32)
-    senders = np.empty_like(receivers)
-    vertexmap = -np.ones(np.sum(n_nodes))
+    node_features = np.zeros((graph.num_vertices(),node_feat_shape))
+    edge_index = np.empty((graph.num_edges()*2,2))
+    vertexmap = -np.ones(graph.num_vertices())
     vertex_count = 0
     edge_count = 0
-    for graph in graphs:
-        blackturn = graph.gp["b"]
-        for ind in graph.iter_vertices():
-            node = graph.vertex(ind)
-            own_val = graph.vp.o[node]
-            if own_val == 0:
-                vertexmap[vertex_count] = ind
-            else:
-                node_features[vertex_count][0] = 1
-            if (own_val == 2 and blackturn) or (own_val == 3 and not blackturn):
-                node_features[vertex_count][1] = 1
-            elif (own_val == 2 and not blackturn) or (own_val == 3 and blackturn):
-                node_features[vertex_count][2] = 1
-            vertex_count += 1
-        for edge in graph.get_edges():
-            receivers[edge_count] = edge[1]
-            senders[edge_count] = edge[0]
-            edge_count += 1
-            receivers[edge_count] = edge[0]
-            senders[edge_count] = edge[1]
-            edge_count += 1
+    blackturn = graph.gp["b"]
+    for ind in graph.iter_vertices():
+        node = graph.vertex(ind)
+        own_val = graph.vp.o[node]
+        if own_val == 0:
+            vertexmap[vertex_count] = ind
+        else:
+            node_features[vertex_count][0] = 1
+        if (own_val == 2 and blackturn) or (own_val == 3 and not blackturn):
+            node_features[vertex_count][1] = 1
+        elif (own_val == 2 and not blackturn) or (own_val == 3 and blackturn):
+            node_features[vertex_count][2] = 1
+        vertex_count += 1
+    for edge in graph.get_edges():
+        edge_index[edge_count][0] = edge[1]
+        edge_index[edge_count][1] = edge[0]
+        edge_count += 1
+        edge_index[edge_count][0] = edge[0]
+        edge_index[edge_count][1] = edge[1]
+        edge_count += 1
 
-    node_features = tf.convert_to_tensor(node_features,dtype=tf.float32)
-    receivers = tf.convert_to_tensor(receivers,dtype=tf.float32)
-    senders = tf.convert_to_tensor(senders,dtype=tf.float32)
-    n_edges = tf.convert_to_tensor(n_edges,dtype=tf.float32)
-    n_nodes = tf.convert_to_tensor(n_nodes,dtype=tf.float32)
-    GN = gn.graphs.GraphsTuple(nodes=node_features,edges=None,globals=None,receivers=receivers,
-                       senders=senders,n_edge=n_edges,n_node=n_nodes)
-    GN = gn.utils_tf.set_zero_edge_features(GN,1,dtype=tf.float32)
-    GN = gn.utils_tf.set_zero_global_features(GN,1,dtype=tf.float32)
-    return GN,vertexmap
+
+    edge_index = torch.from_numpy(edge_index,dtype=torch.long)
+    node_features = torch.from_numpy(node_features,dtype=torch.float)
+
+    graph_data = Data(x=node_features,edge_index=edge_index)
+    return graph_data,vertexmap
