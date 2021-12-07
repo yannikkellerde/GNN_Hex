@@ -52,6 +52,9 @@ class Board_game():
         return psets
 
     def check_move_val(self,moves,priorize_sets=True):
+        """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
+         "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
+         3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
         self.inv_maps()
         winmoves = self.game.win_threat_search(one_is_enough=False,until_time=time.time()+5)
         self.game.view.gp["b"] = not self.game.view.gp["b"]

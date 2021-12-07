@@ -1,5 +1,5 @@
 import torch
-from torch_geometric import Data
+from torch_geometric.data import Data
 import numpy as np
 from graph_tool.all import Graph
 
@@ -11,9 +11,10 @@ def convert_graph(graph:Graph):
     Graph Features: None
     Node Features: (IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn)
     Edge Features: None
+    Targets: (OnturnWinsByForcedMoves,NotOnturnWinsByForcedMoves)
 
     Args:
-        graphs: An iterable of graph-tool graphs for graph_tools_games
+        graph: A graph-tool graph for graph_tools_games
 
     Returns:
         A torch_geometric Data object representing the information from an input graph and
@@ -23,7 +24,8 @@ def convert_graph(graph:Graph):
     """
     node_feat_shape = 3
     node_features = np.zeros((graph.num_vertices(),node_feat_shape))
-    edge_index = np.empty((graph.num_edges()*2,2))
+    edge_index = np.empty((2,graph.num_edges()*2))
+    targets = np.empty((graph.num_vertices(),2))
     vertexmap = -np.ones(graph.num_vertices())
     vertex_count = 0
     edge_count = 0
@@ -39,18 +41,22 @@ def convert_graph(graph:Graph):
             node_features[vertex_count][1] = 1
         elif (own_val == 2 and not blackturn) or (own_val == 3 and blackturn):
             node_features[vertex_count][2] = 1
+        is_won_for_onturn,is_won_for_not_onturn = graph.vp.w[node]
+        targets[vertex_count][0] = int(is_won_for_onturn)
+        targets[vertex_count][1] = int(is_won_for_not_onturn)
         vertex_count += 1
-    for edge in graph.get_edges():
-        edge_index[edge_count][0] = edge[1]
-        edge_index[edge_count][1] = edge[0]
-        edge_count += 1
-        edge_index[edge_count][0] = edge[0]
-        edge_index[edge_count][1] = edge[1]
-        edge_count += 1
+    rev_vertex_map = {value:key for key,value in vertexmap}
 
+    for edge in graph.get_edges():
+        edge_index[0][edge_count] = rev_vertex_map[edge[1]]
+        edge_index[1][edge_count] = rev_vertex_map[edge[0]]
+        edge_count += 1
+        edge_index[0][edge_count] = rev_vertex_map[edge[0]]
+        edge_index[1][edge_count] = rev_vertex_map[edge[1]]
+        edge_count += 1
 
     edge_index = torch.from_numpy(edge_index,dtype=torch.long)
     node_features = torch.from_numpy(node_features,dtype=torch.float)
 
-    graph_data = Data(x=node_features,edge_index=edge_index)
+    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,)
     return graph_data,vertexmap

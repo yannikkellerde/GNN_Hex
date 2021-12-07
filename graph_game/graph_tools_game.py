@@ -1,6 +1,6 @@
 import math
 from copy import copy,deepcopy
-from typing import NamedTuple
+from typing import NamedTuple, Union
 from functools import reduce
 from collections import defaultdict
 import time
@@ -12,6 +12,8 @@ from graph_tool.all import *
 from graph_tools_hashing import wl_hash
 
 class Graph_Store(NamedTuple):
+    """A minimal storage NamedTuple that contains all information to reconstruct a game state if
+    the basic graph structure is known."""
     owner_map:VertexPropertyMap
     filter_map:VertexPropertyMap
     blackturn:bool
@@ -33,20 +35,45 @@ class Graph_game():
         return "b" if self.view.gp["b"] else "w"
 
     def hashme(self):
+        """Compute the Weisfeiler-Lehmann hash from the current graph and store it as a
+        global property of the graph. (self.view.gp['h'])
+        """
         wl_hash(self.view,self.view.vp.o,iterations=3)
 
     def load_storage(self,storage:Graph_Store):
+        """Load the game state from it's property maps.
+
+        Args:
+            storage: A Graph_Store Namedtuple with owner map, filter map and
+                     information about who's turn it is.
+        """
         self.graph.vp.f = storage.filter_map.copy()
         self.view = GraphView(self.graph,vfilt=self.graph.vp.f)
         self.view.vp.o = storage.owner_map.copy()
         self.view.gp["b"] = storage.blackturn
 
     def extract_storage(self) -> Graph_Store:
+        """Extract a minimal storage object that contains all information
+        required to reconstruct the current game state if the basic graph structure is known.
+
+        Returns:
+            A Graph_Store Namedtuple with the owner and filter property maps of the graph
+            as well as blackturn signaling the color of the player who is onturn.
+        """
         return Graph_Store(owner_map = self.view.vp.o.copy(),
                            filter_map = self.view.vp.f.copy(),
                            blackturn = self.view.gp["b"])
 
     def graph_from_board(self):
+        """ Construct the game graph from a board representation of the game.
+
+        Assumes that self.board is properly with winsquarenums (winpatterns in board representation)
+        and position, a 2D list that represents the board position.
+        Creates graph-tools game graph and adds vetices for squares and winpatterns. Adds edges between
+        them.
+        Created board.node_map, board.wp_map and board.inv_map, that map the winpatterns/squares in the
+        graph representation to the location in the board representation.
+        """
         self.board.node_map = dict()
         self.board.wp_map = dict()
         self.graph = Graph(directed=False)
@@ -87,6 +114,22 @@ class Graph_game():
         self.board.inv_maps()
 
     def get_actions(self,filter_superseeded=True,none_for_win=True):
+        """Find and sort all moves that are possible in the current game state.
+
+        The possible moves are the indices of all square vertices. The moves are
+        sorted ascending by the following heuristic:
+        -degree_of_vertex+sum_of_degrees_of_connected_winpatterns/degree_of_vertex
+        Moves that are connected to a winpattern with degree one are put to the front.
+
+        Args:
+            filter_superseeded: Remove all moves that correspond to a subset of the winpatters
+                                connected to another move.
+            none_for_win: If there is a move that instantly wins the game, just return None instead
+                          of the actions.
+        
+        Returns:
+            A sorted list of the indices corresponding to possible moves.
+        """
         actions = []
         for node in self.view.vertices():
             if self.view.vp.o[node]!=0:
@@ -106,7 +149,7 @@ class Graph_game():
             actions.append((-10000*int(go_there)-deg+left_to_own/deg,int(node),neigh_indices))
         actions.sort()
         if filter_superseeded:
-        # Remove superseeded actions
+            # Remove superseeded actions
             for i in range(len(actions)-1,-1,-1):
                 for j in range(i-1,-1,-1):
                     if actions[i][2].issubset(actions[j][2]):
@@ -114,7 +157,23 @@ class Graph_game():
                         break
         return [x[1] for x in actions]
     
-    def make_move(self,square_node):
+    def make_move(self,square_node:Union[int,Vertex]) -> bool:
+        """Execute a move on the game graph
+
+        Removes the selected vertex from the graph. Checks all winpattern
+        nodes connected to the removed vertex.
+        A) If the winpattern node is uncolored, color it in the moving players color
+        B) If the winpattern node is in the moving players color and the node has no
+           neighbors left, return True, signaling a player win.
+        C) If the winpattern node is in the opponents color, remove the winpattern.
+           search all square vertices connected to the removed winpattern. Remove them
+           if their degree is 0.
+        
+        Args:
+            square_node: Either a graph square vertex on the index of a graph square vertex
+        Returns:
+            win: Did the player win the game with his current move?
+        """
         win=False
         if type(square_node) == int:
             square_node = self.view.vertex(square_node)
@@ -143,6 +202,16 @@ class Graph_game():
         return "b" if onturn=="w" else ("w" if onturn=="b" else onturn)
         
     def threat_search(self,last_gain=None,last_cost=None,known_threats=None,gain=None,cost=None):
+        """Implements a threat-space search for games on graphs. Inspired by Go-Moku and Threat-Space Search (1994).
+
+        Threats are defined as squares connected to a winpattern node of degree 2 that is colored in the moving players color
+        or is uncolored. These are searched in a breadth-first way, assuming that the opponent always defends the threats until
+        it finds a forced sequence that leads to a win (e.g. with a double-threat).
+        All forced wins found are guaranteed to be correct. However, it is not guaranteed that this search will find all forced ways
+        to victory.
+        Arguments are for recursion purposes. Call without parameters.
+
+        """
         if known_threats is None:
             known_threats=dict()
         if gain is None:
@@ -353,6 +422,11 @@ class Graph_game():
         return winmoves
 
     def draw_me(self,index=0):
+        """Draw the state of the graph and save it into a pdf file.
+
+        Args:
+            index: An index to append to the name of the pdf file.
+        """
         if self.view.num_vertices()==0:
             print("WARNING: Trying to draw graph without vertices")
             return
