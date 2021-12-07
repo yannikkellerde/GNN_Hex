@@ -25,7 +25,7 @@ def get_alternating(length:int,even,odd,dtype=np.float32):
     Returns:
         A numpy array with alternating values
     """
-    out = np.empty(length)
+    out = np.empty(length,dtype=dtype)
     out[::2] = even
     out[1::2] = odd
     return out

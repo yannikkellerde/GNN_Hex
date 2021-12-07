@@ -1,10 +1,21 @@
+""" The idea here is to instead of learning with GN0, we just learn the true
+win/loss as a function of the board position."""
+
 from graph_game.graph_tools_games import Qango6x6
 from graph_game.graph_tools_game import Graph_Store, Graph_game
 from GN0.convert_graph import convert_graph
 import random
 import time
 
-def generate_graphs(number_to_generate):
+def generate_graphs(games_to_play):
+    """ Generate training graphs for the Graph net to learn from.
+    Makes random moves in the game and uses threat search to evaluate
+    the all moves in all positions. Then stores the graphs as training
+    sets for the Graph net to train on.
+
+    Args:
+        games_to_play: Number of games to play.
+    """
     def reload(game:Graph_game,storage:Graph_Store):
         game.load_storage(start_storage)
         game.graph_from_board()
@@ -27,15 +38,17 @@ def generate_graphs(number_to_generate):
     start_storage = game.extract_storage()
     graphs = []
     known_hashes = set()
-    for i in range(number_to_generate):
+    for i in range(games_to_play):
         win = False
-        while not win:
+        while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
+            if len(actions) == 0:
+                break
             win = game.make_move(random.choice(actions))
             game.hashme()
             if win:
                 reload(game,start_storage)
-                continue
+                break
             if game.hash in known_hashes:
                 continue
             else:
@@ -44,9 +57,9 @@ def generate_graphs(number_to_generate):
             evals = game.board.check_move_val(moves,priorize_sets=False)
             for move,ev in zip(moves,evals):
                 if (ev in [-3,-4] and game.onturn=="w") or (ev in [3,4] and game.onturn=="b"):
-                    game.graph.vp.w[game.graph.vertex[move]] = [True,False]
+                    game.graph.vp.w[game.view.vertex[move]] = [True,False]
                 elif (ev in [-3,-4] and game.onturn=="b") or (ev in [3,4] and game.onturn=="w"):
-                    game.graph.vp.w[game.graph.vertex[move]] = [False,True]
+                    game.graph.vp.w[game.view.vertex[move]] = [False,True]
                 else:
-                    game.graph.vp.w[game.graph.vertex[move]] = [False,False]
-            
+                    game.graph.vp.w[game.view.vertex[move]] = [False,False]
+            graphs.append(convert_graph(game.view))

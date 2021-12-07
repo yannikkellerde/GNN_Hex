@@ -23,19 +23,18 @@ def convert_graph(graph:Graph):
         each graph-tools vertex that represents a square
     """
     node_feat_shape = 3
-    node_features = np.zeros((graph.num_vertices(),node_feat_shape))
-    edge_index = np.empty((2,graph.num_edges()*2))
-    targets = np.empty((graph.num_vertices(),2))
-    vertexmap = -np.ones(graph.num_vertices())
+    node_features = np.zeros((graph.num_vertices(),node_feat_shape),dtype=np.float32)
+    edge_index = np.empty((2,graph.num_edges()*2),dtype=np.int64)
+    targets = np.empty((graph.num_vertices(),2),dtype=np.bool)
+    vertexmap = {}
     vertex_count = 0
     edge_count = 0
     blackturn = graph.gp["b"]
     for ind in graph.iter_vertices():
         node = graph.vertex(ind)
         own_val = graph.vp.o[node]
-        if own_val == 0:
-            vertexmap[vertex_count] = ind
-        else:
+        vertexmap[vertex_count] = ind
+        if own_val != 0:
             node_features[vertex_count][0] = 1
         if (own_val == 2 and blackturn) or (own_val == 3 and not blackturn):
             node_features[vertex_count][1] = 1
@@ -45,7 +44,7 @@ def convert_graph(graph:Graph):
         targets[vertex_count][0] = int(is_won_for_onturn)
         targets[vertex_count][1] = int(is_won_for_not_onturn)
         vertex_count += 1
-    rev_vertex_map = {value:key for key,value in vertexmap}
+    rev_vertex_map = {value:key for key,value in vertexmap.items()}
 
     for edge in graph.get_edges():
         edge_index[0][edge_count] = rev_vertex_map[edge[1]]
@@ -55,8 +54,10 @@ def convert_graph(graph:Graph):
         edge_index[1][edge_count] = rev_vertex_map[edge[1]]
         edge_count += 1
 
-    edge_index = torch.from_numpy(edge_index,dtype=torch.long)
-    node_features = torch.from_numpy(node_features,dtype=torch.float)
+    edge_index = torch.from_numpy(edge_index)
+    node_features = torch.from_numpy(node_features)
+    targets = torch.from_numpy(targets)
 
-    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,)
+    print(edge_index.shape,node_features.shape,targets.shape,type(targets))
+    graph_data = Data(x=node_features,edge_index=edge_index,y=targets)
     return graph_data,vertexmap
