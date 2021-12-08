@@ -6,6 +6,8 @@ from graph_game.graph_tools_game import Graph_Store, Graph_game
 from GN0.convert_graph import convert_graph
 import random
 import time
+from tqdm import tqdm,trange
+
 
 def generate_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
@@ -17,10 +19,11 @@ def generate_graphs(games_to_play):
         games_to_play: Number of games to play.
     """
     def reload(game:Graph_game,storage:Graph_Store):
-        game.load_storage(start_storage)
-        game.graph_from_board()
+        game.load_storage(storage)
         iswin = game.graph.new_vertex_property("vector<bool>")
         game.graph.vp.w = iswin
+        for v in game.graph.vertices():
+            game.graph.vp.w[v] = [False] * 2
     game = Qango6x6()
     start_pos = list("ffffff"
                      "ffffff"
@@ -35,12 +38,12 @@ def generate_graphs(games_to_play):
     # 2: Is win for the player not to move by forced moves
 
     game.graph.vp.w = iswin
+    for v in game.graph.vertices():
+        game.graph.vp.w[v] = [False] * 2
     start_storage = game.extract_storage()
     graphs = []
     known_hashes = set()
-    for _ in range(games_to_play):
-        for v in game.graph.vertices():
-            iswin[v] = [False] * 2
+    for _ in trange(games_to_play):
         win = False
         while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
@@ -68,5 +71,5 @@ def generate_graphs(games_to_play):
                     game.graph.vp.w[game.view.vertex(move)] = [False,True]
                 else:
                     game.graph.vp.w[game.view.vertex(move)] = [False,False]
-            graphs.append(convert_graph(game.view))
+            graphs.append(convert_graph(game.view)[0])
     return graphs

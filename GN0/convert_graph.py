@@ -5,7 +5,6 @@ from graph_tool.all import Graph
 from graph_game.graph_tools_game import Graph_game
 from typing import Tuple
 
-
 def convert_graph(graph:Graph) -> Tuple[Data,dict]:
     """Convert a graph-tool graph for a graph_tools_game into torch_geometric data
     

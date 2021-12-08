@@ -17,7 +17,7 @@ class SupervisedDataset(InMemoryDataset):
 
     def download(self):
         # Download to `self.raw_dir`.
-        graphs = generate_graphs(10)
+        graphs = generate_graphs(2)
         with open(self.raw_file_names[0], 'wb') as f:
             pickle.dump(graphs, f)
 
