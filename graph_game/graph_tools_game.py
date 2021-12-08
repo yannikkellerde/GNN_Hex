@@ -28,6 +28,7 @@ class Graph_game():
         self.owner_map = {0:None,1:"f",2:"b",3:"w"}
         self.owner_rev = {val:key for key,val in self.owner_map.items()}
         self.known_gain_sets = []
+        self.psets = {"bp":set(),"bd":set(),"wp":set(),"wd":set()}
 
     @staticmethod
     def from_graph(graph) -> Graph_game:
@@ -221,7 +222,6 @@ class Graph_game():
         """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
          "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
          3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
-        self.inv_maps()
         winmoves = self.win_threat_search(one_is_enough=False,until_time=time.time()+5)
         self.view.gp["b"] = not self.view.gp["b"]
         defense_vertices,has_threat,_ = self.threat_search()

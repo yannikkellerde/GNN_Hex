@@ -35,12 +35,12 @@ def generate_graphs(games_to_play):
     # 2: Is win for the player not to move by forced moves
 
     game.graph.vp.w = iswin
-    for v in game.graph.vertices():
-        iswin[v] = [False] * 2
     start_storage = game.extract_storage()
     graphs = []
     known_hashes = set()
-    for i in range(games_to_play):
+    for _ in range(games_to_play):
+        for v in game.graph.vertices():
+            iswin[v] = [False] * 2
         win = False
         while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)

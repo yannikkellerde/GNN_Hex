@@ -16,7 +16,6 @@ class Board_game():
         self.onturn = "b"
         self.node_map = dict()
         self.wp_map = dict()
-        self.psets = {"bp":set(),"bd":set(),"wp":set(),"wd":set()}
     
     def inv_maps(self):
         self.wp_map_rev = {value:key for key,value in self.wp_map.items()}
