@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 from copy import copy,deepcopy
 from typing import NamedTuple, Union
@@ -7,7 +8,7 @@ import time
 import numpy as np
 import pickle
 import time
-
+from graph_game.graph_board_game import Board_game
 from graph_tool.all import *
 from graph_tools_hashing import wl_hash
 
@@ -21,10 +22,28 @@ class Graph_Store(NamedTuple):
 class Graph_game():
     graph: Graph
     view: GraphView
+    name:str
+    board:Union[None,Board_game]
     def __init__(self):
         self.owner_map = {0:None,1:"f",2:"b",3:"w"}
         self.owner_rev = {val:key for key,val in self.owner_map.items()}
         self.known_gain_sets = []
+
+    @staticmethod
+    def from_graph(graph) -> Graph_game:
+        """Create a game from a graph-tool graph.
+
+        Args:
+            graph: A graph-tool graph.
+        Returns:
+            A graph-tool game
+        """
+        g = Graph_game()
+        g.graph = graph
+        g.view = GraphView(g.graph,g.graph.vp.f)
+        g.board = None
+        g.name = "Graph_game"
+        return g
 
     @property
     def hash(self):
@@ -197,6 +216,58 @@ class Graph_game():
             self.view.vp.f[del_node] = False
         self.view.gp["b"] = not self.view.gp["b"]
         return win
+
+    def check_move_val(self,moves,priorize_sets=True):
+        """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
+         "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
+         3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
+        self.inv_maps()
+        winmoves = self.win_threat_search(one_is_enough=False,until_time=time.time()+5)
+        self.view.gp["b"] = not self.view.gp["b"]
+        defense_vertices,has_threat,_ = self.threat_search()
+        self.view.gp["b"] = not self.view.gp["b"]
+        results = []
+        storage = self.extract_storage()
+        for move in moves:
+            val = "u"
+            self.load_storage(storage)
+            if has_threat and move not in defense_vertices and move not in winmoves:
+                if self.onturn=="b":
+                    val = -3
+                else:
+                    val = 3
+            else:
+                self.make_move(move)
+                self.hashme()
+                if self.hash in self.psets["wp"]:
+                    val = -2
+                elif self.hash in self.psets["bp"]:
+                    val = 2
+                elif self.hash in self.psets["wd"]:
+                    val = 1
+                if self.hash in self.psets["bd"]:
+                    if val == 1:
+                        val = 0
+                    elif val =="u":
+                        val = -1
+                if val=="u" or not priorize_sets:
+                    if self.view.num_vertices() == 0:
+                        val = 0
+                    else:
+                        if move in winmoves:
+                            if self.onturn=="b":
+                                val = -4
+                            else:
+                                val = 4
+                        else:
+                            movs = len(self.win_threat_search(one_is_enough=True,until_time=time.time()+0.5))>0
+                            if movs:
+                                if self.onturn=="b":
+                                    val = 4
+                                else:
+                                    val = -4
+            results.append(val)
+        return results
 
     def negate_onturn(self,onturn):
         return "b" if onturn=="w" else ("w" if onturn=="b" else onturn)
@@ -436,5 +507,5 @@ class Graph_game():
             fill_color[vertex] = (0,0,1,1) if x==0 else ((0,1,1,1) if x==1 else ((0,0,0,1) if x==2 else (1,0,0,1)))
         graph_draw(self.view, vprops={"fill_color":fill_color}, vertex_text=self.view.vertex_index, output=f"game_state_{index}.pdf")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name

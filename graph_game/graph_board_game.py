@@ -51,58 +51,6 @@ class Board_game():
                 print(e)
         return psets
 
-    def check_move_val(self,moves,priorize_sets=True):
-        """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
-         "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
-         3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
-        self.inv_maps()
-        winmoves = self.game.win_threat_search(one_is_enough=False,until_time=time.time()+5)
-        self.game.view.gp["b"] = not self.game.view.gp["b"]
-        defense_vertices,has_threat,_ = self.game.threat_search()
-        self.game.view.gp["b"] = not self.game.view.gp["b"]
-        results = []
-        storage = self.game.extract_storage()
-        for move in moves:
-            val = "u"
-            self.game.load_storage(storage)
-            if has_threat and move not in defense_vertices and move not in winmoves:
-                if self.game.onturn=="b":
-                    val = -3
-                else:
-                    val = 3
-            else:
-                self.game.make_move(move)
-                self.game.hashme()
-                if self.game.hash in self.psets["wp"]:
-                    val = -2
-                elif self.game.hash in self.psets["bp"]:
-                    val = 2
-                elif self.game.hash in self.psets["wd"]:
-                    val = 1
-                if self.game.hash in self.psets["bd"]:
-                    if val == 1:
-                        val = 0
-                    elif val =="u":
-                        val = -1
-                if val=="u" or not priorize_sets:
-                    if self.game.view.num_vertices() == 0:
-                        val = 0
-                    else:
-                        if move in winmoves:
-                            if self.game.onturn=="b":
-                                val = -4
-                            else:
-                                val = 4
-                        else:
-                            movs = len(self.game.win_threat_search(one_is_enough=True,until_time=time.time()+0.5))>0
-                            if movs:
-                                if self.game.onturn=="b":
-                                    val = 4
-                                else:
-                                    val = -4
-            results.append(val)
-        return results
-
     def make_move(self, move):
         self.position[move] = self.onturn
         self.onturn = "b" if self.onturn == "w" else "b"

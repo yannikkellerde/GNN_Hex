@@ -162,7 +162,7 @@ class Solver_analyze():
             moves = game.get_actions(filter_superseeded=False,none_for_win=False)
             board_moves = [game.board.node_map[x] for x in moves]
             game.draw_me()
-            evals = game.board.check_move_val(moves)
+            evals = game.check_move_val(moves)
             moves_with_eval = list(zip(board_moves, evals))
             out = json.dumps({"moves":moves_with_eval})
         elif "new_rule" in data:

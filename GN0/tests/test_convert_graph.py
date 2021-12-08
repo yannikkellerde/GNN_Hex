@@ -1,7 +1,9 @@
-from GN0.convert_graph import convert_graph
+from GN0.convert_graph import convert_graph,convert_graph_back
 from graph_game.graph_tools_games import Qango6x6
+from graph_game.graph_tools_game import Graph_game
 
 def test_convert_graph():
+    """Checks convert_graph, convert_graph_back cycle consistency."""
     game = Qango6x6()
     start_pos = list("ffffff"
                      "ffwfff"
@@ -12,14 +14,20 @@ def test_convert_graph():
     game.board.position = start_pos
     game.graph_from_board()
     game.make_move(7)
+    game.make_move(14)
+    game.view.gp["b"] = True
     win = game.graph.new_vertex_property("vector<bool>")
     game.view.vp.w = win
     for v in game.graph.vertices():
         win[v] = [False] * 2
-    graph,vertexmap = convert_graph(game.view)
-    print(vertexmap)
-    print([(x.item(),y.item()) for x,y in zip(*graph.edge_index)])
-    game.draw_me()
+    geometric_graph,vertexmap = convert_graph(game.view)
+    game.draw_me(0)
+    new_graph = convert_graph_back(geometric_graph)
+    new_game:Graph_game = Graph_game.from_graph(new_graph)
+    new_game.draw_me(1)
+    new_game.hashme()
+    game.hashme()
+    assert game.hash == new_game.hash
 
 if __name__ == "__main__":
     test_convert_graph()
