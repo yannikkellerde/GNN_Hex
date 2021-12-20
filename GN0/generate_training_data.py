@@ -47,7 +47,10 @@ def generate_graphs(games_to_play):
         win = False
         while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
-            win = game.make_move(random.choice(actions))
+            move = random.choice(actions)
+            win = game.make_move(move)
+            game.board.position = game.board.pos_from_graph()
+            game.board.draw_me()
             game.hashme()
             if win:
                 reload(game,start_storage)

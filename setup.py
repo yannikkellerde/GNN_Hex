@@ -25,7 +25,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
     ],
-    packages=["graph_game","GN0"],
+    packages=["graph_game","GN0","utils"],
     include_package_data=True,
     entry_points={},
 )
