@@ -47,13 +47,14 @@ def generate_graphs(games_to_play):
         win = False
         while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
+            if len(actions) == 0:
+                break
             move = random.choice(actions)
             win = game.make_move(move)
             game.board.position = game.board.pos_from_graph()
             game.board.draw_me()
             game.hashme()
             if win:
-                reload(game,start_storage)
                 break
             if game.hash in known_hashes:
                 continue
@@ -75,4 +76,5 @@ def generate_graphs(games_to_play):
                 else:
                     game.graph.vp.w[game.view.vertex(move)] = [False,False]
             graphs.append(convert_graph(game.view)[0])
+        reload(game,start_storage)
     return graphs

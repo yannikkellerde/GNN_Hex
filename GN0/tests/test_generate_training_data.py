@@ -19,7 +19,7 @@ def test_generate_training_data():
         new_game:Graph_game = Graph_game.from_graph(new_graph)
         new_game.draw_me(i)
     unite_pdfs(basepath,os.path.join(basepath,"united.pdf"))
-    #delstuff()
+    delstuff()
 
 
 if __name__ == '__main__':

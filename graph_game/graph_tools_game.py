@@ -11,6 +11,7 @@ import time
 from graph_game.graph_board_game import Board_game
 from graph_tool.all import *
 from graph_tools_hashing import wl_hash
+from utils.general_utils import hasattr 
 
 class Graph_Store(NamedTuple):
     """A minimal storage NamedTuple that contains all information to reconstruct a game state if
