@@ -8,7 +8,8 @@ solver.log
 *.odp#
 *.log
 *.pkl
-*.pt
+GN0/data
+
 gctest.py
 *.pyc
 old_functions.py
