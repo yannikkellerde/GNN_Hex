@@ -223,7 +223,7 @@ class Graph_game():
         """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
          "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
          3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
-        winmoves = self.win_threat_search(one_is_enough=False,until_time=time.time()+5)
+        winmoves = self.win_threat_search(one_is_enough=False,until_time=time.time()+0.5)
         self.view.gp["b"] = not self.view.gp["b"]
         defense_vertices,has_threat,_ = self.threat_search()
         self.view.gp["b"] = not self.view.gp["b"]
@@ -261,7 +261,7 @@ class Graph_game():
                             else:
                                 val = 4
                         else:
-                            movs = len(self.win_threat_search(one_is_enough=True,until_time=time.time()+0.5))>0
+                            movs = len(self.win_threat_search(one_is_enough=True,until_time=time.time()+0.1))>0
                             if movs:
                                 if self.onturn=="b":
                                     val = 4

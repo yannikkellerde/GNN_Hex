@@ -2,6 +2,7 @@ import torch
 from torch_geometric.data import InMemoryDataset, download_url
 import pickle
 from GN0.generate_training_data import generate_graphs
+import numpy as np
 
 class SupervisedDataset(InMemoryDataset):
     def __init__(self, root, device="cpu", transform=None, pre_transform=None):
@@ -18,7 +19,7 @@ class SupervisedDataset(InMemoryDataset):
 
     def download(self):
         # Download to `self.raw_dir`.
-        graphs = generate_graphs(10)
+        graphs = generate_graphs(1000)
         with open(self.raw_paths[0], 'wb') as f:
             pickle.dump(graphs, f)
 
@@ -37,6 +38,10 @@ class SupervisedDataset(InMemoryDataset):
         torch.save((data, slices), self.processed_paths[0])
 
 def pre_transform(data):
+    train_mask = np.random.binomial(1, 0.8, len(data.y)).astype(bool)
+    test_mask = ~train_mask
+    data.train_mask = np.logical_and(train_mask, ~data.x[:, 0]).bool()
+    data.test_mask = np.logical_and(test_mask, ~data.x[:, 0]).bool()
     data.x = data.x.float()
     data.y = data.y.float()
     return data

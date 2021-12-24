@@ -36,11 +36,11 @@ def convert_graph(graph:Graph) -> Tuple[Data,dict]:
         own_val = graph.vp.o[node]
         vertexmap[vertex_count] = ind
         if own_val != 0:
-            node_features[vertex_count][0] = 1
+            node_features[vertex_count][0] = True
         if (own_val == 2 and blackturn) or (own_val == 3 and not blackturn):
-            node_features[vertex_count][1] = 1
+            node_features[vertex_count][1] = True
         elif (own_val == 2 and not blackturn) or (own_val == 3 and blackturn):
-            node_features[vertex_count][2] = 1
+            node_features[vertex_count][2] = True
         is_won_for_onturn,is_won_for_not_onturn = graph.vp.w[node]
         targets[vertex_count][0] = int(is_won_for_onturn)
         targets[vertex_count][1] = int(is_won_for_not_onturn)
