@@ -6,6 +6,7 @@ from functools import reduce
 from collections import defaultdict
 import time
 import numpy as np
+import os
 import pickle
 import time
 from graph_game.graph_board_game import Board_game
@@ -21,10 +22,46 @@ class Graph_Store(NamedTuple):
     blackturn:bool
 
 class Graph_game():
+    """A two-player game played on a graph.
+    
+    The graph represents a board game such as Tic-Tac-Toe or Qango. It includes nodes for the squares
+    and win patterns of the game as well as edges between them. Graph_game is subclassed in graph_game/graph_tools_games.py
+
+    Attributes:
+        graph: A graph-tool graph object.
+        view: The graph-tool view relevant for the current game position.
+        name: The name of the game.
+        board: A 2d grid representation of the game. (Optional)
+        psets: Proof sets and disproof sets which include hashes of game states
+               that are either won or lost for the starting player.
+        owner_map: A dictionary that maps the numbers 0-3 to None (square), "f" (free),
+                   "b" (black), "w" (white).
+        owner_rev: The inverted owner_map dictionary
+        known_gain_sets: Attribute used in thread-search
+    
+    Methods:
+        from_graph: Construct a game from a graph-tool graph.
+        hashme: Compute the Weisfeiler-Lehmann hash of the current game state.
+        load_set_folder: Load the proof sets and disproof sets from a folder.
+        load_storage: Load the game state from a minimal Graph_Store object.
+        extract_storage: Extract a minimal Graph_Store object that contains all information
+                         required to reconstruct the current game state.
+        graph_from_board: Construct a graph from a 2d grid representation of the game.
+        get_actions: Find and sort all moves that are possible in the current game state.
+        make_move: Make a move in the game.
+        check_move_val: Return the evaluation of a list of moves in the current state.
+        threat_search: Check if a player can win by force with direct threats. (https://www.researchgate.net/publication/2252447_Go-Moku_and_Threat-Space_Search)
+        win_threat_search: Search for forced wins in the current position. (More complete than threat_search, but also slower)
+        draw_me: Draw the game-graph with graphviz.
+    """
     graph: Graph
     view: GraphView
     name:str
     board:Union[None,Board_game]
+    psets:dict
+    owner_map:dict
+    ovner_rev:dict
+    known_gain_sets:list
     def __init__(self):
         self.owner_map = {0:None,1:"f",2:"b",3:"w"}
         self.owner_rev = {val:key for key,val in self.owner_map.items()}
@@ -60,6 +97,31 @@ class Graph_game():
         global property of the graph. (self.view.gp['h'])
         """
         wl_hash(self.view,self.view.vp.o,iterations=3)
+
+    def load_set_folder(self,folder:str):
+        """Load the proof sets and disproof sets from a folder into self.psets.
+        
+        Args:
+            folder: The path to the folder containing the proof sets and disproof sets.
+        """
+        self.psets = Graph_game.load_psets(self.psets.keys(),folder)
+
+    @staticmethod
+    def load_psets(setnames:str,folder:str):
+        """Load the proof sets and disproof sets from a folder into a dictionary.
+        
+        Args:
+            setnames: A list of strings with the names of the proof sets and disproof sets.
+            folder: The path to the folder containing the proof sets and disproof sets.
+        """
+        psets = {setname:set() for setname in setnames}
+        for key in psets:
+            try:
+                with open(os.path.join(folder,key+".pkl"),"rb") as f:
+                    psets[key] = pickle.load(f)
+            except FileNotFoundError as e:
+                print(e)
+        return psets
 
     def load_storage(self,storage:Graph_Store):
         """Load the game state from it's property maps.
