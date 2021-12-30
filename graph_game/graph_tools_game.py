@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
 from copy import copy,deepcopy
-from typing import NamedTuple, Union
+from typing import NamedTuple, Union, Dict,List,Set,Tuple
 from functools import reduce
 from collections import defaultdict
 import time
@@ -58,10 +58,10 @@ class Graph_game():
     view: GraphView
     name:str
     board:Union[None,Board_game]
-    psets:dict
-    owner_map:dict
-    ovner_rev:dict
-    known_gain_sets:list
+    psets:Dict[str,Set[int]]
+    owner_map:Dict[int,str]
+    ovner_rev:Dict[str,int]
+    known_gain_sets:List[Set[int]]
     def __init__(self):
         self.owner_map = {0:None,1:"f",2:"b",3:"w"}
         self.owner_rev = {val:key for key,val in self.owner_map.items()}
@@ -107,7 +107,7 @@ class Graph_game():
         self.psets = Graph_game.load_psets(self.psets.keys(),folder)
 
     @staticmethod
-    def load_psets(setnames:str,folder:str):
+    def load_psets(setnames:str,folder:str) -> Dict[str,Set[int]]:
         """Load the proof sets and disproof sets from a folder into a dictionary.
         
         Args:
@@ -196,7 +196,7 @@ class Graph_game():
         self.view = GraphView(self.graph,self.graph.vp.f)
         self.board.inv_maps()
 
-    def get_actions(self,filter_superseeded=True,none_for_win=True):
+    def get_actions(self,filter_superseeded=True,none_for_win=True) -> List[int]:
         """Find and sort all moves that are possible in the current game state.
 
         The possible moves are the indices of all square vertices. The moves are
@@ -281,10 +281,21 @@ class Graph_game():
         self.view.gp["b"] = not self.view.gp["b"]
         return win
 
-    def check_move_val(self,moves,priorize_sets=True):
-        """{"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
+    def check_move_val(self,moves,priorize_sets=True) -> List[int]:
+        """Compute the evaluation for all moves in the given list.
+        
+        Used threat search, forced move search and proof/disproof-sets to evaluate
+        each move. Possible evaluation values are as follows:
+        {"-4":"White wins (Forced Move)","-3":"White wins (Threat search)","-2":"White wins (Proofset)",
          "-1":"White wins or draw","u":"Unknown",0:"Draw",1:"Black wins or draw",2:"Black wins (Proofset)",
-         3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}"""
+         3:"Black wins (Threat search)",4:"Black wins (Forced Move)"}
+
+        Args:
+            moves: A list of moves to evaluate.
+            priorize_sets: Priorize evaluation given in the proof/disproof sets.
+        Returns:
+            A list of evaluations for the moves.
+        """
         winmoves = self.win_threat_search(one_is_enough=False,until_time=time.time()+0.5)
         self.view.gp["b"] = not self.view.gp["b"]
         defense_vertices,has_threat,_ = self.threat_search()
@@ -335,7 +346,7 @@ class Graph_game():
     def negate_onturn(self,onturn):
         return "b" if onturn=="w" else ("w" if onturn=="b" else onturn)
         
-    def threat_search(self,last_gain=None,last_cost=None,known_threats=None,gain=None,cost=None):
+    def threat_search(self,last_gain=None,last_cost=None,known_threats=None,gain=None,cost=None) -> Tuple[List[int],bool,List[int]]:
         """Implements a threat-space search for games on graphs. Inspired by Go-Moku and Threat-Space Search (1994).
 
         Threats are defined as squares connected to a winpattern node of degree 2 that is colored in the moving players color

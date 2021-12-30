@@ -1,3 +1,4 @@
+from __future__ import annotations
 from graph_tool.all import *
 import pickle
 import sys,os
@@ -99,8 +100,14 @@ class Board_game():
         self.onturn = onturn
         self.game.graph_from_board()
 
-    def draw_me_with_prediction(self):
-        """Print the board state into the terminal with colored indicators for the prediction."""
+    def draw_me_with_prediction(self,vprop:VertexPropertyMap) -> str:
+        """Print the board state into the terminal with colored indicators for the prediction.
+        
+        Args:
+            vprop: The vertex property map containing the prediction.
+        Returns:
+            A string with the printed board.
+        """
         t = Terminal()
         root = int(math.sqrt(self.squares))
         out_str = "#"*(root+2)
@@ -108,10 +115,18 @@ class Board_game():
         for row in range(root):
             out_str+="#"
             for col in range(root):
-                out_str += " " if self.position[col+row*root]=="f" else self.position[col+row*root]
+                sq = col+row*root
+                letter = " " if self.position[sq]=="f" else self.position[sq]
+                if self.position[sq]=="f" and vprop[self.node_map_rev[sq]][0]:
+                    out_str+=t.on_green(letter)
+                elif self.position[sq]=="f" and vprop[self.node_map_rev[sq]][1]:
+                    out_str+=t.on_red(letter)
+                else:
+                    out_str+=letter
             out_str+="#\n"
         out_str += "#"*(root+2)
-        print(out_str)
+        #print(out_str)
+        return out_str
 
 
     def draw_me(self,pos=None) -> str:

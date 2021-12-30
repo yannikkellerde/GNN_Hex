@@ -19,9 +19,7 @@ def convert_graph(graph:Graph) -> Tuple[Data,dict]:
 
     Returns:
         A torch_geometric Data object representing the information from an input graph and
-        vertexmap, which is a list with the same length as the number of nodes
-        in the GraphTuple that stores the index of the corresponding vertex for
-        each graph-tools vertex that represents a square
+        vertexmap, which maps the torch_geometric data vertex indices to the graph-tool graph vertex indices
     """
     node_feat_shape = 3
     node_features = np.zeros((graph.num_vertices(),node_feat_shape),dtype=np.bool)
