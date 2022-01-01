@@ -1,3 +1,4 @@
+# TODO: Bipartite Graph
 import torch
 from torch_geometric.data import InMemoryDataset, download_url
 import pickle
