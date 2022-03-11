@@ -34,7 +34,7 @@ def eval(loader):
     print("Testing loss:", sum(losses) / len(losses))
 
 model.train()
-for _ in trange(2000):
+for _ in trange(200):
     losses = []
     for batch in tqdm(loader):
         optimizer.zero_grad()

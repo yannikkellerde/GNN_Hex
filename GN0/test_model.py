@@ -1,20 +1,19 @@
-""" The idea here is to instead of learning with GN0, we just learn the true
-win/loss as a function of the board position."""
-
+from model_frontend import evaluate_graph,evaluate_game_state
+from GCN import GCN
+import torch
+from graph_game.graph_tools_game import Graph_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6
-from graph_game.graph_tools_game import Graph_Store, Graph_game
-from GN0.convert_graph import convert_graph
 import random
-import time
-from tqdm import tqdm,trange
-import multiprocessing
 
-def generate_graphs(games_to_play):
-    """ Generate training graphs for the Graph net to learn from.
-    Makes random moves in the game and uses threat search to evaluate
-    the all moves in all positions. Then stores the graphs as training
-    sets for the Graph net to train on.
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+model = GCN(3,2,conv_layers=8,conv_dim=16,global_dim=16).to(device)
+
+model.load_state_dict(torch.load("model/GCN_model.pt"))
+model.eval()
+
+def test_model(games_to_play):
+    """ 
     Args:
         games_to_play: Number of games to play.
     """
@@ -43,7 +42,7 @@ def generate_graphs(games_to_play):
     start_storage = game.extract_storage()
     graphs = []
     known_hashes = set()
-    for _ in trange(games_to_play):
+    for _ in range(games_to_play):
         win = False
         while 1:
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
@@ -52,14 +51,9 @@ def generate_graphs(games_to_play):
             move = random.choice(actions)
             win = game.make_move(move)
             game.board.position = game.board.pos_from_graph()
-            #game.board.draw_me()
             game.hashme()
             if win:
                 break
-            if game.hash in known_hashes:
-                continue
-            else:
-                known_hashes.add(game.hash)
             moves = game.get_actions(filter_superseeded=False,none_for_win=False)
             if len(moves) == 0:
                 break
@@ -75,16 +69,9 @@ def generate_graphs(games_to_play):
                     game.graph.vp.w[game.view.vertex(move)] = [False,True]
                 else:
                     game.graph.vp.w[game.view.vertex(move)] = [False,False]
-            graphs.append(convert_graph(game.view)[0])
+            evaluate_game_state(model,game)
+            game.board.draw_me_with_prediction(game.view.vp.p)
+            input()
+            
         reload(game,start_storage)
-    return graphs
-
-
-def generate_graphs_multiprocess(games_to_play):
-    use_cores = multiprocessing.cpu_count()-1
-    div,mod = divmod(games_to_play,use_cores)
-    params = [div + (1 if x < mod else 0) for x in range(use_cores)]
-    with multiprocessing.Pool(use_cores) as pool:
-        graphs = pool.map(generate_graphs,params)
-    graphs = sum(graphs, [])
     return graphs

@@ -2,7 +2,7 @@
 import torch
 from torch_geometric.data import InMemoryDataset, download_url
 import pickle
-from GN0.generate_training_data import generate_graphs
+from GN0.generate_training_data import generate_graphs_multiprocess
 import numpy as np
 
 class SupervisedDataset(InMemoryDataset):
@@ -20,7 +20,8 @@ class SupervisedDataset(InMemoryDataset):
 
     def download(self):
         # Download to `self.raw_dir`.
-        graphs = generate_graphs(1000)
+        graphs = generate_graphs_multiprocess(10000)
+        print("graphs are generated")
         with open(self.raw_paths[0], 'wb') as f:
             pickle.dump(graphs, f)
 
