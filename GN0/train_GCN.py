@@ -3,7 +3,7 @@ from GN0.generate_training_data import generate_graphs
 from GN0.graph_dataset import SupervisedDataset,pre_transform
 import torch
 import torch.nn.functional as F
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from torchmetrics import Accuracy
 from tqdm import trange,tqdm
 
@@ -14,6 +14,7 @@ if not torch.cuda.is_available():
 dataset = SupervisedDataset(root='./data/', device=device, pre_transform=pre_transform)
 
 model = GCN(3,2,conv_layers=8,conv_dim=16,global_dim=16).to(device)
+#loader = DataLoader(dataset, batch_size=64, shuffle=True)
 loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.004)
@@ -42,7 +43,8 @@ for _ in trange(2000):
         loss.backward()
         optimizer.step()
         losses.append(loss)
-    print({key:sum(value)/len(value) for key,value in perfs.items()})
+
+    #print({key:sum(value)/len(value) for key,value in perfs.items()})
     print("training loss:",sum(losses) / len(losses))
     eval(loader)
 

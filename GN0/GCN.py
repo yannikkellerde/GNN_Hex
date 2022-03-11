@@ -5,15 +5,12 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.nn import MessagePassing
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import add_self_loops, degree
+from torch_scatter import scatter
 import numpy as np
 from time import perf_counter
+from collections import defaultdict
 
-perfs = {
-    "start_nn":[],
-    "graph_assign":[],
-    "propagate":[],
-    "final_global":[]
-}
+perfs = defaultdict(list)
 
 
 class GCNConv_glob(MessagePassing):
@@ -26,7 +23,7 @@ class GCNConv_glob(MessagePassing):
         self.glob_to_glob_lin = torch.nn.Linear(global_dim, global_dim)
         self.node_to_glob_lin = torch.nn.Linear(out_channels, global_dim)
 
-    def forward(self, x, edge_index, global_attr, graph_assignment):
+    def forward(self, x, edge_index, global_attr, binary_matrix, graph_indices):
         # x has shape [num_nodes, in_channels]
         # edge_index has shape [2, num_edges]
         # global_attr has shape [num_graphs, global_dim]
@@ -36,12 +33,17 @@ class GCNConv_glob(MessagePassing):
 
         # Step 2: Linearly transform node feature matrix.
         x = self.node_to_node_lin(x)
-
+        
         # Inserted Step: Linearly transform global attributes and add to node features.
         globs = self.glob_to_node_lin(global_attr) 
-        for i in range(len(globs)):
-            x[graph_assignment == i] += globs[i]
-            
+
+        # Slow Aggregation:
+        # for i in range(len(globs)):
+        #     x[graph_slices[i]:graph_slices[i+1]] += globs[i]
+
+        # Fast parallel aggregation:
+        x += torch.matmul(binary_matrix,globs)
+
         # Step 3: Compute normalization.
         row, col = edge_index
         deg = degree(col, x.size(0), dtype=x.dtype)
@@ -49,13 +51,26 @@ class GCNConv_glob(MessagePassing):
         deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
         norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
 
+        
+        start = perf_counter()
+
         # Step 4-5: Start propagating messages.
         x = self.propagate(edge_index, x=x, norm=norm)
 
+        perfs["propagate"].append(perf_counter() - start)
+
         # Inserted Step: Update global attribute
         global_attr = self.glob_to_glob_lin(global_attr)
-        graph_parts = torch.stack([torch.max(x[graph_assignment == i],0).values for i in range(len(global_attr))])
+
+        # Slow aggregation:
+        # graph_parts = torch.stack([torch.max(x[graph_slices[i]:graph_slices[i+1]],0).values for i in range(len(global_attr))])
+        
+        # Quick cuda aggregation:
+        graph_parts = scatter(x, graph_indices, dim=0, reduce="max")
+        
+        
         global_attr = global_attr + self.node_to_glob_lin(graph_parts)
+
         return x,global_attr
 
     def message(self, x_j, norm):
@@ -77,22 +92,23 @@ class GCN(torch.nn.Module):
 
     def forward(self, data:Data):
         if isinstance(data,Batch):
-            graph_assignment = data.batch
             num_graphs = data.num_graphs
+            binary_matrix = torch.zeros(data.x.size(0),num_graphs).cuda()
+            for i in range(len(data.ptr)-1):
+                binary_matrix[data.ptr[i]:data.ptr[i+1],i] = 1
         else:
-            graph_assignment = torch.zeros(data.num_nodes,dtype=torch.long)
+            binary_matrix = torch.ones(data.x.size(0),1).cuda()
             num_graphs = 1
         x, edge_index  = data.x, data.edge_index
 
         glob_attr = self.glob_init.repeat(num_graphs,1)
 
-        x, glob_attr = self.convs(x, edge_index, glob_attr, graph_assignment)
+        x, glob_attr = self.convs(x, edge_index, glob_attr, binary_matrix, data.batch)
         x = F.relu(x)
         for conv in self.conv_between:
-            x, glob_attr = conv(x, edge_index, glob_attr, graph_assignment)
+            x, glob_attr = conv(x, edge_index, glob_attr, binary_matrix, data.batch)
             x = F.relu(x)
         #x = F.dropout(x, training=self.training)
-        x, glob_attr = self.conve(x, edge_index, glob_attr, graph_assignment)
-
+        x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, data.batch)
         return torch.sigmoid(x)
 
