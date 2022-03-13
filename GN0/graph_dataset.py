@@ -4,15 +4,20 @@ from torch_geometric.data import InMemoryDataset, download_url
 import pickle
 from GN0.generate_training_data import generate_graphs_multiprocess
 import numpy as np
+import os
 
 class SupervisedDataset(InMemoryDataset):
-    def __init__(self, root, device="cpu", transform=None, pre_transform=None):
+    num_data_creation_processes = 15
+
+    def __init__(self, root, device="cpu", transform=None, pre_transform=None, num_graphs=10000):
+        self.num_graphs = num_graphs
         super(SupervisedDataset, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
         self.data = self.data.to(device)
+
     @property
     def raw_file_names(self):
-        return ['data_list.pkl']
+        return [f'data_list_{i}.pkl' for i in range(SupervisedDataset.num_data_creation_processes)]
 
     @property
     def processed_file_names(self):
@@ -20,15 +25,17 @@ class SupervisedDataset(InMemoryDataset):
 
     def download(self):
         # Download to `self.raw_dir`.
-        graphs = generate_graphs_multiprocess(10000)
+        generate_graphs_multiprocess(self.num_graphs,self.raw_paths)
         print("graphs are generated")
-        with open(self.raw_paths[0], 'wb') as f:
-            pickle.dump(graphs, f)
 
     def process(self):
         # Read data into huge `Data` list.
-        with open(self.raw_paths[0], 'rb') as f:
-            graphs = pickle.load(f)
+        graphs = []
+        for path in self.raw_paths:
+            if os.path.exists(path):
+                with open(path, 'rb') as f:
+                    some_graphs = pickle.load(f)
+                graphs.extend(some_graphs)
 
         if self.pre_filter is not None:
             graphs = [data for data in graphs if self.pre_filter(data)]

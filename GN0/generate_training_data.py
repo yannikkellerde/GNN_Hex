@@ -3,11 +3,12 @@ win/loss as a function of the board position."""
 
 from graph_game.graph_tools_games import Qango6x6
 from graph_game.graph_tools_game import Graph_Store, Graph_game
-from GN0.convert_graph import convert_graph
+from GN0.convert_graph import graph_to_arrays, convert_graph
 import random
 import time
 from tqdm import tqdm,trange
 import multiprocessing
+import pickle
 
 def generate_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
@@ -79,12 +80,22 @@ def generate_graphs(games_to_play):
         reload(game,start_storage)
     return graphs
 
+def generate_and_store_graphs(games_to_play,path):
+    graphs = generate_graphs(games_to_play)
+    with open(path,"wb") as f:
+        pickle.dump(graphs,f)
 
-def generate_graphs_multiprocess(games_to_play):
-    use_cores = multiprocessing.cpu_count()-1
-    div,mod = divmod(games_to_play,use_cores)
-    params = [div + (1 if x < mod else 0) for x in range(use_cores)]
-    with multiprocessing.Pool(use_cores) as pool:
-        graphs = pool.map(generate_graphs,params)
-    graphs = sum(graphs, [])
-    return graphs
+
+def generate_graphs_multiprocess(games_to_play,paths):
+    cores = multiprocessing.cpu_count()
+    assert len(paths)<=cores
+    div,mod = divmod(games_to_play,len(paths))
+    params = [div + (1 if x < mod else 0) for x in range(len(paths))]
+    with multiprocessing.Pool(len(paths)) as pool:
+        pool.starmap(generate_and_store_graphs,zip(params,paths))
+
+if __name__=="__main__":
+    graphs = generate_graphs_multiprocess(10000)
+    with open("graphs.pkl","wb") as f:
+        pickle.dump(graphs,f)
+    print("Done")

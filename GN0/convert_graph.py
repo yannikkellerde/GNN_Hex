@@ -5,21 +5,16 @@ from graph_tool.all import Graph
 from graph_game.graph_tools_game import Graph_game
 from typing import Tuple
 
-def convert_graph(graph:Graph) -> Tuple[Data,dict]:
-    """Convert a graph-tool graph for a graph_tools_game into torch_geometric data
-    
-    The torch_geometric data stores the follwing features from the input graphs:
-    Graph Features: None
-    Node Features: (IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn)
-    Edge Features: None
-    Targets: (OnturnWinsByForcedMoves,NotOnturnWinsByForcedMoves)
-
+def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray,dict]:
+    """ Convert a graph-tool graph into node_features, edge_index, targets, and vertexmap
     Args:
         graph: A graph-tool graph for graph_tools_games
 
     Returns:
-        A torch_geometric Data object representing the information from an input graph and
-        vertexmap, which maps the torch_geometric data vertex indices to the graph-tool graph vertex indices
+        node_features: A boolean numpy array of shape (num_vertices,3) representing the node features
+        edge_index: A numpy array of shape (2,num_edges*2) representing the edge indices
+        targets: A boolean numpy array of shape (num_vertices,2) representing the targets
+        vertexmap: A dictionary mapping the torch_geometric data vertex indices to the graph-tool graph vertex indices
     """
     node_feat_shape = 3
     node_features = np.zeros((graph.num_vertices(),node_feat_shape),dtype=np.bool)
@@ -52,6 +47,27 @@ def convert_graph(graph:Graph) -> Tuple[Data,dict]:
         edge_index[0][edge_count] = rev_vertex_map[edge[0]]
         edge_index[1][edge_count] = rev_vertex_map[edge[1]]
         edge_count += 1
+    
+    return node_features,edge_index,targets,vertexmap
+
+
+def convert_graph(graph:Graph) -> Tuple[Data,dict]:
+    """Convert a graph-tool graph for a graph_tools_game into torch_geometric data
+    
+    The torch_geometric data stores the follwing features from the input graphs:
+    Graph Features: None
+    Node Features: (IsWinsquare, IsOwnedByOnturn, IsOwnedByNotOnturn)
+    Edge Features: None
+    Targets: (OnturnWinsByForcedMoves,NotOnturnWinsByForcedMoves)
+
+    Args:
+        graph: A graph-tool graph for graph_tools_games
+
+    Returns:
+        A torch_geometric Data object representing the information from an input graph and
+        vertexmap, which maps the torch_geometric data vertex indices to the graph-tool graph vertex indices
+    """
+    node_features,edge_index,targets,vertexmap = graph_to_arrays(graph)
 
     edge_index = torch.from_numpy(edge_index)
     node_features = torch.from_numpy(node_features)

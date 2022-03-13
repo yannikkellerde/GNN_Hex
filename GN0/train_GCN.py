@@ -24,16 +24,19 @@ acc_accumulate = Accuracy().to(device)
 def eval(loader):
     losses = []
     accuracies = []
-    for batch in tqdm(loader):
-        out = model(batch)
-        loss = F.binary_cross_entropy(out[batch.test_mask], batch.y[batch.test_mask])
-        accuracy = acc_accumulate(out[batch.test_mask].flatten(), batch.y[batch.test_mask].flatten().long())
-        accuracies.append(accuracy)
-        losses.append(loss)
+    with torch.no_grad():
+        for batch in tqdm(loader):
+            out = model(batch)
+            loss = F.binary_cross_entropy(out[batch.test_mask], batch.y[batch.test_mask])
+            accuracy = acc_accumulate(out[batch.test_mask].flatten(), batch.y[batch.test_mask].flatten().long())
+            accuracies.append(accuracy)
+            losses.append(loss)
     print("Testing accuracy:", sum(accuracies) / len(accuracies))
     print("Testing loss:", sum(losses) / len(losses))
+    return sum(accuracies) / len(accuracies)
 
 model.train()
+best_acc = 0
 for _ in trange(200):
     losses = []
     for batch in tqdm(loader):
@@ -46,6 +49,9 @@ for _ in trange(200):
 
     #print({key:sum(value)/len(value) for key,value in perfs.items()})
     print("training loss:",sum(losses) / len(losses))
-    eval(loader)
+    acc = eval(loader)
+    if acc > best_acc:
+        best_acc = acc
+        torch.save(model.state_dict(), "model/GCN_model.pt")
 
-torch.save(model.state_dict(), './model/GCN_global_model.pt')
+torch.save(model.state_dict(), './model/GCN_final_model.pt')

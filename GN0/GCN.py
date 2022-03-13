@@ -96,19 +96,21 @@ class GCN(torch.nn.Module):
             binary_matrix = torch.zeros(data.x.size(0),num_graphs).cuda()
             for i in range(len(data.ptr)-1):
                 binary_matrix[data.ptr[i]:data.ptr[i+1],i] = 1
+            graph_indices = data.batch
         else:
             binary_matrix = torch.ones(data.x.size(0),1).cuda()
             num_graphs = 1
+            graph_indices = torch.zeros(data.x.size(0)).long().cuda()
         x, edge_index  = data.x, data.edge_index
 
         glob_attr = self.glob_init.repeat(num_graphs,1)
 
-        x, glob_attr = self.convs(x, edge_index, glob_attr, binary_matrix, data.batch)
+        x, glob_attr = self.convs(x, edge_index, glob_attr, binary_matrix, graph_indices)
         x = F.relu(x)
         for conv in self.conv_between:
-            x, glob_attr = conv(x, edge_index, glob_attr, binary_matrix, data.batch)
+            x, glob_attr = conv(x, edge_index, glob_attr, binary_matrix, graph_indices)
             x = F.relu(x)
         #x = F.dropout(x, training=self.training)
-        x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, data.batch)
+        x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, graph_indices)
         return torch.sigmoid(x)
 
