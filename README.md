@@ -9,6 +9,9 @@ GCN: https://arxiv.org/pdf/1609.02907.pdf
 ## Benchmark
 https://ogb.stanford.edu/docs/leader_nodeprop/
 
+## Graph representation
+![graph_repr](graphics/graph_game.png)
+
 ## The story of my progress
 I attemted to solve Qango using PN-Search. After failing by using the traditional algorithm due to too high computation times, I wondered how I could exploit symmetries in the game tree and the board layout to reduce the complexity of the search. Thus, I came up with the graph representation for Qango and Tic-Tac-Toe. Using DAG-PN-Search I was able to build a solver for this general class of games that can be represented via my graph structure and was able to solve Qango in all it's shapes and forms.
 
