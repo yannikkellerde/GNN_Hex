@@ -5,6 +5,7 @@ Go zero: https://www.nature.com/articles/nature24270
 Pytorch Geometric: https://arxiv.org/pdf/1903.02428.pdf  
 GNs suck: https://arxiv.org/abs/2010.13993  
 GCN: https://arxiv.org/pdf/1609.02907.pdf
+Hex Graphs: https://webdocs.cs.ualberta.ca/~hayward/theses/ph.pdf
 
 ## Benchmark
 https://ogb.stanford.edu/docs/leader_nodeprop/
