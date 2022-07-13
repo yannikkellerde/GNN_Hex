@@ -15,7 +15,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = GCN(3,2,conv_layers=8,conv_dim=16,global_dim=16).to(device)
 
-model.load_state_dict(torch.load("model/GCN_model.pt"))
+model.load_state_dict(torch.load("model/GCN_model.pt",map_location=device))
 model.eval()
 
 def eval(model):
@@ -67,13 +67,23 @@ def test_model(games_to_play):
     start_storage = game.extract_storage()
     graphs = []
     known_hashes = set()
+    letters = "abcdef"
     for _ in range(games_to_play):
         win = False
         while 1:
+            move_choice = input()
             actions = game.get_actions(filter_superseeded=False,none_for_win=False)
             if len(actions) == 0:
                 break
-            move = random.choice(actions)
+            if move_choice=="":
+                move = random.choice(actions)
+            else:
+                board_move = (int(move_choice[1])-1) * len(letters) + letters.index(move_choice[0])
+                move = game.board.node_map_rev[board_move]
+                if move not in actions:
+                    print(f"Invalid move {move}. Not in moves {actions}")
+                    continue
+
             win = game.make_move(move)
             game.board.position = game.board.pos_from_graph()
             game.hashme()
@@ -97,9 +107,11 @@ def test_model(games_to_play):
             evaluate_game_state(model,game,device=device)
             pred_model = game.board.draw_me_with_prediction(game.view.vp.p)
             pred_gt = game.board.draw_me_with_prediction(game.view.vp.w)
-            print(pred_model)
-            print(pred_gt)
-            input()
+            model_rows = pred_model.split("\n")
+            gt_rows = pred_gt.split("\n")
+            new_rows = [m+"    "+g for m,g in zip(model_rows,gt_rows)]
+            print("  pred         gt  ")
+            print("\n".join(new_rows))
 
         reload(game,start_storage)
 

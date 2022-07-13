@@ -12,6 +12,7 @@ from collections import defaultdict
 
 perfs = defaultdict(list)
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class GCNConv_glob(MessagePassing):
     """Bootstrapped from https://pytorch-geometric.readthedocs.io/en/latest/notes/create_gnn.html
@@ -93,14 +94,14 @@ class GCN(torch.nn.Module):
     def forward(self, data:Data):
         if isinstance(data,Batch):
             num_graphs = data.num_graphs
-            binary_matrix = torch.zeros(data.x.size(0),num_graphs).cuda()
+            binary_matrix = torch.zeros(data.x.size(0),num_graphs).to(device)
             for i in range(len(data.ptr)-1):
                 binary_matrix[data.ptr[i]:data.ptr[i+1],i] = 1
             graph_indices = data.batch
         else:
-            binary_matrix = torch.ones(data.x.size(0),1).cuda()
+            binary_matrix = torch.ones(data.x.size(0),1).to(device)
             num_graphs = 1
-            graph_indices = torch.zeros(data.x.size(0)).long().cuda()
+            graph_indices = torch.zeros(data.x.size(0)).long().to(device)
         x, edge_index  = data.x, data.edge_index
 
         glob_attr = self.glob_init.repeat(num_graphs,1)
