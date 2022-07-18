@@ -88,6 +88,7 @@ def generate_and_store_graphs(games_to_play,path):
 
 def generate_graphs_multiprocess(games_to_play,paths):
     cores = multiprocessing.cpu_count()
+    print(len(paths),cores)
     assert len(paths)<=cores
     div,mod = divmod(games_to_play,len(paths))
     params = [div + (1 if x < mod else 0) for x in range(len(paths))]

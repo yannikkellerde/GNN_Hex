@@ -1,6 +1,3 @@
-from __future__ import annotations
-import math
-from copy import copy,deepcopy
 from typing import NamedTuple, Union, Dict,List,Set,Tuple
 from functools import reduce
 from collections import defaultdict
@@ -8,11 +5,8 @@ import time
 import numpy as np
 import os
 import pickle
-import time
-from graph_game.graph_board_game import Board_game
-from graph_tool.all import *
-from graph_tools_hashing import wl_hash
-from utils.general_utils import hasattr 
+from graph_tool.all import VertexPropertyMap,Graph,GraphView,graph_draw,Vertex
+from graph_game.graph_tools_hashing import wl_hash
 
 class Graph_Store(NamedTuple):
     """A minimal storage NamedTuple that contains all information to reconstruct a game state if
@@ -54,10 +48,10 @@ class Graph_game():
         win_threat_search: Search for forced wins in the current position. (More complete than threat_search, but also slower)
         draw_me: Draw the game-graph with graphviz.
     """
-    graph: Graph
-    view: GraphView
+    graph:Graph
+    view:GraphView
     name:str
-    board:Union[None,Board_game]
+    board:Union[None,"Board_game"]
     psets:Dict[str,Set[int]]
     owner_map:Dict[int,str]
     ovner_rev:Dict[str,int]
@@ -69,7 +63,7 @@ class Graph_game():
         self.psets = {"bp":set(),"bd":set(),"wp":set(),"wd":set()}
 
     @staticmethod
-    def from_graph(graph) -> Graph_game:
+    def from_graph(graph:Graph) -> "Graph_game":
         """Create a game from a graph-tool graph.
 
         Args:
@@ -168,7 +162,7 @@ class Graph_game():
         filt_prop = self.graph.new_vertex_property("bool")
         self.graph.vp.f = filt_prop
         added_verts = dict()
-        for i,wsn in enumerate(list(self.board.winsquarenums)):
+        for wsn in list(self.board.winsquarenums):
             owner = self.owner_rev["f"]
             add_verts = []
             for ws in wsn:

@@ -51,14 +51,9 @@ class GCNConv_glob(MessagePassing):
         deg_inv_sqrt = deg.pow(-0.5)
         deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
         norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
-
         
-        start = perf_counter()
-
         # Step 4-5: Start propagating messages.
         x = self.propagate(edge_index, x=x, norm=norm)
-
-        perfs["propagate"].append(perf_counter() - start)
 
         # Inserted Step: Update global attribute
         global_attr = self.glob_to_glob_lin(global_attr)
@@ -69,7 +64,7 @@ class GCNConv_glob(MessagePassing):
         # Quick cuda aggregation:
         graph_parts = scatter(x, graph_indices, dim=0, reduce="max")
         
-        
+        # Inserted step: Update global attribute using node features (symmetrically reduced)
         global_attr = global_attr + self.node_to_glob_lin(graph_parts)
 
         return x,global_attr

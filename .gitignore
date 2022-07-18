@@ -8,6 +8,7 @@ solver.log
 *.odp#
 *.log
 *.pkl
+*.vim
 GN0/data
 
 gctest.py
