@@ -1,6 +1,6 @@
 from abc import ABC,abstractmethod
 from graph_tool.all import VertexPropertyMap,Graph,GraphView,graph_draw,Vertex
-from typing import NamedTuple, Union, Dict,List,Set,Tuple
+from typing import Union,List
 
 class Abstract_graph_game(ABC):
     graph:Graph
@@ -17,7 +17,7 @@ class Abstract_graph_game(ABC):
     @property
     @abstractmethod
     def onturn(self):
-        """ 'b' or 'w' depending on who's turn it is."""
+        """ color of who's turn it is depending on who's turn it is."""
         raise NotImplementedError
 
     @abstractmethod 

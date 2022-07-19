@@ -1,13 +1,10 @@
-from __future__ import annotations
-from graph_tool.all import *
+from graph_tool.all import VertexPropertyMap, Vertex, Graph, GraphView
 import pickle
 import sys,os
 import math
 import time
 from blessings import Terminal
-from typing import Set,TYPE_CHECKING,List,Dict,FrozenSet
-if TYPE_CHECKING:
-    from graph_game.graph_tools_game import Graph_game
+from typing import Set,List,Dict,FrozenSet
 
 
 class Board_game():
@@ -38,7 +35,7 @@ class Board_game():
         draw_me: print the board state into the terminal.
         get_blocked_squares: return a set of squares that are blocked by a special rule on the first turns.
     """
-    game:Graph_game
+    game:"Graph_game"
     winsquarenums:Set[FrozenSet[int]]
     position:List[str]
     squares:int
