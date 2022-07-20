@@ -1,11 +1,14 @@
 from graph_game.abstract_board_game import Abstract_board_game
-from typing import List
+from graph_tool.all import Graph,Vertex,VertexPropertyMap,GraphView
+from typing import List,Dict
 from blessings import Terminal
+from graph_game.utils import fully_connect_lists
 import math
 
 class Hex_board(Abstract_board_game):
     game:"Node_switching_game"
     position:List[str]
+    node_map:Dict[int,int]
 
     def __init__(self):
         pass
@@ -17,16 +20,86 @@ class Hex_board(Abstract_board_game):
             move: The square the move is to be made on."""
         self.position[move] = self.onturn
         self.onturn = "r" if self.onturn == "b" else "r"
-        self.game.graph_from_board()      
+        self.graph_from_board(True)      
+
+    def grid_to_double_triangle(self,move:int):
+        """Transform a move with grid numbering to a move with double triangle numbering"""
+        sq_squares = int(math.sqrt(self.squares))
+        row = int(move//sq_squares)
+        col = int(move%sq_squares)
+        decend = row+col+1
+        before_num = sum(i for i in range(min(sq_squares,decend)))+sum(i for i in range(sq_squares,2*sq_squares-decend,-1))
+        in_row_num = col-(0 if decend<sq_squares else decend-sq_squares)
+        return before_num+in_row_num
+
+    def transform_position_to_double_triangle(self,pos:List[str]):
+        new_pos = pos.copy()
+        for i in range(len(pos)):
+            new_pos[self.grid_to_double_triangle(i)] = pos[i]
+        return new_pos
+
+    def transform_position_from_double_triangle(self,pos:List[str]):
+        new_pos = pos.copy()
+        for i in range(len(pos)):
+            new_pos[i] = pos[self.grid_to_double_triangle(i)]
+        return new_pos
+        
 
     def pos_from_graph(self):
         pass
+
+    def graph_from_board(self, redgraph:bool): # To test ...
+        self.node_map = {}
+        sq_squares = int(math.sqrt(self.squares))
+        graph = Graph(directed=False)
+        self.game.graph = graph
+        self.game.terminals = [graph.add_vertex(),graph.add_vertex()]
+        references = {i:[] for i in range(self.squares)}
+        for i in range(self.squares):
+            if (self.position[i]=="b" and redgraph) or (not redgraph and self.position[i]=="r"):
+                continue
+            elif (self.position[i]=="r" and redgraph) or (not redgraph and self.position[i]=="b"):
+                connecto = True
+            else:
+                v = graph.add_vertex()
+                references[i] = [v]
+                self.node_map[int(v)]=i
+                connecto = False
+
+            if (i<sq_squares and redgraph) or (not redgraph and i%sq_squares==0):
+                if connecto:
+                    references[i].append(self.game.terminals[0])
+                else:
+                    graph.add_edge(v,self.game.terminals[0])
+            if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
+                if connecto:
+                    references[i].append(self.game.terminals[1])
+                else:
+                    graph.add_edge(v,self.game.terminals[1])
+            if i%sq_squares>0:
+                if connecto:
+                    references[i].extend(references[i-1])
+                else:
+                    fully_connect_lists(graph,[v],references[i-1])
+            if i>=sq_squares:
+                if connecto:
+                    references[i].extend(references[i-sq_squares])
+                else:
+                    fully_connect_lists(graph,[v],references[i-sq_squares])
+                if i%sq_squares!=sq_squares-1:
+                    if connecto:
+                        references[i].extend(references[i-sq_squares+1])
+                    else:
+                        fully_connect_lists(graph,[v],references[i-sq_squares+1])
+            if connecto:
+                fully_connect_lists(graph,references[i],references[i])
+
 
     def draw_me(self,pos=None):
         out_str = ""
         t = Terminal()
         if pos is None:
-            pos=self.position
+            pos=self.transform_position_to_double_triangle(self.position)
         sq_squares = int(math.sqrt(self.squares))
         before_spacing = sq_squares
         out_str+=" "*before_spacing+" "+t.magenta("_")+"\n"
@@ -77,8 +150,22 @@ if __name__=="__main__":
     import random
     bgame = Hex_board()
     bgame.squares=11*11
-    pos = ["f"]*bgame.squares
-    for _ in range(8*8):
-        pos[random.randint(0,len(pos)-1)] = random.choice(["b","r"])
-    print(bgame.draw_me(pos))
+    pos = list("fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+               "rrrrrrrrrbr"
+               "fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+               "fffffffffbf"
+           )
+    bgame.position=pos
+
+    print(bgame.draw_me())
+    while 1:
+        m = int(input())
+        print(bgame.grid_to_double_triangle(m))
 

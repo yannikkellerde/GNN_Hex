@@ -20,11 +20,6 @@ class Abstract_graph_game(ABC):
         """ color of who's turn it is depending on who's turn it is."""
         raise NotImplementedError
 
-    @abstractmethod 
-    def graph_from_board(self):
-        """Construct the graph from the current board representation"""
-        raise NotImplementedError
-
     @abstractmethod
     def get_actions(self,filter_superseeded=True) -> Union[List[int],None]:
         """List all possible moves in the current position

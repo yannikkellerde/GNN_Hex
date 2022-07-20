@@ -12,7 +12,13 @@ class Abstract_board_game(ABC):
         """Converts the game graph into a 2d grid"""
         raise NotImplementedError
 
-    def make_move(self):
+    @abstractmethod 
+    def graph_from_board(self):
+        """Construct the graph from the current board representation"""
+        raise NotImplementedError
+
+
+    def make_move(self, move:int):
         """Make a move on the board representation and update the graph representation.
         
         Args:
@@ -30,7 +36,7 @@ class Abstract_board_game(ABC):
         """
         self.position = pos
         self.onturn = onturn
-        self.game.graph_from_board()
+        self.graph_from_board()
 
     @abstractmethod
     def draw_me(self,pos=None) -> str:

@@ -40,7 +40,6 @@ class Graph_game():
         load_storage: Load the game state from a minimal Graph_Store object.
         extract_storage: Extract a minimal Graph_Store object that contains all information
                          required to reconstruct the current game state.
-        graph_from_board: Construct a graph from a 2d grid representation of the game.
         get_actions: Find and sort all moves that are possible in the current game state.
         make_move: Make a move in the game.
         check_move_val: Return the evaluation of a list of moves in the current state.
@@ -140,55 +139,6 @@ class Graph_game():
         return Graph_Store(owner_map = self.view.vp.o.copy(),
                            filter_map = self.view.vp.f.copy(),
                            blackturn = self.view.gp["b"])
-
-    def graph_from_board(self):
-        """ Construct the game graph from a board representation of the game.
-
-        Assumes that self.board is properly with winsquarenums (winpatterns in board representation)
-        and position, a 2D list that represents the board position.
-        Creates graph-tools game graph and adds vetices for squares and winpatterns. Adds edges between
-        them.
-        Created board.node_map, board.wp_map and board.inv_map, that map the winpatterns/squares in the
-        graph representation to the location in the board representation.
-        """
-        self.board.node_map = dict()
-        self.board.wp_map = dict()
-        self.graph = Graph(directed=False)
-        self.graph.gp["h"] = self.graph.new_graph_property("long")
-        self.graph.gp["b"] = self.graph.new_graph_property("bool")
-        self.graph.gp["b"] = True if self.board.onturn=="b" else False
-        owner_prop = self.graph.new_vertex_property("short")
-        self.graph.vp.o = owner_prop
-        filt_prop = self.graph.new_vertex_property("bool")
-        self.graph.vp.f = filt_prop
-        added_verts = dict()
-        for wsn in list(self.board.winsquarenums):
-            owner = self.owner_rev["f"]
-            add_verts = []
-            for ws in wsn:
-                if self.board.position[ws] == "f":
-                    add_verts.append(ws)
-                elif self.board.position[ws] != self.owner_map[owner]:
-                    if self.owner_map[owner] == "f":
-                        owner = self.owner_rev[self.board.position[ws]]
-                    else:
-                        break
-            else:
-                ws_vert = self.graph.add_vertex()
-                self.board.wp_map[int(ws_vert)] = wsn
-                self.graph.vp.o[ws_vert] = owner
-                for av in add_verts:
-                    if av in added_verts:
-                        my_v = added_verts[av]
-                    else:
-                        my_v = self.graph.add_vertex()
-                        self.board.node_map[int(my_v)] = av
-                        self.graph.vp.o[my_v] = 0
-                        added_verts[av] = my_v
-                    self.graph.add_edge(ws_vert,my_v)
-        self.graph.vp.f.a = np.ones(self.graph.num_vertices())
-        self.view = GraphView(self.graph,self.graph.vp.f)
-        self.board.inv_maps()
 
     def get_actions(self,filter_superseeded=True,none_for_win=True) -> List[int]:
         """Find and sort all moves that are possible in the current game state.

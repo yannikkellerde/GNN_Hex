@@ -14,7 +14,7 @@ def test_convert_graph():
                      "fbffwf"
                      "ffffff")
     game.board.position = start_pos
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.make_move(7)
     game.make_move(14)
     game.view.gp["b"] = True

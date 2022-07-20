@@ -15,7 +15,7 @@ def test_graph_nets():
                                 "wbwfbf"
                                 "ffffwf")
     game.board.onturn = "b"
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.hashme()
     game.draw_me(-1)
     gn_graph = convert_graph([game.view,game.view])
@@ -40,7 +40,7 @@ def test_board_representation():
                                "wbb"
                                "wfw")
     game.board.onturn = "w"
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.hashme()
     moves = game.get_actions()
     print(moves)
@@ -56,7 +56,7 @@ def test_forced_move_search():
                                 "wbwfbf"
                                 "ffffwf")
     game.board.onturn = "b"
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.hashme()
     game.draw_me(-1)
     s = time.perf_counter()
@@ -80,7 +80,7 @@ def test_threat_search():
                                 "ffwbbf"
                                 "ffffbf")
     game.board.onturn = "b"
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.draw_me(-1)
     s = time.perf_counter()
     defenses,win,movelines = game.threat_search()
@@ -116,7 +116,7 @@ def test_win_thread_search():
                                 "ffwbff"
                                 "ffffbf")"""
     game.board.onturn = "b"
-    game.graph_from_board()
+    game.board.graph_from_board()
     s = time.perf_counter()
     winmoves = game.win_threat_search(one_is_enough=False)
     print(time.perf_counter()-s)
@@ -131,7 +131,7 @@ def test_pos_from_graph():
                                 "fffwff"
                                 "fffbff")
     game.board.onturn = "b"
-    game.graph_from_board()
+    game.board.graph_from_board()
     game.hashme()
     print(game.hash)
     game.board.inv_maps()

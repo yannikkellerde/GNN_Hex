@@ -2,6 +2,7 @@ from graph_tool.all import VertexPropertyMap, Vertex, Graph, GraphView
 import pickle
 import sys,os
 import math
+import numpy as np
 import time
 from blessings import Terminal
 from typing import Set,List,Dict,FrozenSet
@@ -77,6 +78,56 @@ class Board_game():
                     pos[sq] = owner
         return pos
 
+
+    def graph_from_board(self):
+        """ Construct the game graph from a board representation of the game.
+
+        Assumes that the board is properly with winsquarenums (winpatterns in board representation)
+        and position, a 2D list that represents the board position.
+        Creates graph-tools game graph and adds vetices for squares and winpatterns. Adds edges between
+        them.
+        Created board.node_map, board.wp_map and board.inv_map, that map the winpatterns/squares in the
+        graph representation to the location in the board representation.
+        """
+        self.node_map = dict()
+        self.wp_map = dict()
+        self.game.graph = Graph(directed=False)
+        self.game.graph.gp["h"] = self.game.graph.new_graph_property("long")
+        self.game.graph.gp["b"] = self.game.graph.new_graph_property("bool")
+        self.game.graph.gp["b"] = True if self.onturn=="b" else False
+        owner_prop = self.game.graph.new_vertex_property("short")
+        self.game.graph.vp.o = owner_prop
+        filt_prop = self.game.graph.new_vertex_property("bool")
+        self.game.graph.vp.f = filt_prop
+        added_verts = dict()
+        for wsn in list(self.winsquarenums):
+            owner = self.game.owner_rev["f"]
+            add_verts = []
+            for ws in wsn:
+                if self.position[ws] == "f":
+                    add_verts.append(ws)
+                elif self.position[ws] != self.game.owner_map[owner]:
+                    if self.game.owner_map[owner] == "f":
+                        owner = self.game.owner_rev[self.position[ws]]
+                    else:
+                        break
+            else:
+                ws_vert = self.game.graph.add_vertex()
+                self.wp_map[int(ws_vert)] = wsn
+                self.game.graph.vp.o[ws_vert] = owner
+                for av in add_verts:
+                    if av in added_verts:
+                        my_v = added_verts[av]
+                    else:
+                        my_v = self.game.graph.add_vertex()
+                        self.node_map[int(my_v)] = av
+                        self.game.graph.vp.o[my_v] = 0
+                        added_verts[av] = my_v
+                    self.game.graph.add_edge(ws_vert,my_v)
+        self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices())
+        self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
+        self.inv_maps()
+
     def make_move(self, move:int):
         """Make a move on the board representation and update the graph representation.
         
@@ -84,7 +135,7 @@ class Board_game():
             move: The square the move is to be made on."""
         self.position[move] = self.onturn
         self.onturn = "b" if self.onturn == "w" else "b"
-        self.game.graph_from_board()      
+        self.graph_from_board()      
 
     def set_position(self,pos:List[str],onturn:str):
         """Set the board and graph representation to a given position.
@@ -95,7 +146,7 @@ class Board_game():
         """
         self.position = pos
         self.onturn = onturn
-        self.game.graph_from_board()
+        self.graph_from_board()
 
     def draw_me_with_prediction(self,vprop:VertexPropertyMap) -> str:
         """Print the board state into the terminal with colored indicators for the prediction.

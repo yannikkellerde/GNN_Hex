@@ -14,7 +14,7 @@ class Json_game(Graph_game):
             self.config = json.load(f)
         self.board = Json_board(self.config)
         self.board.game = self
-        self.graph_from_board()
+        self.board.graph_from_board()
         self.name = self.config["name"]
 
 class Json_board(Board_game):
@@ -33,7 +33,7 @@ class Qango6x6(Graph_game):
         super().__init__()
         self.board = Qango6x6_board()
         self.board.game = self
-        self.graph_from_board()
+        self.board.graph_from_board()
         self.name = "qango6x6"
 
 class Qango6x6_board(Board_game):
@@ -57,7 +57,7 @@ class Tic_tac_toe(Graph_game):
         super().__init__()
         self.board = Tic_tac_toe_board()
         self.board.game = self
-        self.graph_from_board()
+        self.board.graph_from_board()
         self.name = "tic_tac_toe"
 
 class Tic_tac_toe_board(Board_game):
@@ -76,7 +76,7 @@ class Qango7x7(Graph_game):
         super().__init__()
         self.board = Qango7x7_board()
         self.board.game = self
-        self.graph_from_board()
+        self.board.graph_from_board()
         self.name = "qango7x7"
 
 class Qango7x7_board(Board_game):
@@ -103,7 +103,7 @@ class Qango7x7_plus(Graph_game):
         super().__init__()
         self.board = Qango7x7_plus_board()
         self.board.game = self
-        self.graph_from_board()
+        self.board.graph_from_board()
         self.name = "qango7x7_plus"
 
 class Qango7x7_plus_board(Board_game):

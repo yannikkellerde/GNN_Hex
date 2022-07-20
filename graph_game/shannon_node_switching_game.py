@@ -18,3 +18,6 @@ class Node_switching_game(Abstract_graph_game):
         g.name = "Graph_game"
         return g
 
+            
+
+

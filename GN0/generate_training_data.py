@@ -33,7 +33,7 @@ def generate_graphs(games_to_play):
                      "ffffff"
                      "ffffff")
     game.board.position = start_pos
-    game.graph_from_board()
+    game.board.graph_from_board()
     iswin = game.graph.new_vertex_property("vector<bool>")
     # 1: Is win for the player to move by forced moves
     # 2: Is win for the player not to move by forced moves
