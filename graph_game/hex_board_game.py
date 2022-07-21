@@ -1,4 +1,5 @@
 from graph_game.abstract_board_game import Abstract_board_game
+import numpy as np
 from graph_tool.all import Graph,Vertex,VertexPropertyMap,GraphView
 from typing import List,Dict
 from blessings import Terminal
@@ -52,10 +53,13 @@ class Hex_board(Abstract_board_game):
         self.node_map = {}
         sq_squares = int(math.sqrt(self.squares))
         graph = Graph(directed=False)
+        filt_prop = graph.new_vertex_property("bool")
+        graph.vp.f = filt_prop # For filtering in the GraphView
         self.game.graph = graph
         self.game.terminals = [graph.add_vertex(),graph.add_vertex()]
-        references = {i:[] for i in range(self.squares)}
+        references = {i:set() for i in range(self.squares)}
         for i in range(self.squares):
+            #print({key:[int(x) for x in value] for key,value in references.items()})
             if (self.position[i]=="b" and redgraph) or (not redgraph and self.position[i]=="r"):
                 continue
             elif (self.position[i]=="r" and redgraph) or (not redgraph and self.position[i]=="b"):
@@ -68,31 +72,38 @@ class Hex_board(Abstract_board_game):
 
             if (i<sq_squares and redgraph) or (not redgraph and i%sq_squares==0):
                 if connecto:
-                    references[i].append(self.game.terminals[0])
+                    references[i].add(self.game.terminals[0])
                 else:
                     graph.add_edge(v,self.game.terminals[0])
             if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
                 if connecto:
-                    references[i].append(self.game.terminals[1])
+                    references[i].add(self.game.terminals[1])
                 else:
                     graph.add_edge(v,self.game.terminals[1])
             if i%sq_squares>0:
                 if connecto:
-                    references[i].extend(references[i-1])
+                    references[i].update(references[i-1])
                 else:
                     fully_connect_lists(graph,[v],references[i-1])
             if i>=sq_squares:
                 if connecto:
-                    references[i].extend(references[i-sq_squares])
+                    references[i].update(references[i-sq_squares])
                 else:
                     fully_connect_lists(graph,[v],references[i-sq_squares])
                 if i%sq_squares!=sq_squares-1:
                     if connecto:
-                        references[i].extend(references[i-sq_squares+1])
+                        references[i].update(references[i-sq_squares+1])
                     else:
                         fully_connect_lists(graph,[v],references[i-sq_squares+1])
             if connecto:
+                j = i-1
+                while j%sq_squares>0 and (self.position[j]=="r" and redgraph) or (self.position[j]=="b" and not redgraph):
+                    references[j] = references[i]
+                    j-=1
+                    
                 fully_connect_lists(graph,references[i],references[i])
+        graph.vp.f.a = np.ones(graph.num_vertices()).astype(bool)
+        self.game.view = GraphView(graph,graph.vp.f)
 
 
     def draw_me(self,pos=None):

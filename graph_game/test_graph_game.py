@@ -1,10 +1,35 @@
-import networkx as nx
-from graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game
-from solve_graph_tools import PN_search
+from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game
+from graph_game.hex_board_game import Hex_board
+from graph_game.shannon_node_switching_game import Node_switching_game
 import time
 from functools import reduce
-from convert_graph import convert_graph
+from GN0.convert_graph import convert_graph
 import pickle
+
+def test_hex():
+    board = Hex_board()
+    board.squares = 11*11
+    #board.position = ["f"]*board.squares
+    board.position = list("fffffrfffff"
+                          "fffffrfffff"
+                          "rrrrrrrrrrr"
+                          "bbbbbbbbbbb"
+                          "rrrrrrrrrrr"
+                          "fffffrfffff"
+                          "fffffrfffff"
+                          "fffffrfffff"
+                          "fffffrfffff"
+                          "fffffrfffff"
+                          "fffffrfffff"
+                          )
+                          
+    #board.position = list("ffr"
+    #                      "bbb"
+    #                      "ffr")
+    print(board.draw_me())
+    board.game = Node_switching_game()
+    board.graph_from_board(True)
+    board.game.draw_me()
 
 def test_graph_nets():
     game = Qango6x6()
@@ -37,13 +62,12 @@ def test_moving():
 def test_board_representation():
     game = Tic_tac_toe()
     game.board.position = list("fbf"
-                               "wbb"
-                               "wfw")
+                               "fff"
+                               "fff")
     game.board.onturn = "w"
     game.board.graph_from_board()
     game.hashme()
     moves = game.get_actions()
-    print(moves)
     game.make_move(moves[1])
     game.draw_me(-1)
 
@@ -183,4 +207,5 @@ if __name__ == "__main__":
     #display_wsn()
     #test_ai_api()
     #test_json_game()
-    test_graph_nets()
+    #test_graph_nets()
+    test_hex()
