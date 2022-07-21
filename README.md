@@ -8,6 +8,7 @@ GCN: https://arxiv.org/pdf/1609.02907.pdf
 Hex Graphs: https://webdocs.cs.ualberta.ca/~hayward/theses/ph.pdf
 Hex Variants, hex information: https://www.taylorfrancis.com/books/mono/10.1201/9780429031960/hex-inside-ryan-hayward-bjarne-toft
 Computer Hex: https://webdocs.cs.ualberta.ca/~hayward/hex/#wolve 
+Some MCTS engine: https://github.com/FutaAlice/FutaHex2
 
 ## Some things to note
 Hex: There is an easy, fairly accurate position evaluation function using "voltage flow".

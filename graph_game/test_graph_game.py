@@ -6,11 +6,47 @@ from functools import reduce
 from GN0.convert_graph import convert_graph
 import pickle
 
+def test_graph_similarity():
+    b1 = Hex_board()
+    b1.game = Node_switching_game()
+    b1.squares = 5*5
+    b1.position = list(
+        "ffrff"
+        "rrrrr"
+        "bbbbb"
+        "rrrrr"
+        "ffrff"
+    )
+    b2 = Hex_board()
+    b2.game = Node_switching_game()
+    b2.squares = 5*5
+    b2.position = list(
+        "ffrff"
+        "rrrrr"
+        "bbbbb"
+        "bbrrr"
+        "ffrff"
+    )
+    b1.graph_from_board(True)
+    b2.graph_from_board(True)
+    print(b1.draw_me())
+    b1.game.draw_me("b1.pdf")
+    b2.game.draw_me("b2.pdf")
+    print(b2.draw_me())
+    print(b1.game.graph.num_edges(),b2.game.graph.num_edges())
+    print(Hex_board.evaluate_graph_similarity(b1.game.graph,b2.game.graph,b1.node_map,b2.node_map))
+    
+
 def test_hex():
     board = Hex_board()
-    board.squares = 11*11
+    board.squares = 5*5
+    board.position = list("ffrff"
+                          "rrrrr"
+                          "bbbbb"
+                          "rrrrr"
+                          "ffrff")
     #board.position = ["f"]*board.squares
-    board.position = list("fffffrfffff"
+    """board.position = list("fffffrfffff"
                           "fffffrfffff"
                           "rrrrrrrrrrr"
                           "bbbbbbbbbbb"
@@ -21,15 +57,21 @@ def test_hex():
                           "fffffrfffff"
                           "fffffrfffff"
                           "fffffrfffff"
-                          )
+                          )"""
                           
     #board.position = list("ffr"
-    #                      "bbb"
+    #                      "fbf"
     #                      "ffr")
+    redgraph = True
     print(board.draw_me())
     board.game = Node_switching_game()
-    board.graph_from_board(True)
+    board.graph_from_board(redgraph)
     board.game.draw_me()
+    board.position = ["f"]*board.squares
+    board.pos_from_graph(redgraph)
+    print(board.draw_me())
+
+
 
 def test_graph_nets():
     game = Qango6x6()
@@ -208,4 +250,5 @@ if __name__ == "__main__":
     #test_ai_api()
     #test_json_game()
     #test_graph_nets()
-    test_hex()
+    #test_hex()
+    test_graph_similarity()

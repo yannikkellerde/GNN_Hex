@@ -3,7 +3,7 @@ import numpy as np
 from graph_tool.all import Graph,Vertex,VertexPropertyMap,GraphView
 from typing import List,Dict
 from blessings import Terminal
-from graph_game.utils import fully_connect_lists
+from graph_game.utils import fully_connect_lists,take_step,greedy_search
 import math
 
 class Hex_board(Abstract_board_game):
@@ -45,41 +45,78 @@ class Hex_board(Abstract_board_game):
             new_pos[i] = pos[self.grid_to_double_triangle(i)]
         return new_pos
         
+    @staticmethod
+    def evaluate_graph_similarity(graph1,graph2,node_map1,node_map2):
+        cost = 0
+        inv_node_map1 = {value:key for key,value in node_map1.items()}
+        inv_node_map2 = {value:key for key,value in node_map2.items()}
+        for e in graph1.edges():
+            s = int(e.source())
+            t = int(e.target())
+            s_mapped = s if s<2 else inv_node_map2[node_map1[s]]
+            t_mapped = t if t<2 else inv_node_map2[node_map1[t]]
+            if graph2.edge(s_mapped,t_mapped) is None:
+                cost += 1
+        
+        for e in graph2.edges():
+            s = int(e.source())
+            t = int(e.target())
+            s_mapped = s if s<2 else inv_node_map1[node_map2[s]]
+            t_mapped = t if t<2 else inv_node_map1[node_map2[t]]
+            if graph1.edge(s_mapped,t_mapped) is None:
+                cost += 1
+        return cost
 
-    def pos_from_graph(self):
-        pass
+    def pos_from_graph(self,redgraph:bool):
+        str_map = {0:"U",1:"f",2:"r",3:"b"}
+        step_take_obj = take_step([2,3])
 
-    def graph_from_board(self, redgraph:bool): # To test ...
-        self.node_map = {}
-        sq_squares = int(math.sqrt(self.squares))
+        def evaluate_assignment(assignment):
+            new_pos = known_pos.copy()
+            new_pos[new_pos==0] = assignment
+            graph,node_map,_ = self.board_to_graph([str_map[x] for x in new_pos],redgraph)
+            cost = Hex_board.evaluate_graph_similarity(graph,self.game.graph,node_map,self.node_map)
+            return cost
+
+        known_pos = np.zeros(self.squares) #0:unknown,1:empty,2:red,3:blue
+        for v in self.game.view.vertices():
+            if v not in self.game.terminals:
+                known_pos[self.node_map[int(v)]] = 1
+        initial_assignment = np.ones(self.squares-self.game.view.num_vertices()+2)*(3 if redgraph else 2)
+        res,_fun_val = greedy_search(evaluate_assignment,initial_assignment,step_take_obj)
+        known_pos[known_pos==0] = res
+        self.position = [str_map[x] for x in known_pos]
+
+    @staticmethod
+    def board_to_graph(position:List[str],redgraph:bool):
+        squares = len(position)
+        node_map = {}
+        sq_squares = int(math.sqrt(squares))
         graph = Graph(directed=False)
-        filt_prop = graph.new_vertex_property("bool")
-        graph.vp.f = filt_prop # For filtering in the GraphView
-        self.game.graph = graph
-        self.game.terminals = [graph.add_vertex(),graph.add_vertex()]
-        references = {i:set() for i in range(self.squares)}
-        for i in range(self.squares):
+        terminals = [graph.add_vertex(),graph.add_vertex()]
+        references = {i:set() for i in range(squares)}
+        for i in range(squares):
             #print({key:[int(x) for x in value] for key,value in references.items()})
-            if (self.position[i]=="b" and redgraph) or (not redgraph and self.position[i]=="r"):
+            if (position[i]=="b" and redgraph) or (not redgraph and position[i]=="r"):
                 continue
-            elif (self.position[i]=="r" and redgraph) or (not redgraph and self.position[i]=="b"):
+            elif (position[i]=="r" and redgraph) or (not redgraph and position[i]=="b"):
                 connecto = True
             else:
                 v = graph.add_vertex()
                 references[i] = [v]
-                self.node_map[int(v)]=i
+                node_map[int(v)]=i
                 connecto = False
 
             if (i<sq_squares and redgraph) or (not redgraph and i%sq_squares==0):
                 if connecto:
-                    references[i].add(self.game.terminals[0])
+                    references[i].add(terminals[0])
                 else:
-                    graph.add_edge(v,self.game.terminals[0])
+                    graph.add_edge(v,terminals[0])
             if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
                 if connecto:
-                    references[i].add(self.game.terminals[1])
+                    references[i].add(terminals[1])
                 else:
-                    graph.add_edge(v,self.game.terminals[1])
+                    graph.add_edge(v,terminals[1])
             if i%sq_squares>0:
                 if connecto:
                     references[i].update(references[i-1])
@@ -97,13 +134,20 @@ class Hex_board(Abstract_board_game):
                         fully_connect_lists(graph,[v],references[i-sq_squares+1])
             if connecto:
                 j = i-1
-                while j%sq_squares>0 and (self.position[j]=="r" and redgraph) or (self.position[j]=="b" and not redgraph):
+                while j%sq_squares>0 and (position[j]=="r" and redgraph) or (position[j]=="b" and not redgraph):
                     references[j] = references[i]
                     j-=1
                     
                 fully_connect_lists(graph,references[i],references[i])
-        graph.vp.f.a = np.ones(graph.num_vertices()).astype(bool)
-        self.game.view = GraphView(graph,graph.vp.f)
+        return graph,node_map,terminals
+
+
+    def graph_from_board(self, redgraph:bool): # To test ...
+        self.game.graph,self.node_map,self.game.terminals = Hex_board.board_to_graph(self.position,redgraph)
+        filt_prop = self.game.graph.new_vertex_property("bool")
+        self.game.graph.vp.f = filt_prop # For filtering in the GraphView
+        self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices()).astype(bool)
+        self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
 
 
     def draw_me(self,pos=None):
