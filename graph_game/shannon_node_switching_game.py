@@ -10,13 +10,21 @@ class Node_switching_game(Abstract_graph_game):
 
     @property
     def onturn(self):
-        pass
+        return "m" if self.view.gp["m"] else "b" # m for maker, b for breaker
 
     def get_actions(self,filter_superseeded=True):
         pass
 
     def make_move(self,square_node:Union[int,Vertex]):
-        pass
+        if type(square_node)==int:
+            square_node = self.view.vertex(square_node)
+        if self.view.gp["m"]:
+            for vertex1 in self.view.iter_all_neighbors(square_node):
+                for vertex2 in self.view.iter_all_neighbors(square_node):
+                    if vertex1!=vertex2:
+                        self.view.edge(vertex1,vertex2,add_missing=True)
+        self.view.vp.f[square_node] = False
+        self.view.gp["m"] = not self.view.gp["m"]
 
 
     @staticmethod

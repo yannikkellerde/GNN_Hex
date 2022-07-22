@@ -9,7 +9,8 @@ import math
 class Hex_board(Abstract_board_game):
     game:"Node_switching_game"
     position:List[str]
-    node_map:Dict[int,int]
+    board_index_to_vertex:Dict[int,Vertex]
+    vertex_to_board_index:Dict[Vertex,int]
 
     def __init__(self):
         pass
@@ -51,18 +52,18 @@ class Hex_board(Abstract_board_game):
         inv_node_map1 = {value:key for key,value in node_map1.items()}
         inv_node_map2 = {value:key for key,value in node_map2.items()}
         for e in graph1.edges():
-            s = int(e.source())
-            t = int(e.target())
-            s_mapped = s if s<2 else inv_node_map2[node_map1[s]]
-            t_mapped = t if t<2 else inv_node_map2[node_map1[t]]
+            s = e.source()
+            t = e.target()
+            s_mapped = s if int(s)<2 else inv_node_map2[node_map1[s]]
+            t_mapped = t if int(t)<2 else inv_node_map2[node_map1[t]]
             if graph2.edge(s_mapped,t_mapped) is None:
                 cost += 1
         
         for e in graph2.edges():
-            s = int(e.source())
-            t = int(e.target())
-            s_mapped = s if s<2 else inv_node_map1[node_map2[s]]
-            t_mapped = t if t<2 else inv_node_map1[node_map2[t]]
+            s = e.source()
+            t = e.target()
+            s_mapped = s if int(s)<2 else inv_node_map1[node_map2[s]]
+            t_mapped = t if int(t)<2 else inv_node_map1[node_map2[t]]
             if graph1.edge(s_mapped,t_mapped) is None:
                 cost += 1
         return cost
@@ -74,80 +75,61 @@ class Hex_board(Abstract_board_game):
         def evaluate_assignment(assignment):
             new_pos = known_pos.copy()
             new_pos[new_pos==0] = assignment
-            graph,node_map,_ = self.board_to_graph([str_map[x] for x in new_pos],redgraph)
-            cost = Hex_board.evaluate_graph_similarity(graph,self.game.graph,node_map,self.node_map)
+            new_board = Hex_board()
+            new_game = type(self.game)()
+            new_board.game = new_game
+            some_pos = known_pos.copy()
+            some_pos[some_pos==0] = assignment
+            new_board.position = [str_map[x] for x in some_pos]
+            new_board.squares = len(new_board.position)
+            new_board.graph_from_board(redgraph)
+            cost = Hex_board.evaluate_graph_similarity(new_game.view,self.game.view,new_board.vertex_to_board_index,self.vertex_to_board_index)
             return cost
 
         known_pos = np.zeros(self.squares) #0:unknown,1:empty,2:red,3:blue
         for v in self.game.view.vertices():
             if v not in self.game.terminals:
-                known_pos[self.node_map[int(v)]] = 1
+                known_pos[self.vertex_to_board_index[v]] = 1
         initial_assignment = np.ones(self.squares-self.game.view.num_vertices()+2)*(3 if redgraph else 2)
         res,_fun_val = greedy_search(evaluate_assignment,initial_assignment,step_take_obj)
         known_pos[known_pos==0] = res
         self.position = [str_map[x] for x in known_pos]
 
-    @staticmethod
-    def board_to_graph(position:List[str],redgraph:bool):
-        squares = len(position)
-        node_map = {}
-        sq_squares = int(math.sqrt(squares))
-        graph = Graph(directed=False)
-        terminals = [graph.add_vertex(),graph.add_vertex()]
-        references = {i:set() for i in range(squares)}
-        for i in range(squares):
-            #print({key:[int(x) for x in value] for key,value in references.items()})
-            if (position[i]=="b" and redgraph) or (not redgraph and position[i]=="r"):
-                continue
-            elif (position[i]=="r" and redgraph) or (not redgraph and position[i]=="b"):
-                connecto = True
-            else:
-                v = graph.add_vertex()
-                references[i] = [v]
-                node_map[int(v)]=i
-                connecto = False
-
-            if (i<sq_squares and redgraph) or (not redgraph and i%sq_squares==0):
-                if connecto:
-                    references[i].add(terminals[0])
-                else:
-                    graph.add_edge(v,terminals[0])
-            if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
-                if connecto:
-                    references[i].add(terminals[1])
-                else:
-                    graph.add_edge(v,terminals[1])
-            if i%sq_squares>0:
-                if connecto:
-                    references[i].update(references[i-1])
-                else:
-                    fully_connect_lists(graph,[v],references[i-1])
-            if i>=sq_squares:
-                if connecto:
-                    references[i].update(references[i-sq_squares])
-                else:
-                    fully_connect_lists(graph,[v],references[i-sq_squares])
-                if i%sq_squares!=sq_squares-1:
-                    if connecto:
-                        references[i].update(references[i-sq_squares+1])
-                    else:
-                        fully_connect_lists(graph,[v],references[i-sq_squares+1])
-            if connecto:
-                j = i-1
-                while j%sq_squares>0 and (position[j]=="r" and redgraph) or (position[j]=="b" and not redgraph):
-                    references[j] = references[i]
-                    j-=1
-                    
-                fully_connect_lists(graph,references[i],references[i])
-        return graph,node_map,terminals
-
 
     def graph_from_board(self, redgraph:bool): # To test ...
-        self.game.graph,self.node_map,self.game.terminals = Hex_board.board_to_graph(self.position,redgraph)
+        sq_squares = int(math.sqrt(self.squares))
+        self.board_index_to_vertex = {}
+        self.game.graph = Graph(directed=False)
+        self.game.terminals = [self.game.graph.add_vertex(),self.game.graph.add_vertex()]
+        for i in range(self.squares):
+            v = self.game.graph.add_vertex()
+            self.board_index_to_vertex[i] = v
+            if (i<sq_squares and redgraph) or (not redgraph and i%sq_squares==0):
+                self.game.graph.add_edge(v,self.game.terminals[0])
+            if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
+                self.game.graph.add_edge(v,self.game.terminals[1])
+            if i%sq_squares>0:
+                self.game.graph.add_edge(v,self.board_index_to_vertex[i-1])
+            if i>=sq_squares:
+                self.game.graph.add_edge(v,self.board_index_to_vertex[i-sq_squares])
+                if i%sq_squares!=sq_squares-1:
+                    self.game.graph.add_edge(v,self.board_index_to_vertex[i-sq_squares+1])
+
+        self.vertex_to_board_index = {value:key for key,value in self.board_index_to_vertex.items()}
+        self.game.graph.gp["m"] = self.game.graph.new_graph_property("bool")
+        self.game.graph.gp["m"] = True
         filt_prop = self.game.graph.new_vertex_property("bool")
         self.game.graph.vp.f = filt_prop # For filtering in the GraphView
         self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices()).astype(bool)
         self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
+
+        for i in range(self.squares):
+            if (self.position[i] == "r" and redgraph) or (self.position[i]=="b" and not redgraph):
+                self.game.graph.gp["m"] = True
+                self.game.make_move(self.board_index_to_vertex[i])
+            elif self.position[i]!="f":
+                self.game.graph.gp["m"] = False
+                self.game.make_move(self.board_index_to_vertex[i])
 
 
     def draw_me(self,pos=None):

@@ -33,20 +33,20 @@ def test_graph_similarity():
     b1.game.draw_me("b1.pdf")
     b2.game.draw_me("b2.pdf")
     print(b2.draw_me())
-    print(b1.game.graph.num_edges(),b2.game.graph.num_edges())
-    print(Hex_board.evaluate_graph_similarity(b1.game.graph,b2.game.graph,b1.node_map,b2.node_map))
+    print(b1.game.view.num_edges(),b2.game.view.num_edges())
+    print(Hex_board.evaluate_graph_similarity(b1.game.view,b2.game.view,b1.vertex_to_board_index,b2.vertex_to_board_index))
     
 
 def test_hex():
     board = Hex_board()
-    board.squares = 5*5
-    board.position = list("ffrff"
-                          "rrrrr"
-                          "bbbbb"
-                          "rrrrr"
-                          "ffrff")
+    board.squares = 11*11 
+    #board.position = list("ffrff"
+    #                      "rrrrr"
+    #                      "bbbbb"
+    #                      "rrrrr"
+    #                      "ffrff")
     #board.position = ["f"]*board.squares
-    """board.position = list("fffffrfffff"
+    board.position = list("fffffrfffff"
                           "fffffrfffff"
                           "rrrrrrrrrrr"
                           "bbbbbbbbbbb"
@@ -57,7 +57,7 @@ def test_hex():
                           "fffffrfffff"
                           "fffffrfffff"
                           "fffffrfffff"
-                          )"""
+                          )
                           
     #board.position = list("ffr"
     #                      "fbf"
@@ -250,5 +250,5 @@ if __name__ == "__main__":
     #test_ai_api()
     #test_json_game()
     #test_graph_nets()
-    #test_hex()
-    test_graph_similarity()
+    test_hex()
+    #test_graph_similarity()

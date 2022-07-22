@@ -12,7 +12,7 @@ def fully_connect_lists(g:Graph,l1:List[Vertex],l2:List[Vertex]):
                 
 class take_step():
     def __init__(self,possible_values):
-        self.stepsize = 5
+        self.stepsize = 2
         self.possible_values = np.array(possible_values)
     def __call__(self,x):
         selections = np.random.randint(0,len(x),size=int(self.stepsize)+1)
@@ -26,8 +26,8 @@ def greedy_search(eval_func:callable,init_x:np.ndarray,take_step_func:callable,s
     while cost>stopping_cost:
         y = take_step_func(x)
         new_cost = eval_func(y)
-        print(y,new_cost)
-        if new_cost<cost:
+        if new_cost<=cost or np.random.random()<np.exp(-(new_cost-cost)):
+            print(y,new_cost)
             x=y
             cost = new_cost
             #if hasattr(take_step_func,"stepsize"):
