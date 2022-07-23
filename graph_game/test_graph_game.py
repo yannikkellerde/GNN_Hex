@@ -1,10 +1,28 @@
-from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game
+from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game,Hex_game
 from graph_game.hex_board_game import Hex_board
 from graph_game.shannon_node_switching_game import Node_switching_game
 import time
 from functools import reduce
 from GN0.convert_graph import convert_graph
 import pickle
+import os
+
+def play_hex():
+    size = 5
+    g = Hex_game(size)
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    while 1:
+        print(g.board.draw_me())
+        g.draw_me("cur_game.pdf")
+        os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
+        time.sleep(0.1)
+        os.system("bspc node -f west")
+        move_str = input()
+        move = letters.index(move_str[0])+(int(move_str[1:])-1)*size
+        g.board.make_move(move)
+        os.system("pkill mupdf")
+
+     
 
 def test_graph_similarity():
     b1 = Hex_board()
@@ -67,6 +85,8 @@ def test_hex():
     board.game = Node_switching_game()
     board.graph_from_board(redgraph)
     board.game.draw_me()
+    print(board.game.view.vertex_index.copy().fa)
+    exit()
     board.position = ["f"]*board.squares
     board.pos_from_graph(redgraph)
     print(board.draw_me())
@@ -250,5 +270,6 @@ if __name__ == "__main__":
     #test_ai_api()
     #test_json_game()
     #test_graph_nets()
-    test_hex()
+    #test_hex()
+    play_hex()
     #test_graph_similarity()

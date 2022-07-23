@@ -12,8 +12,8 @@ class Node_switching_game(Abstract_graph_game):
     def onturn(self):
         return "m" if self.view.gp["m"] else "b" # m for maker, b for breaker
 
-    def get_actions(self,filter_superseeded=True):
-        pass
+    def get_actions(self):
+        return self.view.vertex_index.copy().fa
 
     def make_move(self,square_node:Union[int,Vertex]):
         if type(square_node)==int:

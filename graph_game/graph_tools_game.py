@@ -140,7 +140,7 @@ class Graph_game():
                            filter_map = self.view.vp.f.copy(),
                            blackturn = self.view.gp["b"])
 
-    def get_actions(self,filter_superseeded=True,none_for_win=True) -> List[int]:
+    def get_actions(self,filter_superseeded=True,none_for_win=True) -> Union[List[int],None]:
         """Find and sort all moves that are possible in the current game state.
 
         The possible moves are the indices of all square vertices. The moves are

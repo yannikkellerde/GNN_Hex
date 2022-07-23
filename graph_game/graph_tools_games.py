@@ -1,11 +1,26 @@
-from graph_tools_game import Graph_game
-from graph_board_game import Board_game
+from graph_game.graph_tools_game import Graph_game
+from graph_game.graph_board_game import Board_game
 from PN_Search.util import findfivers, findsquares, remove_useless_wsn
 from graph_tool.all import *
 import json
 from collections import defaultdict
 import os,sys
+from graph_game.shannon_node_switching_game import Node_switching_game
+from graph_game.hex_board_game import Hex_board
 base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
+
+class Hex_game(Node_switching_game):
+    def __init__(self,size):
+        super().__init__()
+        if size%2==0:
+            raise ValueError("Even board sizes not supported yet")
+        self.board = Hex_board()
+        self.board.squares = size**2
+        self.board.game = self
+        self.board.position = ["f"]*self.board.squares
+        self.board.graph_from_board(redgraph=True)
+        self.name = f"Hex {size}x{size}"
+
 
 class Json_game(Graph_game):
     def __init__(self,json_path):

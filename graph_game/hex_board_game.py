@@ -12,8 +12,8 @@ class Hex_board(Abstract_board_game):
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]
 
-    def __init__(self):
-        pass
+    def __init__(self,onturn="r"):
+        self.onturn = onturn
 
     def make_move(self, move:int):
         """Make a move on the board representation and update the graph representation.
@@ -21,8 +21,8 @@ class Hex_board(Abstract_board_game):
         Args:
             move: The square the move is to be made on."""
         self.position[move] = self.onturn
-        self.onturn = "r" if self.onturn == "b" else "r"
-        self.graph_from_board(True)      
+        self.onturn = "r" if self.onturn == "b" else "b"
+        self.game.make_move(self.board_index_to_vertex[move])
 
     def grid_to_double_triangle(self,move:int):
         """Transform a move with grid numbering to a move with double triangle numbering"""

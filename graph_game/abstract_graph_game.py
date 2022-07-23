@@ -21,12 +21,9 @@ class Abstract_graph_game(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_actions(self,filter_superseeded=True) -> Union[List[int],None]:
-        """List all possible moves in the current position
+    def get_actions(self) -> List[int]:
+        """List all possible moves in the current position"""
 
-        Args:
-            filter_superseeded: Don't return moves that are strictly inferior to other moves.
-        """
         raise NotImplementedError
 
     @abstractmethod
