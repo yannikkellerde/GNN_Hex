@@ -7,7 +7,7 @@ from GNZero.convert_graph import convert_graph
 from GNZero.MCTS import MCTS
 from GNZero.models import NN_interface
 import GNZero.util as util
-from game.graph_tools_game import Graph_game
+from game.winpattern_game import Winpattern_game
 import numpy as np
 
 logging.basicConfig(
@@ -69,7 +69,7 @@ model_architecture = {
 }
 
 class GN0():
-    def __init__(self,game:Graph_game):
+    def __init__(self,game:Winpattern_game):
         self.game = game
         self.root_storage = self.game.extract_storage()
         self.model = NN_interface(model_architecture,10)

@@ -23,7 +23,18 @@ class Abstract_graph_game(ABC):
     @abstractmethod
     def get_actions(self) -> List[int]:
         """List all possible moves in the current position"""
+        raise NotImplementedError
 
+    @abstractmethod
+    def move_wins(self,move_node:Union[int,Vertex]) -> bool:
+        """Check if a move wins the game
+
+        Args:
+            square_node: The vertex where the player who is on turn plays
+        
+        Returns:
+            weather the move wins
+        """
         raise NotImplementedError
 
     @abstractmethod

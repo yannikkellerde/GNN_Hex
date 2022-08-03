@@ -1,5 +1,5 @@
-from graph_game.graph_tools_game import Graph_game
-from graph_game.graph_board_game import Board_game
+from graph_game.winpattern_game import Winpattern_game
+from graph_game.winpattern_board import Winpattern_board
 from PN_Search.util import findfivers, findsquares, remove_useless_wsn
 from graph_tool.all import *
 import json
@@ -22,7 +22,7 @@ class Hex_game(Node_switching_game):
         self.name = f"Hex {size}x{size}"
 
 
-class Json_game(Graph_game):
+class Json_game(Winpattern_game):
     def __init__(self,json_path):
         super().__init__()
         with open(json_path,"r") as f:
@@ -32,7 +32,7 @@ class Json_game(Graph_game):
         self.board.graph_from_board()
         self.name = self.config["name"]
 
-class Json_board(Board_game):
+class Json_board(Winpattern_board):
     def __init__(self,config):
         super().__init__()
         self.squares = config["squares"]
@@ -43,7 +43,7 @@ class Json_board(Board_game):
             self.rulesets = json.load(f)
 
 
-class Qango6x6(Graph_game):
+class Qango6x6(Winpattern_game):
     def __init__(self):
         super().__init__()
         self.board = Qango6x6_board()
@@ -51,7 +51,7 @@ class Qango6x6(Graph_game):
         self.board.graph_from_board()
         self.name = "qango6x6"
 
-class Qango6x6_board(Board_game):
+class Qango6x6_board(Winpattern_board):
     def __init__(self):
         super().__init__()
         self.squares = 36
@@ -67,7 +67,7 @@ class Qango6x6_board(Board_game):
         with open(os.path.join(base_path,"rulesets/qango6x6.json"),"r") as f:
             self.rulesets = json.load(f)
 
-class Tic_tac_toe(Graph_game):
+class Tic_tac_toe(Winpattern_game):
     def __init__(self):
         super().__init__()
         self.board = Tic_tac_toe_board()
@@ -75,7 +75,7 @@ class Tic_tac_toe(Graph_game):
         self.board.graph_from_board()
         self.name = "tic_tac_toe"
 
-class Tic_tac_toe_board(Board_game):
+class Tic_tac_toe_board(Winpattern_board):
     def __init__(self):
         super().__init__()
         self.squares = 9
@@ -86,7 +86,7 @@ class Tic_tac_toe_board(Board_game):
         with open(os.path.join(base_path,"rulesets/tic_tac_toe.json"),"r") as f:
             self.rulesets = json.load(f)
 
-class Qango7x7(Graph_game):
+class Qango7x7(Winpattern_game):
     def __init__(self):
         super().__init__()
         self.board = Qango7x7_board()
@@ -94,7 +94,7 @@ class Qango7x7(Graph_game):
         self.board.graph_from_board()
         self.name = "qango7x7"
 
-class Qango7x7_board(Board_game):
+class Qango7x7_board(Winpattern_board):
     def __init__(self):
         super().__init__()
         self.squares = 49
@@ -113,7 +113,7 @@ class Qango7x7_board(Board_game):
         with open(os.path.join(base_path,"rulesets/qango7x7.json"),"r") as f:
             self.rulesets = json.load(f)
 
-class Qango7x7_plus(Graph_game):
+class Qango7x7_plus(Winpattern_game):
     def __init__(self):
         super().__init__()
         self.board = Qango7x7_plus_board()
@@ -121,7 +121,7 @@ class Qango7x7_plus(Graph_game):
         self.board.graph_from_board()
         self.name = "qango7x7_plus"
 
-class Qango7x7_plus_board(Board_game):
+class Qango7x7_plus_board(Winpattern_board):
     def __init__(self):
         super().__init__()
         self.squares = 37
@@ -173,7 +173,7 @@ class Qango7x7_plus_board(Board_game):
         print(out)
         return out
 
-def instanz_by_name(game_name) -> Graph_game:
+def instanz_by_name(game_name) -> Winpattern_game:
     if "qango6x6_static"==game_name:
         game = Qango6x6()
     elif "qango7x7_static"==game_name:

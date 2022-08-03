@@ -1,5 +1,5 @@
 from graph_game.graph_tools_games import Qango6x6
-from graph_game.graph_tools_game import Graph_Store, Graph_game
+from graph_game.winpattern_game import Graph_Store, Winpattern_game
 from GN0.convert_graph import convert_graph
 import random
 import time
@@ -13,7 +13,7 @@ def test_model(model):
     Args:
         model: The model to test.
     """
-    def reload(game:Graph_game,storage:Graph_Store):
+    def reload(game:Winpattern_game,storage:Graph_Store):
         game.load_storage(storage)
         iswin = game.graph.new_vertex_property("vector<bool>")
         game.graph.vp.w = iswin

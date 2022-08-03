@@ -1,6 +1,6 @@
 from GN0.convert_graph import convert_graph,convert_graph_back
 from graph_game.graph_tools_games import Qango6x6
-from graph_game.graph_tools_game import Graph_game
+from graph_game.winpattern_game import Winpattern_game
 from torch_geometric.utils import to_networkx
 from GN0.util import visualize_graph
 
@@ -25,7 +25,7 @@ def test_convert_graph():
     geometric_graph,vertexmap = convert_graph(game.view)
     game.draw_me(0)
     new_graph = convert_graph_back(geometric_graph)
-    new_game:Graph_game = Graph_game.from_graph(new_graph)
+    new_game:Winpattern_game = Winpattern_game.from_graph(new_graph)
     new_game.draw_me(1)
     new_game.hashme()
     game.hashme()

@@ -8,10 +8,15 @@ import pickle
 import os
 
 def play_hex():
-    size = 5
+    size = 3
     g = Hex_game(size)
     letters = "abcdefghijklmnopqrstuvwxyz"
     while 1:
+        winner = g.who_won()
+        if winner=="m":
+            print("Maker(red) has won the game")
+        elif winner=="b":
+            print("Breaker(blue) has won the game")
         print(g.board.draw_me())
         g.draw_me("cur_game.pdf")
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
@@ -19,6 +24,8 @@ def play_hex():
         os.system("bspc node -f west")
         move_str = input()
         move = letters.index(move_str[0])+(int(move_str[1:])-1)*size
+        if g.move_wins(g.board.board_index_to_vertex[move]):
+            print("Move wins")
         g.board.make_move(move)
         os.system("pkill mupdf")
 

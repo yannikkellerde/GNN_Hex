@@ -2,7 +2,7 @@
 win/loss as a function of the board position."""
 
 from graph_game.graph_tools_games import Qango6x6
-from graph_game.graph_tools_game import Graph_Store, Graph_game
+from graph_game.winpattern_game import Graph_Store, Winpattern_game
 from GN0.convert_graph import graph_to_arrays, convert_graph
 import random
 import time
@@ -19,7 +19,7 @@ def generate_graphs(games_to_play):
     Args:
         games_to_play: Number of games to play.
     """
-    def reload(game:Graph_game,storage:Graph_Store):
+    def reload(game:Winpattern_game,storage:Graph_Store):
         game.load_storage(storage)
         iswin = game.graph.new_vertex_property("vector<bool>")
         game.graph.vp.w = iswin

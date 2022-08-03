@@ -15,11 +15,11 @@ class Graph_Store(NamedTuple):
     filter_map:VertexPropertyMap
     blackturn:bool
 
-class Graph_game():
+class Winpattern_game():
     """A two-player game played on a graph.
     
     The graph represents a board game such as Tic-Tac-Toe or Qango. It includes nodes for the squares
-    and win patterns of the game as well as edges between them. Graph_game is subclassed in graph_game/graph_tools_games.py
+    and win patterns of the game as well as edges between them. Winpattern_game is subclassed in graph_game/graph_tools_games.py
 
     Attributes:
         graph: A graph-tool graph object.
@@ -50,9 +50,9 @@ class Graph_game():
     graph:Graph
     view:GraphView
     name:str
-    board:Union[None,"Board_game"]
+    board:Union[None,"Winpattern_board"]
     psets:Dict[str,Set[int]]
-    owner_map:Dict[int,str]
+    owner_map:Dict[int,Union[str,None]]
     ovner_rev:Dict[str,int]
     known_gain_sets:List[Set[int]]
     def __init__(self):
@@ -62,7 +62,7 @@ class Graph_game():
         self.psets = {"bp":set(),"bd":set(),"wp":set(),"wd":set()}
 
     @staticmethod
-    def from_graph(graph:Graph) -> "Graph_game":
+    def from_graph(graph:Graph) -> "Winpattern_game":
         """Create a game from a graph-tool graph.
 
         Args:
@@ -70,11 +70,11 @@ class Graph_game():
         Returns:
             A graph-tool game
         """
-        g = Graph_game()
+        g = Winpattern_game()
         g.graph = graph
         g.view = GraphView(g.graph,g.graph.vp.f)
         g.board = None
-        g.name = "Graph_game"
+        g.name = "Winpattern_game"
         return g
 
     @property
@@ -97,7 +97,23 @@ class Graph_game():
         Args:
             folder: The path to the folder containing the proof sets and disproof sets.
         """
-        self.psets = Graph_game.load_psets(self.psets.keys(),folder)
+        self.psets = Winpattern_game.load_psets(self.psets.keys(),folder)
+
+    def move_wins(self,square_node:Union[Vertex,int]) -> bool:
+        """Check if a move wins the game
+
+        Args:
+            square_node: The vertex where the player who is on turn plays
+        
+        Returns:
+            weather the move wins
+        """
+        if type(square_node) == int:
+            square_node = self.view.vertex(square_node)
+        for wp_node in square_node.all_neighbors():
+            if wp_node.out_degree() == 1 and int(not self.view.gp["b"])+2==self.view.vp.o[wp_node]:
+                return True
+        return False
 
     @staticmethod
     def load_psets(setnames:str,folder:str) -> Dict[str,Set[int]]:
@@ -290,7 +306,7 @@ class Graph_game():
     def negate_onturn(self,onturn):
         return "b" if onturn=="w" else ("w" if onturn=="b" else onturn)
         
-    def threat_search(self,last_gain=None,last_cost=None,known_threats=None,gain=None,cost=None) -> Tuple[List[int],bool,List[int]]:
+    def threat_search(self,last_gain=None,last_cost=None,known_threats=None,gain=None,cost=None) -> Tuple[Set[int],bool,List[int]]:
         """Implements a threat-space search for games on graphs. Inspired by Go-Moku and Threat-Space Search (1994).
 
         Threats are defined as squares connected to a winpattern node of degree 2 that is colored in the moving players color

@@ -1,5 +1,5 @@
 from GN0.convert_graph import convert_graph
-from graph_game.graph_tools_game import Graph_game
+from graph_game.winpattern_game import Winpattern_game
 import torch
 from graph_tool.all import Graph
 
@@ -25,5 +25,5 @@ def evaluate_graph(model:torch.nn.Module, graph:Graph,device="cpu"):
         #print(ind,pred,vertexmap[ind],pred>0.5)
         pred_map[graph.vertex(vertexmap[ind])] = (pred>0.5).cpu().numpy()
 
-def evaluate_game_state(model:torch.nn.Module,game:Graph_game,device="cpu"):
+def evaluate_game_state(model:torch.nn.Module,game:Winpattern_game,device="cpu"):
     return evaluate_graph(model,game.view,device=device)

@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from typing import NamedTuple,Union,Callable
 from graph_tool.all import Graph
-from game.graph_tools_game import Graph_game,Graph_Store
+from game.winpattern_game import Winpattern_game,Graph_Store
 import GNZero.util as util
 
 class Node(NamedTuple):
@@ -42,7 +42,7 @@ class MCTS():
         exploration_constant: A temperature parameter that controls exploration.
         NN: A function that takes a graph and returns a tuple of (moves,probs,value)
     """
-    def __init__(self,game:Graph_game,NN:Callable[[Graph],(np.ndarray,np.ndarray,float)]):
+    def __init__(self,game:Winpattern_game,NN:Callable[[Graph],(np.ndarray,np.ndarray,float)]):
         self.game = game
         self.root = Leafnode(move=-1,parent=None,done=False)
         self.exploration_constant = 1

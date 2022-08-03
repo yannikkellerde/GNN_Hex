@@ -3,7 +3,7 @@ from util import resources_avaliable
 import pickle
 import os,sys
 from graph_tools_games import instanz_by_name
-from graph_tools_game import Graph_game
+from winpattern_game import Winpattern_game
 from graph_tool.all import *
 import numpy as np
 import time
@@ -23,7 +23,7 @@ STORAGE = 6 # A tuple containing 1. an owner map, 2. a filter map, 3. onturn boo
 
 
 class PN_search():
-    def __init__(self, game:Graph_game, callback:Callable, save_callback:Callable, drawproves=False):
+    def __init__(self, game:Winpattern_game, callback:Callable, save_callback:Callable, drawproves=False):
         self.game = game
         self.ttable = {}
         self.provenset = set()

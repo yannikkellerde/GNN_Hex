@@ -1,5 +1,5 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
-from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex
+from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator
 from typing import Union, List
 
 class Node_switching_game(Abstract_graph_game):
@@ -26,6 +26,29 @@ class Node_switching_game(Abstract_graph_game):
         self.view.vp.f[square_node] = False
         self.view.gp["m"] = not self.view.gp["m"]
 
+    def who_won(self):
+        if self.view.edge(self.terminals[0],self.terminals[1]):
+            return "m"
+        for e in dfs_iterator(self.view,self.terminals[0]):
+            if e.target() == self.terminals[1]:
+                return None
+        return "b"
+    
+    def move_wins(self,move_vertex:Union[Vertex,int]) -> bool:
+        if type(move_vertex) == int:
+            move_vertex = self.view.vertex(move_vertex)
+        if self.view.gp["m"]:
+            if self.view.edge(move_vertex,self.terminals[0]) and self.view.edge(move_vertex,self.terminals[1]):
+                return True
+        else:
+            self.view.vp.f[move_vertex] = False
+            for e in dfs_iterator(self.view,self.terminals[0]):
+                if e.target() == self.terminals[1]:
+                    self.view.vp.f[move_vertex] = True
+                    return False
+            self.view.vp.f[move_vertex] = True
+            return True
+        return False
 
     @staticmethod
     def from_graph(graph:Graph):
@@ -33,7 +56,7 @@ class Node_switching_game(Abstract_graph_game):
         g.graph = graph
         g.view = GraphView(g.graph)
         g.board = None
-        g.name = "Graph_game"
+        g.name = "Winpattern_game"
         return g
 
     def draw_me(self,fname="node_switching.pdf"):

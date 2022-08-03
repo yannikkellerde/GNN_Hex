@@ -8,14 +8,14 @@ from blessings import Terminal
 from typing import Set,List,Dict,FrozenSet
 
 
-class Board_game():
+class Winpattern_board():
     """2d Grid representation of a two player board game.
 
     Manages the 2d grid representation of a graph game. Is usually used in conjunction with
-    a Graph_game. Board_game is subclassed in graph_game/graph_tools_games.py.
+    a Winpattern_game. Winpattern_board is subclassed in graph_game/graph_tools_games.py.
 
     Attributes:
-        game: The corresponding Graph_game object.
+        game: The corresponding Winpattern_game object.
         winsquarenums: A set of frozensets. Each frozenset is a set of squares in a winpattern.
         position: A list of strings with one string for each square. The string is either "b" for black,
                   "w" for white, "f" for free/empty, or "U" for unknown.
@@ -36,7 +36,7 @@ class Board_game():
         draw_me: print the board state into the terminal.
         get_blocked_squares: return a set of squares that are blocked by a special rule on the first turns.
     """
-    game:"Graph_game"
+    game:"Winpattern_game"
     winsquarenums:Set[FrozenSet[int]]
     position:List[str]
     squares:int

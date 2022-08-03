@@ -2,7 +2,7 @@ from GN0.model_frontend import evaluate_graph,evaluate_game_state
 from GN0.generate_training_data import generate_graphs
 from GCN import GCN
 import torch
-from graph_game.graph_tools_game import Graph_game,Graph_Store
+from graph_game.winpattern_game import Winpattern_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6
 from GN0.graph_dataset import SupervisedDataset,pre_transform
 from tqdm import tqdm
@@ -42,7 +42,7 @@ def test_model(games_to_play):
     Args:
         games_to_play: Number of games to play.
     """
-    def reload(game:Graph_game,storage:Graph_Store):
+    def reload(game:Winpattern_game,storage:Graph_Store):
         game.load_storage(storage)
         iswin = game.graph.new_vertex_property("vector<bool>")
         game.graph.vp.w = iswin

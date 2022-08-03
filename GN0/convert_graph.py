@@ -2,7 +2,7 @@ import torch
 from torch_geometric.data import Data
 import numpy as np
 from graph_tool.all import Graph
-from graph_game.graph_tools_game import Graph_game
+from graph_game.winpattern_game import Winpattern_game
 from typing import Tuple
 
 def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray,dict]:
@@ -52,7 +52,7 @@ def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray,dict]
 
 
 def convert_graph(graph:Graph) -> Tuple[Data,dict]:
-    """Convert a graph-tool graph for a graph_tools_game into torch_geometric data
+    """Convert a graph-tool graph for a winpattern_game into torch_geometric data
     
     The torch_geometric data stores the follwing features from the input graphs:
     Graph Features: None
@@ -76,8 +76,8 @@ def convert_graph(graph:Graph) -> Tuple[Data,dict]:
     graph_data = Data(x=node_features,edge_index=edge_index,y=targets)
     return graph_data,vertexmap
 
-def convert_graph_back(data:Data) -> Graph_game:
-    """Convert a torch_geometric data object into a graph-tool graph for graph_tools_game.
+def convert_graph_back(data:Data) -> Winpattern_game:
+    """Convert a torch_geometric data object into a graph-tool graph for winpattern_game 
     
     Args:
         data: A torch_geometric Data object representing the information from an input graph

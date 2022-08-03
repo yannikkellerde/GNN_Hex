@@ -2,7 +2,7 @@ import sys,os
 sys.path.append(os.path.join(os.path.dirname(__file__),".."))
 sys.path.append(os.path.dirname(__file__))
 from graph_tools_games import instanz_by_name
-from graph_board_game import Board_game
+from winpattern_board import Winpattern_board
 from solve_graph_tools import background_thread
 from util import provide_room_num
 import math
@@ -84,7 +84,7 @@ class Solver_analyze():
     def get_proofsets(self,proofsetname,uid):
         if not (uid in self.session_to_pset_name and proofsetname == self.session_to_pset_name[uid]):
             if proofsetname not in self.pset_name_to_pset:
-                self.pset_name_to_pset[proofsetname] = Board_game.load_psets(self.psetnames,os.path.join(base_path,"../proofsets",proofsetname))
+                self.pset_name_to_pset[proofsetname] = Winpattern_board.load_psets(self.psetnames,os.path.join(base_path,"../proofsets",proofsetname))
             self.session_to_pset_name[uid] = proofsetname
             self.proofsets_to_sessions[proofsetname].add(uid)
         return self.pset_name_to_pset[self.session_to_pset_name[uid]]

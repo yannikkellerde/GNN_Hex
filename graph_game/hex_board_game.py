@@ -24,6 +24,7 @@ class Hex_board(Abstract_board_game):
         self.onturn = "r" if self.onturn == "b" else "b"
         self.game.make_move(self.board_index_to_vertex[move])
 
+
     def grid_to_double_triangle(self,move:int):
         """Transform a move with grid numbering to a move with double triangle numbering"""
         sq_squares = int(math.sqrt(self.squares))
