@@ -1,9 +1,10 @@
+from graph_tool.all import VertexPropertyMap,GraphView
 from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game,Hex_game
 from graph_game.hex_board_game import Hex_board
 from graph_game.shannon_node_switching_game import Node_switching_game
 import time
 from functools import reduce
-from GN0.convert_graph import convert_graph
+from GN0.convert_graph import convert_node_switching_game,convert_node_switching_game_back
 import pickle
 import numpy as np
 import os
@@ -14,10 +15,18 @@ def test_voltages():
     vprop = g.compute_node_voltages_exact()
     dprop = g.compute_voltage_drops(vprop)
     intprop = g.view.new_vertex_property("int")
-    intprop.get_array()[:] = np.around(dprop.get_array()[:]).astype(int)
+    intprop.a = np.around(dprop.a).astype(int)
     g.draw_me(fname="voltages.pdf",vprop=intprop)
     os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
 
+def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap):
+    data = convert_node_switching_game(g.view,vprop)
+    g.graph,targ_prop_map = convert_node_switching_game_back(data)
+    filt_prop = g.graph.new_vertex_property("bool")
+    g.graph.vp.f = filt_prop # For filtering in the GraphView
+    g.graph.vp.f.a = np.ones(g.graph.num_vertices()).astype(bool)
+    g.view = GraphView(g.graph,g.graph.vp.f)
+    return targ_prop_map
 
 def play_hex():
     size = 6
@@ -31,16 +40,14 @@ def play_hex():
             print("Breaker(blue) has won the game")
         print(g.board.draw_me())
         vprop = g.compute_node_voltages_exact()
-        # intprop2 = g.view.new_vertex_property("int")
-        # intprop2.get_array()[:] = np.around(vprop.get_array()[:]).astype(int)
-        # g.draw_me("cur_game_voltages.pdf",vprop=intprop2)
-        # os.system("nohup mupdf cur_game_voltages.pdf > /dev/null 2>&1 &")
         dprop = g.compute_voltage_drops(vprop)
-        
         intprop = g.view.new_vertex_property("int")
-        intprop.get_array()[:] = np.around(dprop.get_array()[:]).astype(int)
+        intprop.a = np.around(dprop.a).astype(int)
         g.draw_me("cur_game.pdf",vprop=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
+        intprop = check_conversion_consistency(g,intprop)
+        g.draw_me("cur_game2.pdf",vprop=intprop)
+        os.system("nohup mupdf cur_game2.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
         os.system("bspc node -f west")
         move_str = input()
@@ -48,6 +55,7 @@ def play_hex():
         if g.move_wins(g.board.board_index_to_vertex[move]):
             print("Move wins")
         g.board.make_move(move)
+        print(g.view.get_vertices())
         os.system("pkill mupdf")
 
      
