@@ -5,10 +5,22 @@ import time
 from functools import reduce
 from GN0.convert_graph import convert_graph
 import pickle
+import numpy as np
 import os
 
+def test_voltages():
+    size = 6
+    g = Hex_game(size)
+    vprop = g.compute_node_voltages_exact()
+    dprop = g.compute_voltage_drops(vprop)
+    intprop = g.view.new_vertex_property("int")
+    intprop.get_array()[:] = np.around(dprop.get_array()[:]).astype(int)
+    g.draw_me(fname="voltages.pdf",vprop=intprop)
+    os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
+
+
 def play_hex():
-    size = 3
+    size = 6
     g = Hex_game(size)
     letters = "abcdefghijklmnopqrstuvwxyz"
     while 1:
@@ -18,7 +30,16 @@ def play_hex():
         elif winner=="b":
             print("Breaker(blue) has won the game")
         print(g.board.draw_me())
-        g.draw_me("cur_game.pdf")
+        vprop = g.compute_node_voltages_exact()
+        # intprop2 = g.view.new_vertex_property("int")
+        # intprop2.get_array()[:] = np.around(vprop.get_array()[:]).astype(int)
+        # g.draw_me("cur_game_voltages.pdf",vprop=intprop2)
+        # os.system("nohup mupdf cur_game_voltages.pdf > /dev/null 2>&1 &")
+        dprop = g.compute_voltage_drops(vprop)
+        
+        intprop = g.view.new_vertex_property("int")
+        intprop.get_array()[:] = np.around(dprop.get_array()[:]).astype(int)
+        g.draw_me("cur_game.pdf",vprop=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
         os.system("bspc node -f west")
@@ -279,4 +300,5 @@ if __name__ == "__main__":
     #test_graph_nets()
     #test_hex()
     play_hex()
+    # test_voltages()
     #test_graph_similarity()

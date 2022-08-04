@@ -1,6 +1,10 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
-from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator
+from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency
 from typing import Union, List
+import numpy as np
+import scipy.sparse
+import scipy.sparse.linalg
+import sklearn.preprocessing
 
 class Node_switching_game(Abstract_graph_game):
     terminals:List[Vertex]
@@ -56,15 +60,62 @@ class Node_switching_game(Abstract_graph_game):
         g.graph = graph
         g.view = GraphView(g.graph)
         g.board = None
-        g.name = "Winpattern_game"
+        g.name = "Shannon_node_switching_game"
         return g
 
-    def draw_me(self,fname="node_switching.pdf"):
+    def compute_node_voltages_exact(self):
+        adj = adjacency(self.graph)
+        adj[np.logical_not(self.graph.vp.f.get_array()[:])] = 0
+        adj[:,np.logical_not(self.graph.vp.f.get_array()[:])] = 0
+        adj = sklearn.preprocessing.normalize(adj,norm="l1")
+        i1 = int(self.terminals[0])
+        i2 = int(self.terminals[1])
+        adj[i1] = 0
+        adj[i2] = 0
+        adj -= scipy.sparse.eye(adj.shape[0])
+        adj[i1,i1] = 1
+        adj[i2,i2] = 1
+        b = np.zeros(adj.shape[0])
+        b[i2] = 100
+        voltages = scipy.sparse.linalg.spsolve(adj,b)
+        v_prop = self.view.new_vertex_property("double")
+        v_prop.get_array()[:] = voltages
+        return v_prop
+
+    def compute_voltage_drops(self,voltage_prop):
+        d_prop = self.view.new_vertex_property("double")
+        for vertex in self.view.vertices():
+            if vertex not in self.terminals:
+                my_volt = voltage_prop[vertex]
+                num_lower_neighs = 0
+                num_higher_neighs = 0
+                lower_sum = 0
+                higher_sum = 0
+                for neighbor in vertex.out_neighbors():
+                    n_volt = voltage_prop[neighbor]
+                    if n_volt>my_volt:
+                        num_higher_neighs+=1
+                        higher_sum += n_volt
+                    else:
+                        num_lower_neighs+=1
+                        lower_sum += n_volt
+                drop_high = higher_sum-my_volt*num_higher_neighs
+                drop_low = my_volt*num_lower_neighs-lower_sum
+                assert np.isclose(drop_low,drop_high)
+                d_prop[vertex] = drop_low
+        return d_prop
+
+
+
+    def draw_me(self,fname="node_switching.pdf",vprop=None):
         """Draw the state of the graph and save it into a pdf file.
 
         Args:
-            index: An index to append to the name of the pdf file.
+            fname: Filename to save to
+            vprop: Optional vertex property map of type int or double to display
         """
+        if vprop is None:
+            vprop = self.view.vertex_index
         if self.view.num_vertices()==0:
             print("WARNING: Trying to draw graph without vertices")
             return
@@ -81,4 +132,4 @@ class Node_switching_game(Abstract_graph_game):
                 fill_color[vertex] = (0,0,0,1)
                 size[vertex] = 15
         vprops = {"fill_color":fill_color,"shape":shape,"size":size}
-        graph_draw(self.view, vprops=vprops, vertex_text=self.view.vertex_index, output=fname)
+        graph_draw(self.view, vprops=vprops, vertex_text=vprop, output=fname)

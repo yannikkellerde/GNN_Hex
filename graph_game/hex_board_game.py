@@ -70,6 +70,7 @@ class Hex_board(Abstract_board_game):
         return cost
 
     def pos_from_graph(self,redgraph:bool):
+        # Defunct
         str_map = {0:"U",1:"f",2:"r",3:"b"}
         step_take_obj = take_step([2,3])
 
@@ -97,7 +98,7 @@ class Hex_board(Abstract_board_game):
         self.position = [str_map[x] for x in known_pos]
 
 
-    def graph_from_board(self, redgraph:bool): # To test ...
+    def graph_from_board(self, redgraph:bool, no_worthless_edges=True):
         sq_squares = int(math.sqrt(self.squares))
         self.board_index_to_vertex = {}
         self.game.graph = Graph(directed=False)
@@ -109,7 +110,7 @@ class Hex_board(Abstract_board_game):
                 self.game.graph.add_edge(v,self.game.terminals[0])
             if (i//sq_squares==sq_squares-1 and redgraph) or (not redgraph and i%sq_squares==sq_squares-1):
                 self.game.graph.add_edge(v,self.game.terminals[1])
-            if i%sq_squares>0:
+            if i%sq_squares>0 and ((not no_worthless_edges) or (sq_squares<=i<=self.squares-sq_squares)):
                 self.game.graph.add_edge(v,self.board_index_to_vertex[i-1])
             if i>=sq_squares:
                 self.game.graph.add_edge(v,self.board_index_to_vertex[i-sq_squares])

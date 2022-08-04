@@ -12,8 +12,6 @@ base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 class Hex_game(Node_switching_game):
     def __init__(self,size):
         super().__init__()
-        if size%2==0:
-            raise ValueError("Even board sizes not supported yet")
         self.board = Hex_board()
         self.board.squares = size**2
         self.board.game = self
