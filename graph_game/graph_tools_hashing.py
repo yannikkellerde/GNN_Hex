@@ -1,10 +1,10 @@
 from collections import Counter
 from hashlib import blake2b
-from graph_tool.all import *
+from graph_tool.all import VertexPropertyMap,GraphPropertyMap,Graph
 from time import perf_counter
 import numpy as np
 
-def wl_hash(G:GraphView, node_property:VertexPropertyMap, iterations=3, digest_size=7):
+def wl_hash(G:Graph, node_property:VertexPropertyMap, graph_property:GraphPropertyMap=None, iterations=3, digest_size=7) -> int:
     ind_map = [int(x) for x in G.vertices()]
     rev_ind = {key:value for value,key in enumerate(ind_map)}
     def nei_agg(G, n, node_labels):
@@ -38,9 +38,9 @@ def wl_hash(G:GraphView, node_property:VertexPropertyMap, iterations=3, digest_s
         items.extend(sorted(c.items(), key=lambda x: x[0]))
     # hash the final counter
     h = blake2b(digest_size=digest_size)
-    h.update((str(tuple(items))+str(G.gp["b"])).encode('ascii'))
+    h.update((str(tuple(items))+str(graph_property)).encode('ascii'))
     h = h.hexdigest()
-    G.gp["h"] = int(h,16)
+    return int(h,16)
 
 def test_me():
     G1 = Graph()

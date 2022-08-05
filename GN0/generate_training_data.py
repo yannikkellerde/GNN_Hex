@@ -1,7 +1,7 @@
 """ The idea here is to instead of learning with GN0, we just learn the true
 win/loss as a function of the board position."""
 
-from graph_game.graph_tools_games import Qango6x6
+from graph_game.graph_tools_games import Qango6x6, Hex_game
 from graph_game.winpattern_game import Graph_Store, Winpattern_game
 from GN0.convert_graph import graph_to_arrays, convert_graph
 import random
@@ -10,7 +10,18 @@ from tqdm import tqdm,trange
 import multiprocessing
 import pickle
 
-def generate_graphs(games_to_play):
+def generate_hex_graphs(games_to_play):
+    """ Generate training graphs for the Graph net to learn from.
+    Makes random moves in the game and uses voltage drop algorithm
+    to evaluate moves. Then stores the graphs as training
+    sets for the Graph net to train on.
+
+    Args:
+        games_to_play: Number of games to play.
+    """
+
+
+def generate_winpattern_game_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
     Makes random moves in the game and uses threat search to evaluate
     the all moves in all positions. Then stores the graphs as training

@@ -89,7 +89,8 @@ class Winpattern_game():
         """Compute the Weisfeiler-Lehmann hash from the current graph and store it as a
         global property of the graph. (self.view.gp['h'])
         """
-        wl_hash(self.view,self.view.vp.o,iterations=3)
+        h = wl_hash(self.view,self.view.vp.o,self.view.gp["b"],iterations=3)
+        self.view.gp["h"] = h
 
     def load_set_folder(self,folder:str):
         """Load the proof sets and disproof sets from a folder into self.psets.

@@ -5,6 +5,7 @@ from graph_game.shannon_node_switching_game import Node_switching_game
 import time
 from functools import reduce
 from GN0.convert_graph import convert_node_switching_game,convert_node_switching_game_back
+from graph_game.graph_tools_hashing import wl_hash
 import pickle
 import numpy as np
 import os
@@ -20,12 +21,15 @@ def test_voltages():
     os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
 
 def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap):
+    intprop = g.view.new_vertex_property("int")
+    intprop.a = np.around(vprop.a).astype(int)
+    prev_hash = wl_hash(g.view,intprop,g.view.gp["m"])
     data = convert_node_switching_game(g.view,vprop)
-    g.graph,targ_prop_map = convert_node_switching_game_back(data)
-    filt_prop = g.graph.new_vertex_property("bool")
-    g.graph.vp.f = filt_prop # For filtering in the GraphView
-    g.graph.vp.f.a = np.ones(g.graph.num_vertices()).astype(bool)
-    g.view = GraphView(g.graph,g.graph.vp.f)
+    new_graph,targ_prop_map = convert_node_switching_game_back(data)
+    intprop = new_graph.new_vertex_property("int")
+    intprop.a = np.around(targ_prop_map.a).astype(int)
+    new_hash = wl_hash(new_graph,intprop,new_graph.gp["m"])
+    assert prev_hash == new_hash
     return targ_prop_map
 
 def play_hex():
@@ -46,8 +50,6 @@ def play_hex():
         g.draw_me("cur_game.pdf",vprop=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
         intprop = check_conversion_consistency(g,intprop)
-        g.draw_me("cur_game2.pdf",vprop=intprop)
-        os.system("nohup mupdf cur_game2.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
         os.system("bspc node -f west")
         move_str = input()
@@ -55,7 +57,6 @@ def play_hex():
         if g.move_wins(g.board.board_index_to_vertex[move]):
             print("Move wins")
         g.board.make_move(move)
-        print(g.view.get_vertices())
         os.system("pkill mupdf")
 
      
