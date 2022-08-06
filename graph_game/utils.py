@@ -37,3 +37,19 @@ def greedy_search(eval_func:callable,init_x:np.ndarray,take_step_func:callable,s
             #    take_step_func.stepsize*=0.9
     return x,cost
 
+# This isn't to quick. If we need speed, maybe implement as C graph-tool extension
+def is_fully_connected(g:Graph,vertices:List[int]) -> bool:
+    """Checks if a list of vertices is fully connected.
+
+    Args:
+        g: A undirected graph-tools graph
+        vertices: A list of vertices from that graph
+    Returns:
+        Whether the vertices are fully connected
+    """
+    for v1 in vertices:
+        for v2 in vertices:
+            if v1!=v2:
+                if not g.edge(v1,v2):
+                    return False
+    return True

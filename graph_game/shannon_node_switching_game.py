@@ -1,4 +1,5 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
+from graph_game.utils import is_fully_connected
 from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency
 from typing import Union, List
 import numpy as np
@@ -28,6 +29,39 @@ class Node_switching_game(Abstract_graph_game):
                         self.view.edge(vertex1,vertex2,add_missing=True)
         self.view.vp.f[square_node] = False
         self.view.gp["m"] = not self.view.gp["m"]
+
+    def dead_and_captured(self,consider_set:Union[None,List[int]]=None,iterate=False): # TODO: Test and extend
+        """Find dead and captured vertices and handle them appropriately
+
+        Dead vertices and breaker captured vertices are removed. Maker captured vertices
+        are removed and neighbors get connected. Uses local graph patterns to find captured
+        and dead vertices.
+
+        Args:
+            consider_set: If not None, only check this subset of vertices
+            iterate: iterate to check if new more nodes ended up captured or dead as a 
+                     consequence of changes from last action on dead or captured cells
+        """
+        if consider_set is None:
+            consider_set = self.view.get_vertices()
+        neighsets = {}
+        for node in consider_set:
+            neighbors = self.view.get_out_neighbors(node)
+            if is_fully_connected(self.view,neighbors):  # Dead nodes
+                self.view.vp.f[self.view.vertex(node)] = False
+                continue
+            neighset = set(neighbors)
+            neighsets[node] = neighset
+            for neighbor in neighset:
+                if neighbor in neighsets:
+                    if neighsets[neighbor]-{node} == neighset-{neighbor}: # Maker captured
+                        self.view.vp.f[self.view.vertex(node)] = False
+                        self.view.vp.f[self.view.vertex(neighbor)] = False
+                        for v1 in neighset-{neighbor}:
+                            for v2 in neighset-{neighbor}:
+                                self.view.edge(v1,v2,add_missing=True)
+
+
 
     def who_won(self):
         if self.view.edge(self.terminals[0],self.terminals[1]):

@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+from graph_tool.all import Graph,Vertex
+from typing import List
 
 def get_one_hot(length:int,index:int,dtype=np.float32):
     """Returns a zero vector with one entry set to one
@@ -47,3 +49,4 @@ def visualize_graph(G, color): # SOURCE https://pytorch-geometric.readthedocs.io
     nx.draw_networkx(G, pos=nx.spring_layout(G, seed=42), with_labels=False,
                      node_color=color, cmap="Set2")
     plt.show()
+
