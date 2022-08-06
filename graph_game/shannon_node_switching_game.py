@@ -2,8 +2,7 @@ from graph_game.abstract_graph_game import Abstract_graph_game
 from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency
 from typing import Union, List
 import numpy as np
-import scipy.sparse
-import scipy.sparse.linalg
+import scipy.linalg
 import sklearn.preprocessing
 
 class Node_switching_game(Abstract_graph_game):
@@ -17,7 +16,7 @@ class Node_switching_game(Abstract_graph_game):
         return "m" if self.view.gp["m"] else "b" # m for maker, b for breaker
 
     def get_actions(self):
-        return self.view.vertex_index.copy().fa
+        return self.view.vertex_index.copy().fa[2:] # We assume terminals in vertex index 0 and 1 for efficiency here
 
     def make_move(self,square_node:Union[int,Vertex]):
         if type(square_node)==int:
@@ -63,23 +62,47 @@ class Node_switching_game(Abstract_graph_game):
         g.name = "Shannon_node_switching_game"
         return g
 
+    def prune_irrelevant_subgraphs(self) -> True:
+        """Prune all subgraphs that are not connected to any terminal nodes
+
+        As a side effect this will find out if the position is won for breaker
+
+        Returns:
+            If the position is won for breaker
+        """
+        found_vertices = dfs_iterator(self.view,source=self.terminals[0],array=True)
+        if int(self.terminals[1]) not in found_vertices:
+            new_found_vertices = dfs_iterator(self.view,source=self.terminals[1],array=True)
+            if len(found_vertices)>0:
+                if len(new_found_vertices)>0:
+                    found_vertices = np.concatenate((found_vertices,new_found_vertices))
+            else:
+                if len(new_found_vertices)>0:
+                    found_vertices = new_found_vertices
+                else:
+                    found_vertices = np.array([0,1])
+            breaker_wins = True
+        breaker_wins = False
+        leftovers = set(self.view.get_vertices())-set(found_vertices.flatten())-set((0,1))
+        for vi in leftovers:
+            self.view.vp.f[self.view.vertex(vi)] = False
+        return breaker_wins
+
     def compute_node_voltages_exact(self):
-        adj = adjacency(self.graph)
-        adj[np.logical_not(self.graph.vp.f.get_array()[:])] = 0
-        adj[:,np.logical_not(self.graph.vp.f.get_array()[:])] = 0
+        adj = adjacency(self.view).toarray()
         adj = sklearn.preprocessing.normalize(adj,norm="l1")
         i1 = int(self.terminals[0])
         i2 = int(self.terminals[1])
         adj[i1] = 0
         adj[i2] = 0
-        adj -= scipy.sparse.eye(adj.shape[0])
+        adj -= np.eye(adj.shape[0])
         adj[i1,i1] = 1
         adj[i2,i2] = 1
         b = np.zeros(adj.shape[0])
         b[i2] = 100
-        voltages = scipy.sparse.linalg.spsolve(adj,b)
+        voltages = scipy.linalg.solve(adj,b,overwrite_a=True,overwrite_b=True)
         v_prop = self.view.new_vertex_property("double")
-        v_prop.get_array()[:] = voltages
+        v_prop.fa = voltages
         return v_prop
 
     def compute_voltage_drops(self,voltage_prop):
@@ -101,6 +124,8 @@ class Node_switching_game(Abstract_graph_game):
                         lower_sum += n_volt
                 drop_high = higher_sum-my_volt*num_higher_neighs
                 drop_low = my_volt*num_lower_neighs-lower_sum
+                if not np.isclose(drop_low,drop_high):
+                    self.draw_me("error_graph.pdf",voltage_prop)
                 assert np.isclose(drop_low,drop_high)
                 d_prop[vertex] = drop_low
         return d_prop

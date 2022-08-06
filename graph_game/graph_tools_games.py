@@ -10,7 +10,7 @@ from graph_game.hex_board_game import Hex_board
 base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 
 class Hex_game(Node_switching_game):
-    def __init__(self,size):
+    def __init__(self,size:int):
         super().__init__()
         self.board = Hex_board()
         self.board.squares = size**2
@@ -21,7 +21,7 @@ class Hex_game(Node_switching_game):
 
 
 class Json_game(Winpattern_game):
-    def __init__(self,json_path):
+    def __init__(self,json_path:str):
         super().__init__()
         with open(json_path,"r") as f:
             self.config = json.load(f)
@@ -31,7 +31,7 @@ class Json_game(Winpattern_game):
         self.name = self.config["name"]
 
 class Json_board(Winpattern_board):
-    def __init__(self,config):
+    def __init__(self,config:dict):
         super().__init__()
         self.squares = config["squares"]
         self.position = ["f" for _ in range(self.squares)]
@@ -171,7 +171,7 @@ class Qango7x7_plus_board(Winpattern_board):
         print(out)
         return out
 
-def instanz_by_name(game_name) -> Winpattern_game:
+def instanz_by_name(game_name:str) -> Winpattern_game:
     if "qango6x6_static"==game_name:
         game = Qango6x6()
     elif "qango7x7_static"==game_name:

@@ -77,10 +77,12 @@ def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap):
     # there does not seem to be a better way...
     vmap = dict(zip(verts,range(0,len(verts))))
     edges = graph.get_edges()
-    edge_index = torch.from_numpy(np.vectorize(vmap.get)(edges))
-    targray = target_vp.a
-    print(targray.shape,target_vp.get_array()[:].shape,verts.shape)
-    targets = torch.tensor([targray[i] for i in verts])
+    if len(edges) == 0:
+        edge_index = torch.tensor([])
+    else:
+        edge_index = torch.from_numpy(np.vectorize(vmap.get)(edges))
+    targray = target_vp.fa
+    targets = torch.tensor(targray)
 
     graph_data = Data(x=node_features,edge_index=edge_index,y=targets,maker_turn=int(graph.gp["m"]))
     return graph_data

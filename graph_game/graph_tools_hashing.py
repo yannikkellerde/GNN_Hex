@@ -3,8 +3,9 @@ from hashlib import blake2b
 from graph_tool.all import VertexPropertyMap,GraphPropertyMap,Graph
 from time import perf_counter
 import numpy as np
+from typing import Union
 
-def wl_hash(G:Graph, node_property:VertexPropertyMap, graph_property:GraphPropertyMap=None, iterations=3, digest_size=7) -> int:
+def wl_hash(G:Graph, node_property:VertexPropertyMap, graph_property:Union[None,GraphPropertyMap]=None, iterations=3, digest_size=7) -> int:
     ind_map = [int(x) for x in G.vertices()]
     rev_ind = {key:value for value,key in enumerate(ind_map)}
     def nei_agg(G, n, node_labels):

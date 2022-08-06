@@ -3,12 +3,14 @@ win/loss as a function of the board position."""
 
 from graph_game.graph_tools_games import Qango6x6, Hex_game
 from graph_game.winpattern_game import Graph_Store, Winpattern_game
-from GN0.convert_graph import graph_to_arrays, convert_graph
+from GN0.convert_graph import graph_to_arrays, convert_winpattern_game, convert_node_switching_game
+from graph_game.graph_tools_hashing import wl_hash
 import random
 import time
 from tqdm import tqdm,trange
 import multiprocessing
 import pickle
+from typing import Callable
 
 def generate_hex_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
@@ -19,7 +21,28 @@ def generate_hex_graphs(games_to_play):
     Args:
         games_to_play: Number of games to play.
     """
+    known_hashes = set()
+    graphs = []
 
+    for _ in range(games_to_play):
+        game = Hex_game(6)
+        win = False
+        while not win:
+            actions = game.get_actions()
+            move = random.choice(actions)
+            game.make_move(move)
+            hash = wl_hash(game.view,game.view.vp.f)
+            if hash not in known_hashes:
+                known_hashes.add(hash)
+                game.prune_irrelevant_subgraphs()
+                voltprop = game.compute_node_voltages_exact()
+                dropprop = game.compute_voltage_drops(voltprop)
+                data = convert_node_switching_game(game.view,dropprop)
+                graphs.append(data)
+            win = game.who_won()
+    return graphs
+
+                
 
 def generate_winpattern_game_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
@@ -87,27 +110,25 @@ def generate_winpattern_game_graphs(games_to_play):
                     game.graph.vp.w[game.view.vertex(move)] = [False,True]
                 else:
                     game.graph.vp.w[game.view.vertex(move)] = [False,False]
-            graphs.append(convert_graph(game.view)[0])
+            graphs.append(convert_winpattern_game(game.view)[0])
         reload(game,start_storage)
     return graphs
 
-def generate_and_store_graphs(games_to_play,path):
-    graphs = generate_graphs(games_to_play)
+def generate_and_store_graphs(generation_func:Callable,games_to_play:int,path:str):
+    graphs = generation_func(games_to_play)
     with open(path,"wb") as f:
         pickle.dump(graphs,f)
 
 
-def generate_graphs_multiprocess(games_to_play,paths):
+def generate_graphs_multiprocess(generation_func:Callable,games_to_play:int,paths:str):
     cores = multiprocessing.cpu_count()
     print(len(paths),cores)
     assert len(paths)<=cores
     div,mod = divmod(games_to_play,len(paths))
     params = [div + (1 if x < mod else 0) for x in range(len(paths))]
+    partial_generate = lambda *args:generate_and_store_graphs(generation_func,*args)
     with multiprocessing.Pool(len(paths)) as pool:
-        pool.starmap(generate_and_store_graphs,zip(params,paths))
+        pool.starmap(partial_generate,zip(params,paths))
 
 if __name__=="__main__":
-    graphs = generate_graphs_multiprocess(10000)
-    with open("graphs.pkl","wb") as f:
-        pickle.dump(graphs,f)
-    print("Done")
+    generate_and_store_graphs(generate_hex_graphs,100,"test.pkl")
