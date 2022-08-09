@@ -32,9 +32,35 @@ def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap)
     assert prev_hash == new_hash
     return targ_prop_map
 
+def check_hex_pattern(move_list):
+    size = 6
+    g = Hex_game(size)
+    g.board_callback = g.board.graph_callback
+    for move,color in move_list:
+        g.board.make_move(move,force_color=color,remove_dead_and_captured=True)
+        g.dead_and_captured()
+        print(g.board.draw_me())
+        g.draw_me("cur_game.pdf")#,vprop=intprop)
+        os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
+        time.sleep(0.1)
+        os.system("bspc node -f west")
+        input()
+        os.system("pkill mupdf")
+
+    print(g.board.draw_me())
+    g.draw_me("cur_game.pdf")#,vprop=intprop)
+    os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
+
+def check_some_hex_patterns():
+    # move_list = [(4*7+1,"r"),(4*7+2,"r"),(3*7+3,"r"),(2*7+4,"r"),(7+3,"b")]
+    move_list = [(4*6+4,"r"),(3*6+5,"b"),(4*6+3,"r"),(4*6+2,"r"),(4*6+1,"r"),(4*6,"r"),(2*6+5,"b"),(6+5,"b"),(2*6+2,"r")]
+    check_hex_pattern(move_list)
+
+
 def play_hex():
     size = 6
     g = Hex_game(size)
+    g.board_callback = g.board.graph_callback
     letters = "abcdefghijklmnopqrstuvwxyz"
     while 1:
         winner = g.who_won()
@@ -47,7 +73,7 @@ def play_hex():
         dprop = g.compute_voltage_drops(vprop)
         intprop = g.view.new_vertex_property("int")
         intprop.a = np.around(dprop.a).astype(int)
-        g.draw_me("cur_game.pdf",vprop=intprop)
+        g.draw_me("cur_game.pdf")#,vprop=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
         intprop = check_conversion_consistency(g,intprop)
         time.sleep(0.1)
@@ -56,7 +82,7 @@ def play_hex():
         move = letters.index(move_str[0])+(int(move_str[1:])-1)*size
         if g.move_wins(g.board.board_index_to_vertex[move]):
             print("Move wins")
-        g.board.make_move(move)
+        g.board.make_move(move,remove_dead_and_captured=True)
         os.system("pkill mupdf")
 
      
@@ -308,6 +334,7 @@ if __name__ == "__main__":
     #test_json_game()
     #test_graph_nets()
     #test_hex()
-    play_hex()
+    # play_hex()
+    check_some_hex_patterns()
     # test_voltages()
     #test_graph_similarity()

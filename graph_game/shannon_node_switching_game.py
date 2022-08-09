@@ -1,13 +1,14 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
 from graph_game.utils import is_fully_connected
 from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency
-from typing import Union, List
+from typing import Union, List, Iterator, Set, Callable
 import numpy as np
 import scipy.linalg
 import sklearn.preprocessing
 
 class Node_switching_game(Abstract_graph_game):
     terminals:List[Vertex]
+    board_callback:Callable
 
     def __init__(self):
         pass
@@ -19,18 +20,36 @@ class Node_switching_game(Abstract_graph_game):
     def get_actions(self):
         return self.view.vertex_index.copy().fa[2:] # We assume terminals in vertex index 0 and 1 for efficiency here
 
-    def make_move(self,square_node:Union[int,Vertex]):
+    def make_move(self,square_node:Union[int,Vertex],force_color=None,remove_dead_and_captured=False):
+        """Make a move by choosing a vertex in the graph
+
+        Args:
+            square_node: Vertex or vertex index to move to
+            force_color: 'm' or 'b', if set, play for this player instead of who is on-turn.
+            remove_dead_and_captured: If true, remove/fill any noded that became dead/captured as
+                                      a consequence of this move
+        """
+        if force_color is None:
+            makerturn = self.view.gp["m"]
+        else:
+            makerturn = force_color=="m"
         if type(square_node)==int:
             square_node = self.view.vertex(square_node)
-        if self.view.gp["m"]:
+        if makerturn:
             for vertex1 in self.view.iter_all_neighbors(square_node):
                 for vertex2 in self.view.iter_all_neighbors(square_node):
                     if vertex1!=vertex2:
                         self.view.edge(vertex1,vertex2,add_missing=True)
         self.view.vp.f[square_node] = False
-        self.view.gp["m"] = not self.view.gp["m"]
+        if force_color is None:
+            self.view.gp["m"] = not self.view.gp["m"]
+        if self.board_callback is not None:
+            self.board_callback(int(square_node),makerturn)
+        if remove_dead_and_captured:
+            self.dead_and_captured(self.view.get_out_neighbors(square_node),True)
 
-    def dead_and_captured(self,consider_set:Union[None,List[int]]=None,iterate=False): # TODO: Test and extend
+
+    def dead_and_captured(self,consider_set:Union[None,List[int],Set[int]]=None,iterate=False): # TODO: Expand to breaker capture 
         """Find dead and captured vertices and handle them appropriately
 
         Dead vertices and breaker captured vertices are removed. Maker captured vertices
@@ -44,23 +63,48 @@ class Node_switching_game(Abstract_graph_game):
         """
         if consider_set is None:
             consider_set = self.view.get_vertices()
-        neighsets = {}
+        big_set:Set[int] = set()
         for node in consider_set:
-            neighbors = self.view.get_out_neighbors(node)
-            if is_fully_connected(self.view,neighbors):  # Dead nodes
-                self.view.vp.f[self.view.vertex(node)] = False
+            if not self.graph.vp.f[node] or node in (0,1):
                 continue
+            neighbors = self.view.get_out_neighbors(node)
             neighset = set(neighbors)
-            neighsets[node] = neighset
-            for neighbor in neighset:
-                if neighbor in neighsets:
-                    if neighsets[neighbor]-{node} == neighset-{neighbor}: # Maker captured
-                        self.view.vp.f[self.view.vertex(node)] = False
-                        self.view.vp.f[self.view.vertex(neighbor)] = False
-                        for v1 in neighset-{neighbor}:
-                            for v2 in neighset-{neighbor}:
-                                self.view.edge(v1,v2,add_missing=True)
+            for neigh in neighset:   # Remove dead edges
+                if ((self.view.edge(node,self.terminals[0]) and self.view.edge(neigh,self.terminals[0])) or 
+                        (self.view.edge(node,self.terminals[1]) and self.view.edge(neigh,self.terminals[1]))): # Remove useless edges
+                    if self.view.edge(node,neigh):
+                        print(f"Removed edge from {node} to {neigh}")
+                        self.view.remove_edge(self.view.edge(node,neigh))
+                        big_set.add(neigh)
 
+            if is_fully_connected(self.view,neighbors):  # Dead nodes
+                if iterate:
+                    big_set.update(neighset)
+                self.make_move(node,force_color="b")
+                print(f"{node} is dead")
+                continue
+            for neighbor in neighset:
+                without_me = set(self.view.get_out_neighbors(neighbor))-{node}
+                without_him = neighset-{neighbor}
+                if node in (23,24):
+                    print("yeah",node,neighbor,without_me,without_him)
+                if without_me == without_him:  # Maker captures
+                    print(f"maker captured {node}, {neighbor}")
+                    if iterate:
+                        big_set.update(neighset)
+                    self.make_move(node,force_color="m")
+                    self.make_move(neighbor,force_color="b")
+                    break
+                elif is_fully_connected(self.view,without_me) and is_fully_connected(self.view,without_him): # Breaker captures
+                    print(f"breaker captured {node}, {neighbor}")
+                    if iterate:
+                        big_set.update(neighset)
+                    self.make_move(node,force_color="b")
+                    self.make_move(neighbor,force_color="b")
+                    break
+        big_set = big_set-set(consider_set)
+        if iterate and len(big_set)>0:
+            self.dead_and_captured(big_set,iterate=True)
 
 
     def who_won(self):
@@ -96,7 +140,7 @@ class Node_switching_game(Abstract_graph_game):
         g.name = "Shannon_node_switching_game"
         return g
 
-    def prune_irrelevant_subgraphs(self) -> True:
+    def prune_irrelevant_subgraphs(self) -> bool:
         """Prune all subgraphs that are not connected to any terminal nodes
 
         As a side effect this will find out if the position is won for breaker
@@ -119,7 +163,7 @@ class Node_switching_game(Abstract_graph_game):
         breaker_wins = False
         leftovers = set(self.view.get_vertices())-set(found_vertices.flatten())-set((0,1))
         for vi in leftovers:
-            self.view.vp.f[self.view.vertex(vi)] = False
+            self.make_move(vi,force_color="b")
         return breaker_wins
 
     def compute_node_voltages_exact(self):

@@ -11,19 +11,33 @@ class Hex_board(Abstract_board_game):
     position:List[str]
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]
+    redgraph:bool
 
-    def __init__(self,onturn="r"):
+    def __init__(self,onturn="r",redgraph=True):
         self.onturn = onturn
+        self.redgraph = redgraph
 
-    def make_move(self, move:int):
+    def make_move(self, move:int, force_color=None, remove_dead_and_captured=False):
         """Make a move on the board representation and update the graph representation.
         
         Args:
             move: The square the move is to be made on."""
-        self.position[move] = self.onturn
-        self.onturn = "r" if self.onturn == "b" else "b"
-        self.game.make_move(self.board_index_to_vertex[move])
+        color = self.onturn if force_color is None else force_color
+        self.position[move] = color
+        if force_color is None:
+            self.onturn = "r" if color == "b" else "b"
+            to_force = None
+        else:
+            if (force_color=="r" and self.redgraph) or (force_color=="b" and not self.redgraph):
+                to_force = "m"
+            else:
+                to_force = "b"
+        self.game.make_move(self.board_index_to_vertex[move],force_color=to_force,remove_dead_and_captured=remove_dead_and_captured)
 
+    def graph_callback(self, vertex_move:int, makerturn:bool):
+        color = "r" if makerturn==self.redgraph else "b"
+        if self.position[self.vertex_to_board_index[vertex_move]]=="f":
+            self.position[self.vertex_to_board_index[vertex_move]] = color
 
     def grid_to_double_triangle(self,move:int):
         """Transform a move with grid numbering to a move with double triangle numbering"""
@@ -99,6 +113,7 @@ class Hex_board(Abstract_board_game):
 
 
     def graph_from_board(self, redgraph:bool, no_worthless_edges=True):
+        self.redgraph=redgraph
         sq_squares = int(math.sqrt(self.squares))
         self.board_index_to_vertex = {}
         self.game.graph = Graph(directed=False)
