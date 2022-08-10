@@ -49,7 +49,7 @@ class Node_switching_game(Abstract_graph_game):
             self.dead_and_captured(self.view.get_out_neighbors(square_node),True)
 
 
-    def dead_and_captured(self,consider_set:Union[None,List[int],Set[int]]=None,iterate=False): # TODO: Expand to breaker capture 
+    def dead_and_captured(self,consider_set:Union[None,List[int],Set[int]]=None,iterate=False):
         """Find dead and captured vertices and handle them appropriately
 
         Dead vertices and breaker captured vertices are removed. Maker captured vertices
@@ -67,7 +67,7 @@ class Node_switching_game(Abstract_graph_game):
         for node in consider_set:
             if not self.graph.vp.f[node] or node in (0,1):
                 continue
-            neighbors = self.view.get_out_neighbors(node)
+            neighbors = self.view.get_all_neighbors(node)
             neighset = set(neighbors)
             for neigh in neighset:   # Remove dead edges
                 if ((self.view.edge(node,self.terminals[0]) and self.view.edge(neigh,self.terminals[0])) or 
@@ -135,7 +135,7 @@ class Node_switching_game(Abstract_graph_game):
     def from_graph(graph:Graph):
         g = Node_switching_game()
         g.graph = graph
-        g.view = GraphView(g.graph)
+        g.view = GraphView(g.graph,vfilt=g.graph.vp.f)
         g.board = None
         g.name = "Shannon_node_switching_game"
         return g
