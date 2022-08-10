@@ -1,11 +1,11 @@
 from GN0.model_frontend import evaluate_graph,evaluate_game_state
-from GN0.generate_training_data import generate_graphs
+from GN0.generate_training_data import generate_winpattern_game_graphs, generate_hex_graphs
 from GCN import GCN
 import torch
 from graph_game.winpattern_game import Winpattern_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6
 from GN0.graph_dataset import SupervisedDataset,pre_transform
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import random
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
@@ -71,24 +71,6 @@ def test_model(games_to_play):
     for _ in range(games_to_play):
         win = False
         while 1:
-            move_choice = input()
-            actions = game.get_actions(filter_superseeded=False,none_for_win=False)
-            if len(actions) == 0:
-                break
-            if move_choice=="":
-                move = random.choice(actions)
-            else:
-                board_move = (int(move_choice[1])-1) * len(letters) + letters.index(move_choice[0])
-                move = game.board.node_map_rev[board_move]
-                if move not in actions:
-                    print(f"Invalid move {move}. Not in moves {actions}")
-                    continue
-
-            win = game.make_move(move)
-            game.board.position = game.board.pos_from_graph()
-            game.hashme()
-            if win:
-                break
             moves = game.get_actions(filter_superseeded=False,none_for_win=False)
             if len(moves) == 0:
                 break
@@ -110,8 +92,26 @@ def test_model(games_to_play):
             model_rows = pred_model.split("\n")
             gt_rows = pred_gt.split("\n")
             new_rows = [m+"    "+g for m,g in zip(model_rows,gt_rows)]
-            print("  pred         gt  ")
+            print("   pred          gt  ")
             print("\n".join(new_rows))
+            move_choice = input()
+            actions = game.get_actions(filter_superseeded=False,none_for_win=False)
+            if len(actions) == 0:
+                break
+            if move_choice=="":
+                move = random.choice(actions)
+            else:
+                board_move = (int(move_choice[1])-1) * len(letters) + letters.index(move_choice[0])
+                move = game.board.node_map_rev[board_move]
+                if move not in actions:
+                    print(f"Invalid move {move}. Not in moves {actions}")
+                    continue
+
+            win = game.make_move(move)
+            game.board.position = game.board.pos_from_graph()
+            game.hashme()
+            if win:
+                break
 
         reload(game,start_storage)
 

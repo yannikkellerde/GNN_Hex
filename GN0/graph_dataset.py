@@ -2,18 +2,19 @@
 import torch
 from torch_geometric.data import InMemoryDataset, download_url
 import pickle
-from GN0.generate_training_data import generate_graphs_multiprocess
+from GN0.generate_training_data import generate_graphs_multiprocess, generate_hex_graphs, generate_winpattern_game_graphs
 import numpy as np
 import os
 
 class SupervisedDataset(InMemoryDataset):
     num_data_creation_processes = 15
 
-    def __init__(self, root, device="cpu", transform=None, pre_transform=None, num_graphs=10000):
+    def __init__(self, root, device="cpu", transform=None, pre_transform=None, num_graphs=10000, generation_func=generate_winpattern_game_graphs):
         self.num_graphs = num_graphs
         super(SupervisedDataset, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
         self.data = self.data.to(device)
+        self.generation_func = generation_func
 
     @property
     def raw_file_names(self):
@@ -25,7 +26,7 @@ class SupervisedDataset(InMemoryDataset):
 
     def download(self):
         # Download to `self.raw_dir`.
-        generate_graphs_multiprocess(self.num_graphs,self.raw_paths)
+        generate_graphs_multiprocess(self.generation_func,self.num_graphs,self.raw_paths)
         print("graphs are generated")
 
     def process(self):

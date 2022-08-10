@@ -1,4 +1,4 @@
-from GN0.GCN import GCN, perfs
+from GN0.GCN import GCN_with_glob, perfs
 from GN0.generate_training_data import generate_graphs
 from GN0.graph_dataset import SupervisedDataset,pre_transform
 import torch
@@ -13,7 +13,7 @@ if not torch.cuda.is_available():
 
 dataset = SupervisedDataset(root='./data/', device=device, pre_transform=pre_transform)
 
-model = GCN(3,2,conv_layers=8,conv_dim=16,global_dim=16).to(device)
+model = GCN_with_glob(3,2,conv_layers=8,conv_dim=16,global_dim=16).to(device)
 #loader = DataLoader(dataset, batch_size=64, shuffle=True)
 loader = DataLoader(dataset, batch_size=64, shuffle=True)
 

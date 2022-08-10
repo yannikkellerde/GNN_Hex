@@ -1,13 +1,43 @@
 from graph_tool.all import Graph, Vertex
 from typing import List
 import numpy as np
+import math
+
+def findsquares(squares):
+    winsquarenums = set()
+    perrow = int(math.sqrt(squares))
+    for s in range(squares-perrow-1):
+        if s % perrow != perrow-1:
+            winsquarenums.add(frozenset({s,s+1,s+perrow,s+perrow+1}))
+    return winsquarenums
+
+def remove_useless_wsn(winsquarenums):
+    discardos = set()
+    for ws1 in winsquarenums:
+        for ws2 in winsquarenums:
+            if ws1!=ws2 and ws1.issubset(ws2):
+                discardos.add(ws2)
+    for d in discardos:
+        winsquarenums.discard(d)
+def findfivers(squares):
+    winsquarenums = set()
+    perrow = int(math.sqrt(squares))
+    for s in range(squares):
+        if perrow - (s % perrow) >= 5:
+            winsquarenums.add(frozenset({s,s+1,s+2,s+3,s+4}))
+            if perrow - (s // perrow) >= 5:
+                winsquarenums.add(frozenset({s,s+perrow+1,s+2*(perrow+1),s+3*(perrow+1),s+4*(perrow+1)}))
+        if perrow - (s // perrow) >= 5:
+            winsquarenums.add(frozenset({s,s+perrow,s+2*perrow,s+3*perrow,s+4*perrow}))
+            if (s % perrow) >= 4:
+                winsquarenums.add(frozenset({s,s+perrow-1,s+2*(perrow-1),s+3*(perrow-1),s+4*(perrow-1)}))
+    return winsquarenums
 
 def fully_connect_lists(g:Graph,l1:List[Vertex],l2:List[Vertex]):
     for v1 in l1:
         for v2 in l2:
             if v1!=v2:
                 g.edge(v1,v2,add_missing=True)
-
 
                 
 class take_step():

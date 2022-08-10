@@ -1,4 +1,4 @@
-from GN0.convert_graph import convert_graph
+from GN0.convert_graph import convert_winpattern_game, convert_node_switching_game
 from graph_game.winpattern_game import Winpattern_game
 import torch
 from graph_tool.all import Graph
@@ -12,7 +12,7 @@ def evaluate_graph(model:torch.nn.Module, graph:Graph,device="cpu"):
         graph: A graph-tool graph
 
     """
-    graph_data,vertexmap = convert_graph(graph)
+    graph_data,vertexmap = convert_winpattern_game(graph)
     graph_data.x = graph_data.x.float()
     graph_data.edge_index = graph_data.edge_index
     graph_data.to(device)

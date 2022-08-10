@@ -1,6 +1,6 @@
 from graph_game.winpattern_game import Winpattern_game
 from graph_game.winpattern_board import Winpattern_board
-from PN_Search.util import findfivers, findsquares, remove_useless_wsn
+from graph_game.utils import findfivers, findsquares, remove_useless_wsn
 from graph_tool.all import *
 import json
 from collections import defaultdict

@@ -9,6 +9,7 @@ from graph_game.graph_tools_hashing import wl_hash
 import pickle
 import numpy as np
 import os
+import random
 
 def test_voltages():
     size = 6
@@ -33,10 +34,12 @@ def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap)
     return targ_prop_map
 
 def check_hex_pattern(move_list):
+    letters = "abcdefghijklmnopqrstuvwxyz"
     size = 6
     g = Hex_game(size)
     g.board_callback = g.board.graph_callback
     for move,color in move_list:
+        print(letters[move%size]+str(move//size+1))
         g.board.make_move(move,force_color=color,remove_dead_and_captured=True)
         g.dead_and_captured(iterate=True)
         print(g.board.draw_me())
@@ -53,12 +56,13 @@ def check_hex_pattern(move_list):
 
 def check_some_hex_patterns():
     # move_list = [(4*7+1,"r"),(4*7+2,"r"),(3*7+3,"r"),(2*7+4,"r"),(7+3,"b")]
-    move_list = [(4*6+4,"r"),(3*6+5,"b"),(4*6+3,"r"),(4*6+2,"r"),(4*6+1,"r"),(4*6,"r"),(2*6+5,"b"),(6+5,"b"),(2*6+2,"r")]
+    move_list = [(4*6+4,"r"),(4*6+2,"r"),(4*6,"r"),(6+5,"b"),(2*6+2,"r")]
+    # random.shuffle(move_list)
     check_hex_pattern(move_list)
 
 
 def play_hex():
-    size = 6
+    size = 8
     g = Hex_game(size)
     g.board_callback = g.board.graph_callback
     letters = "abcdefghijklmnopqrstuvwxyz"
@@ -337,7 +341,7 @@ if __name__ == "__main__":
     #test_json_game()
     #test_graph_nets()
     #test_hex()
-    # play_hex()
-    check_some_hex_patterns()
+    play_hex()
+    # check_some_hex_patterns()
     # test_voltages()
     #test_graph_similarity()

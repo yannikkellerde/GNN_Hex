@@ -148,7 +148,7 @@ class Winpattern_board():
         self.onturn = onturn
         self.graph_from_board()
 
-    def draw_me_with_prediction(self,vprop:VertexPropertyMap) -> str:
+    def draw_me_with_prediction(self,vprop:VertexPropertyMap,numbered=True) -> str:
         """Print the board state into the terminal with colored indicators for the prediction.
         
         Args:
@@ -156,11 +156,19 @@ class Winpattern_board():
         Returns:
             A string with the printed board.
         """
+        letters = "abcdefghijklmnopqrstuvwxyz"
         t = Terminal()
         root = int(math.sqrt(self.squares))
-        out_str = "#"*(root+2)
+        out_str=""
+        if numbered:
+            out_str += "  "+"".join(letters[i] for i in range(root))+" "+"\n"
+        out_str += " "+"#"*(root+2)
         out_str+="\n"
         for row in range(root):
+            if numbered:
+                out_str+=str(row+1)
+            else:
+                out_str+=" "
             out_str+="#"
             for col in range(root):
                 sq = col+row*root
@@ -172,7 +180,7 @@ class Winpattern_board():
                 else:
                     out_str+=letter
             out_str+="#\n"
-        out_str += "#"*(root+2)
+        out_str += " "+"#"*(root+2)
         #print(out_str)
         return out_str
 

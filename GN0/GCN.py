@@ -75,7 +75,7 @@ class GCNConv_glob(MessagePassing):
         # Step 4: Normalize node features.
         return norm.view(-1, 1) * x_j
 
-class GCN(torch.nn.Module):
+class GCN_with_glob(torch.nn.Module):
     def __init__(self,num_node_features,label_dimension,conv_layers=2,conv_dim=16,global_dim=16):
         super().__init__()
         self.convs = GCNConv_glob(num_node_features, conv_dim, global_dim)

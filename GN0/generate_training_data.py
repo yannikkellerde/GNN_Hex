@@ -10,7 +10,7 @@ import time
 from tqdm import tqdm,trange
 import multiprocessing
 import pickle
-from typing import Callable
+from typing import Callable,List
 
 def generate_hex_graphs(games_to_play):
     """ Generate training graphs for the Graph net to learn from.
@@ -25,7 +25,7 @@ def generate_hex_graphs(games_to_play):
     graphs = []
 
     for _ in trange(games_to_play):
-        game = Hex_game(15)
+        game = Hex_game(11)
         # game.board_callback = game.board.graph_callback
         win = False
         while not win:
@@ -33,13 +33,13 @@ def generate_hex_graphs(games_to_play):
             move = random.choice(actions)
             game.make_move(move,remove_dead_and_captured=True)
             hash = wl_hash(game.view,game.view.vp.f)
-            # if hash not in known_hashes:
-                # known_hashes.add(hash)
-                # game.prune_irrelevant_subgraphs()
-                # voltprop = game.compute_node_voltages_exact()
-                # dropprop = game.compute_voltage_drops(voltprop)
-                # data = convert_node_switching_game(game.view,dropprop)
-                # graphs.append(data)
+            if hash not in known_hashes:
+                known_hashes.add(hash)
+                game.prune_irrelevant_subgraphs()
+                voltprop = game.compute_node_voltages_exact()
+                dropprop = game.compute_voltage_drops(voltprop)
+                data = convert_node_switching_game(game.view,dropprop)
+                graphs.append(data)
             win = game.who_won()
     return graphs
 
@@ -121,7 +121,7 @@ def generate_and_store_graphs(generation_func:Callable,games_to_play:int,path:st
         pickle.dump(graphs,f)
 
 
-def generate_graphs_multiprocess(generation_func:Callable,games_to_play:int,paths:str):
+def generate_graphs_multiprocess(generation_func:Callable,games_to_play:int,paths:List[str]):
     cores = multiprocessing.cpu_count()
     print(len(paths),cores)
     assert len(paths)<=cores
