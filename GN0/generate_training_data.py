@@ -24,13 +24,14 @@ def generate_hex_graphs(games_to_play):
     known_hashes = set()
     graphs = []
 
-    for _ in range(games_to_play):
+    for _ in trange(games_to_play):
         game = Hex_game(6)
+        # game.board_callback = game.board.graph_callback
         win = False
         while not win:
             actions = game.get_actions()
             move = random.choice(actions)
-            game.make_move(move)
+            game.make_move(move,remove_dead_and_captured=True)
             hash = wl_hash(game.view,game.view.vp.f)
             if hash not in known_hashes:
                 known_hashes.add(hash)

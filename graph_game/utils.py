@@ -27,7 +27,6 @@ def greedy_search(eval_func:callable,init_x:np.ndarray,take_step_func:callable,s
         y = take_step_func(x)
         new_cost = eval_func(y)
         if new_cost<=cost or np.random.random()<np.exp(-(new_cost-cost)):
-            print(y,new_cost)
             x=y
             cost = new_cost
             #if hasattr(take_step_func,"stepsize"):

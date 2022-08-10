@@ -118,8 +118,8 @@ class Hex_board(Abstract_board_game):
         self.game.graph = Graph(directed=False)
         self.game.terminals = [self.game.graph.add_vertex(),self.game.graph.add_vertex()]
         special_cliques = [self.game.graph.add_vertex(),self.game.graph.add_vertex()]
-        self.game.add_edge(self.game.terminals[0],special_cliques[0])
-        self.game.add_edge(self.game.terminals[1],special_cliques[1])
+        self.game.graph.add_edge(self.game.terminals[0],special_cliques[0])
+        self.game.graph.add_edge(self.game.terminals[1],special_cliques[1])
         num_cliques = ((sq_squares-1)**2)*2
         self.game.graph.add_vertex(num_cliques)
         for i in range(self.squares):
@@ -131,20 +131,20 @@ class Hex_board(Abstract_board_game):
                 self.game.graph.add_edge(v,special_cliques[1])
             if i//sq_squares!=sq_squares-1 and i%sq_squares!=sq_squares-1:
                 num = 4+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
             if i%sq_squares!=0 and i//sq_squares!=sq_squares-1:
                 num = 4-1+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
                 num = 4-2+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
             if i%sq_squares!=0 and i//sq_squares!=0:
                 num = 4+1+((i%sq_squares)-1)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
             if i%sq_squares!=sq_squares-1 and i//sq_squares!=0:
                 num = 4+(i%sq_squares)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
                 num = 4+1+(i%sq_squares)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(i,num)
+                self.game.graph.add_edge(v,num)
 
         self.vertex_to_board_index = {value:key for key,value in self.board_index_to_vertex.items()}
         self.game.graph.gp["m"] = self.game.graph.new_graph_property("bool")
@@ -163,10 +163,10 @@ class Hex_board(Abstract_board_game):
         for i in range(self.squares):
             if (self.position[i] == "r" and redgraph) or (self.position[i]=="b" and not redgraph):
                 self.game.graph.gp["m"] = True
-                self.game.make_move(self.board_index_to_vertex[i])
+                self.game.make_move(self.board_index_to_vertex[i],remove_dead_and_captured=True)
             elif self.position[i]!="f":
                 self.game.graph.gp["m"] = False
-                self.game.make_move(self.board_index_to_vertex[i])
+                self.game.make_move(self.board_index_to_vertex[i],remove_dead_and_captured=True)
 
     def graph_from_board(self, redgraph:bool, no_worthless_edges=True):
         self.redgraph=redgraph

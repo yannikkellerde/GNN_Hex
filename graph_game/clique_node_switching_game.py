@@ -21,23 +21,38 @@ class Clique_node_switching_game(Abstract_graph_game):
         """Remove cliques and squares with one or less neighbors"""
         if type(consider_set) not in (list,np.ndarray):
             consider_set = list(consider_set)
-        next_set = {}
+        next_set = set()
         for node,deg in zip(consider_set,self.view.get_total_degrees(consider_set)):
+            if not self.view.vp.f[node]:
+                if iterate:
+                    next_set.update(set(self.view.iter_all_neighbors(node)))
+                continue
+            print(f"{node} is{' not' if self.view.vp.s[node] else ''} a clique and has degree {deg}")
             if node<2:  # Terminals
                 continue
             if deg<2:
                 if self.view.vp.s[node]:
+                    print(f"{node} is dead")
                     self.make_move(node,force_color="b")
                 else:
-                    if iterate:
-                        next_set.update(set(self.view.get_all_neighbors(node)))
                     self.view.vp.f[node] = False
+                if iterate:
+                    next_set.update(set(self.view.iter_all_neighbors(node)))
+            else:
+                if not self.view.vp.s[node]:
+                    if len(set.intersection(*[set(self.view.iter_all_neighbors(n)) for n in self.view.iter_all_neighbors(node)]))>1:
+                        print(f"{node} is a dominated clique")
+                        self.view.vp.f[node] = False
+                        if iterate:
+                            next_set.update(set(self.view.iter_all_neighbors(node)))
         if iterate and len(next_set)>0:
+            print(f"Reiterating with {next_set}")
             next_next_set = self.dead_neighbor_removal(next_set,iterate=True)
-            if self.view.vp.s[next(iter(next_set))]:
+            if not self.view.vp.s[next(iter(next_set))]:
                 next_set.update(next_next_set)
                 return next_set
             return next_next_set
+        return set()
 
     def dead_and_captured(self,consider_set:Union[None,List[int],Set[int]]=None,iterate=True): 
         """Find dead and captured vertices and handle them appropriately
@@ -52,7 +67,7 @@ class Clique_node_switching_game(Abstract_graph_game):
                      consequence of changes from last action on dead or captured cells
         """
         if consider_set is None:
-            consider_set = self.view.vertices()
+            consider_set = self.view.vertices()[self.view.vp.s.a]
         more_to_consider = self.dead_neighbor_removal(consider_set,iterate=True) # Handle dead nodes
         consider_set = set(consider_set)
         consider_set.update(more_to_consider)
@@ -60,6 +75,9 @@ class Clique_node_switching_game(Abstract_graph_game):
         already = set()
         next_to_consider = set()
         for clique in consider_set:
+            if self.view.vp.s[clique]:
+                raise ValueError(f"{clique} is not a clique")
+            print("Clique considered:",clique)
             for neigh in self.view.iter_all_neighbors(clique):
                 if neigh in already:
                     continue
@@ -67,21 +85,25 @@ class Clique_node_switching_game(Abstract_graph_game):
                     already.add(neigh)
                 neighset = frozenset(self.view.get_all_neighbors(neigh))
                 if len(neighset)==2:
+                    print(f"{neigh} has only 2 neighbors: {neighset}")
                     if neighset in neighborsets: # Maker captures
+                        print(f"Maker captures {neigh} and {neighborsets[neighset]}")
                         self.make_move(neighborsets[neighset],force_color="b",remove_dead_and_captured=False,raise_error=False)
                         self.make_move(neigh,force_color="m",remove_dead_and_captured=False,raise_error=False)
                         next_to_consider.update(neighset)
                     else:
                         for next_clique in neighset:
+                            print(f"next clique: {next_clique}")
                             if self.view.vertex(next_clique).out_degree() == 2:
                                 for deep_neigh in self.view.iter_all_neighbors(next_clique):
                                     if self.view.vertex(deep_neigh).out_degree()==2 and deep_neigh!=neigh: # Breaker captures
+                                        print(f"Breaker captures {neigh} and {deep_neigh}")
                                         self.make_move(neigh,force_color="b",remove_dead_and_captured=False,raise_error=False)
                                         self.make_move(deep_neigh,force_color="b",remove_dead_and_captured=False,raise_error=False)
                                         next_to_consider.update(neighset)
                                         next_to_consider.update(set(self.view.get_all_neighbors(deep_neigh)))
                     neighborsets[neighset] = neigh
-        if iterate:
+        if iterate and len(next_to_consider)>0:
             self.dead_and_captured(next_to_consider,iterate=True)
 
                     
@@ -130,15 +152,18 @@ class Clique_node_switching_game(Abstract_graph_game):
         if remove_dead_and_captured:
             self.dead_and_captured(neigh_cliques,True)
         else:
-            self.dead_neighbor_removal([keep] if makerturn else neigh_cliques,False)
+            if len(neigh_cliques)==1:
+                self.dead_neighbor_removal([keep] if makerturn else neigh_cliques,False)
+            else:
+                self.dead_neighbor_removal(self.view.get_all_neighbors(keep) if makerturn else neigh_cliques,False)
 
     def who_won(self):
-        if shortest_distance(self.view,self.terminals[0],self.terminals[1])<=2:
+        dist =  shortest_distance(self.view,self.terminals[0],self.terminals[1])
+        if dist<=2:
             return "m"
-        for e in dfs_iterator(self.view,self.terminals[0]):
-            if e.target() == self.terminals[1]:
-                return None
-        return "b"
+        elif dist==2147483647:
+            return "b"
+        return None
 
     def move_wins(self,move_vertex:Union[Vertex,int]) -> bool:
         if type(move_vertex) == int:
@@ -203,6 +228,8 @@ class Clique_node_switching_game(Abstract_graph_game):
             fname: Filename to save to
             vprop: Optional vertex property map of type int or double to display
         """
+        if vprop is None:
+            vprop = self.view.vertex_index
         fill_color = self.view.new_vertex_property("vector<float>")
         shape = self.view.new_vertex_property("string")
         size = self.view.new_vertex_property("int")

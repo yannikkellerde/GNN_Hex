@@ -6,6 +6,7 @@ import json
 from collections import defaultdict
 import os,sys
 from graph_game.shannon_node_switching_game import Node_switching_game
+from graph_game.clique_node_switching_game import Clique_node_switching_game
 from graph_game.hex_board_game import Hex_board
 base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 
@@ -19,6 +20,15 @@ class Hex_game(Node_switching_game):
         self.board.graph_from_board(redgraph=True)
         self.name = f"Hex {size}x{size}"
 
+class Clique_hex_game(Clique_node_switching_game):
+    def __init__(self,size:int):
+        super().__init__()
+        self.board = Hex_board()
+        self.board.squares = size**2
+        self.board.game = self
+        self.board.position = ["f"]*self.board.squares
+        self.board.clique_graph_from_board(redgraph=True)
+        self.name = f"Clique_Hex {size}x{size}"
 
 class Json_game(Winpattern_game):
     def __init__(self,json_path:str):

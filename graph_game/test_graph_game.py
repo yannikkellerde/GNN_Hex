@@ -1,5 +1,5 @@
 from graph_tool.all import VertexPropertyMap,GraphView
-from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game,Hex_game
+from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game,Hex_game,Clique_hex_game
 from graph_game.hex_board_game import Hex_board
 from graph_game.shannon_node_switching_game import Node_switching_game
 import time
@@ -79,6 +79,9 @@ def play_hex():
         time.sleep(0.1)
         os.system("bspc node -f west")
         move_str = input()
+        if move_str == "redraw":
+            os.system("pkill mupdf")
+            continue
         move = letters.index(move_str[0])+(int(move_str[1:])-1)*size
         if g.move_wins(g.board.board_index_to_vertex[move]):
             print("Move wins")
