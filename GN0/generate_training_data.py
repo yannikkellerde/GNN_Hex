@@ -25,7 +25,7 @@ def generate_hex_graphs(games_to_play):
     graphs = []
 
     for _ in trange(games_to_play):
-        game = Hex_game(6)
+        game = Hex_game(15)
         # game.board_callback = game.board.graph_callback
         win = False
         while not win:
@@ -33,13 +33,13 @@ def generate_hex_graphs(games_to_play):
             move = random.choice(actions)
             game.make_move(move,remove_dead_and_captured=True)
             hash = wl_hash(game.view,game.view.vp.f)
-            if hash not in known_hashes:
-                known_hashes.add(hash)
-                game.prune_irrelevant_subgraphs()
-                voltprop = game.compute_node_voltages_exact()
-                dropprop = game.compute_voltage_drops(voltprop)
-                data = convert_node_switching_game(game.view,dropprop)
-                graphs.append(data)
+            # if hash not in known_hashes:
+                # known_hashes.add(hash)
+                # game.prune_irrelevant_subgraphs()
+                # voltprop = game.compute_node_voltages_exact()
+                # dropprop = game.compute_voltage_drops(voltprop)
+                # data = convert_node_switching_game(game.view,dropprop)
+                # graphs.append(data)
             win = game.who_won()
     return graphs
 

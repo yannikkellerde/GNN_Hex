@@ -20,6 +20,18 @@ class Node_switching_game(Abstract_graph_game):
     def get_actions(self):
         return self.view.vertex_index.copy().fa[2:] # We assume terminals in vertex index 0 and 1 for efficiency here
 
+    def _fix_teminal_connections(self,terminal):
+        change_set = set()
+        for v1 in self.view.iter_all_neighbors(terminal):
+            for v2 in self.view.iter_all_neighbors(terminal):
+                edge = self.view.edge(v1,v2)
+                if edge is not None:
+                    self.view.remove_edge(edge)
+                    change_set.add(v1)
+                    change_set.add(v2)
+        return change_set
+        
+
     def make_move(self,square_node:Union[int,Vertex],force_color=None,remove_dead_and_captured=False):
         """Make a move by choosing a vertex in the graph
 
@@ -35,18 +47,26 @@ class Node_switching_game(Abstract_graph_game):
             makerturn = force_color=="m"
         if type(square_node)==int:
             square_node = self.view.vertex(square_node)
+        change_set=set()
         if makerturn:
+            have_to_fix = None
             for vertex1 in self.view.iter_all_neighbors(square_node):
+                if vertex1 in (0,1):
+                    have_to_fix = vertex1
                 for vertex2 in self.view.iter_all_neighbors(square_node):
                     if vertex1!=vertex2:
-                        self.view.edge(vertex1,vertex2,add_missing=True)
+                        if not ((self.view.edge(vertex1,self.terminals[0]) and self.view.edge(vertex2,self.terminals[0])) or 
+                                (self.view.edge(vertex1,self.terminals[1]) and self.view.edge(vertex2,self.terminals[1]))):
+                            self.view.edge(vertex1,vertex2,add_missing=True)
+            if have_to_fix is not None:
+                change_set = self._fix_teminal_connections(have_to_fix)
         self.view.vp.f[square_node] = False
         if force_color is None:
             self.view.gp["m"] = not self.view.gp["m"]
         if self.board_callback is not None:
             self.board_callback(int(square_node),makerturn)
         if remove_dead_and_captured:
-            self.dead_and_captured(self.view.get_out_neighbors(square_node),True)
+            self.dead_and_captured(set(self.view.iter_all_neighbors(square_node)).union(change_set),True)
 
 
     def dead_and_captured(self,consider_set:Union[None,List[int],Set[int]]=None,iterate=False):
@@ -65,19 +85,20 @@ class Node_switching_game(Abstract_graph_game):
             consider_set = self.view.get_vertices()[2:]
         big_set:Set[int] = set()
         for node in consider_set:
+            # print("considering",node)
             if not self.graph.vp.f[node] or node in (0,1):
                 continue
             neighbors = self.view.get_all_neighbors(node)
             neighset = set(neighbors)
-            for neigh in neighset:   # Remove dead edges
-                if neigh in (0,1):
-                    continue
-                if ((self.view.edge(node,self.terminals[0]) and self.view.edge(neigh,self.terminals[0])) or 
-                        (self.view.edge(node,self.terminals[1]) and self.view.edge(neigh,self.terminals[1]))): # Remove useless edges
-                    if self.view.edge(node,neigh):
-                        # print(f"Removed edge from {node} to {neigh}")
-                        self.view.remove_edge(self.view.edge(node,neigh))
-                        big_set.add(neigh)
+            # for neigh in neighset:   # Remove dead edges
+            #     if neigh in (0,1):
+            #         continue
+            #     if ((self.view.edge(node,self.terminals[0]) and self.view.edge(neigh,self.terminals[0])) or 
+            #             (self.view.edge(node,self.terminals[1]) and self.view.edge(neigh,self.terminals[1]))): # Remove useless edges
+            #         if self.view.edge(node,neigh):
+            #             # print(f"Removed edge from {node} to {neigh}")
+            #             self.view.remove_edge(self.view.edge(node,neigh))
+            #             big_set.add(neigh)
 
             if is_fully_connected(self.view,neighbors):  # Dead nodes
                 if iterate:
@@ -85,26 +106,37 @@ class Node_switching_game(Abstract_graph_game):
                 self.make_move(node,force_color="b")
                 # print(f"{node} is dead")
                 continue
-            for neighbor in neighset:
-                if neighbor in (0,1):
+            one_neighbors_neighbors = self.view.get_all_neighbors(neighbors[0])
+            made_move = False
+            for neighbor in one_neighbors_neighbors:
+                if neighbor in (0,1) or neighbor==node:
                     continue
-                without_me = set(self.view.get_out_neighbors(neighbor))-{node}
+                without_me = set(self.view.get_all_neighbors(neighbor))-{node}
                 without_him = neighset-{neighbor}
                 if without_me == without_him:  # Maker captures
                     # print(f"maker captured {node}, {neighbor}")
                     if iterate:
-                        big_set.update(neighset)
+                        big_set.update(without_me)
                     self.make_move(node,force_color="m")
                     self.make_move(neighbor,force_color="b")
+                    made_move=True
                     break
-                elif is_fully_connected(self.view,without_me) and is_fully_connected(self.view,without_him): # Breaker captures
+            if made_move:
+                continue
+
+            for neighbor in neighset:
+                if neighbor in (0,1):
+                    continue
+                without_me = set(self.view.get_all_neighbors(neighbor))-{node}
+                without_him = neighset-{neighbor}
+                if is_fully_connected(self.view,without_me) and is_fully_connected(self.view,without_him): # Breaker captures
                     # print(f"breaker captured {node}, {neighbor}")
                     if iterate:
-                        big_set.update(neighset)
+                        big_set.update(without_me)
                     self.make_move(node,force_color="b")
                     self.make_move(neighbor,force_color="b")
                     break
-        big_set = big_set-set(consider_set)
+        big_set = big_set
         if iterate and len(big_set)>0:
             self.dead_and_captured(big_set,iterate=True)
 

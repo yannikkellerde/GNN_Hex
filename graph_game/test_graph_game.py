@@ -38,7 +38,7 @@ def check_hex_pattern(move_list):
     g.board_callback = g.board.graph_callback
     for move,color in move_list:
         g.board.make_move(move,force_color=color,remove_dead_and_captured=True)
-        g.dead_and_captured()
+        g.dead_and_captured(iterate=True)
         print(g.board.draw_me())
         g.draw_me("cur_game.pdf")#,vprop=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
