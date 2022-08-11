@@ -1,7 +1,14 @@
 from graph_tool.all import Graph, Vertex
-from typing import List
+from typing import List,Iterator,Union
 import numpy as np
 import math
+
+def double_loop_iterator(stuff:iter):
+    if type(stuff)!=list:
+        stuff = list(stuff)
+    for i,el1 in enumerate(stuff):
+        for el2 in stuff[i+1:]:
+            yield(el1,el2)
 
 def findsquares(squares):
     winsquarenums = set()
@@ -67,7 +74,7 @@ def greedy_search(eval_func:callable,init_x:np.ndarray,take_step_func:callable,s
     return x,cost
 
 # This isn't to quick. If we need speed, maybe implement as C graph-tool extension
-def is_fully_connected(g:Graph,vertices:List[int]) -> bool:
+def is_fully_connected(g:Graph,vertices:Iterator[int]) -> bool:
     """Checks if a list of vertices is fully connected.
 
     Args:
@@ -76,9 +83,7 @@ def is_fully_connected(g:Graph,vertices:List[int]) -> bool:
     Returns:
         Whether the vertices are fully connected
     """
-    for v1 in vertices:
-        for v2 in vertices:
-            if v1!=v2:
-                if not g.edge(v1,v2):
-                    return False
+    for v1,v2 in double_loop_iterator(vertices):
+        if not g.edge(v1,v2):
+            return False
     return True
