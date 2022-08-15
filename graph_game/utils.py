@@ -1,7 +1,12 @@
-from graph_tool.all import Graph, Vertex
+from graph_tool.all import Graph, Vertex, GraphView
 from typing import List,Iterator,Union
 import numpy as np
 import math
+
+def get_view_index_map(view:GraphView):
+    vi = view.vertex_index.copy().fa
+    return dict(zip(range(len(vi)),vi))
+
 
 def double_loop_iterator(stuff:iter):
     if type(stuff)!=list:

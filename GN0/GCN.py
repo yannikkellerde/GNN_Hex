@@ -75,6 +75,42 @@ class GCNConv_glob(MessagePassing):
         # Step 4: Normalize node features.
         return norm.view(-1, 1) * x_j
 
+class GCN(torch.nn.Module):
+    def __init__(self,num_node_features,label_dimension,conv_layers=2,conv_dim=16,output_activation=lambda x:x,parameter_sharing=False,instance_norm=False):
+        super().__init__()
+        self.convs = GCNConv(num_node_features, conv_dim)
+        conv_between = []
+        if parameter_sharing:
+            gcn_conv = GCNConv(conv_dim,conv_dim,aggr="add")
+            conv_between = [gcn_conv for _ in range(conv_layers-2)]
+        else:
+            for _ in range(conv_layers-2):
+                conv_between.append(GCNConv(conv_dim, conv_dim,aggr="add"))
+        self.instance_norm = instance_norm
+        if self.instance_norm:
+            i_norms = []
+            for _ in range(conv_layers-1):
+                i_norms.append(torch.nn.InstanceNorm1d(conv_dim))
+            self.i_norms = torch.nn.ModuleList(i_norms)
+        self.conv_between = torch.nn.ModuleList(conv_between)
+        self.conve = GCNConv(conv_dim, label_dimension)
+        self.output_activation = output_activation
+
+    def forward(self, x, edge_index):
+
+        x = self.convs(x, edge_index)
+        x = F.relu(x)
+        if self.instance_norm:
+            x = self.i_norms[0](x)
+        for i,conv in enumerate(self.conv_between):
+            x = conv(x, edge_index)
+            x = F.relu(x)
+            if self.instance_norm:
+                x = self.i_norms[i+1](x)
+        #x = F.dropout(x, training=self.training)
+        x = self.conve(x, edge_index)
+        return self.output_activation(x)
+
 class GCN_with_glob(torch.nn.Module):
     def __init__(self,num_node_features,label_dimension,conv_layers=2,conv_dim=16,global_dim=16):
         super().__init__()

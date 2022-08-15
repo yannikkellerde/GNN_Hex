@@ -169,6 +169,10 @@ class Node_switching_game(Abstract_graph_game):
     def from_graph(graph:Graph):
         g = Node_switching_game()
         g.graph = graph
+        g.terminals = [g.graph.vertex(0),g.graph.vertex(1)]
+        if not hasattr(g.graph.vp,"f"):
+            g.graph.vp.f = g.graph.new_vertex_property("bool")
+            g.graph.vp.f.a = True
         g.view = GraphView(g.graph,vfilt=g.graph.vp.f)
         g.board = None
         g.name = "Shannon_node_switching_game"
@@ -244,15 +248,23 @@ class Node_switching_game(Abstract_graph_game):
 
 
 
-    def draw_me(self,fname="node_switching.pdf",vprop=None):
+    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None):
         """Draw the state of the graph and save it into a pdf file.
 
         Args:
             fname: Filename to save to
             vprop: Optional vertex property map of type int or double to display
         """
-        if vprop is None:
+        if vprop1 is None:
             vprop = self.view.vertex_index
+        elif vprop2 is None:
+            vprop = vprop1
+        else:
+            vprop = self.view.new_vertex_property("string")
+            for v in self.view.iter_vertices():
+                vprop[v] = str(int(vprop1[v]))+"/\n"+str(int(vprop2[v]))
+            vprop[0] = ""
+            vprop[1] = ""
         if self.view.num_vertices()==0:
             print("WARNING: Trying to draw graph without vertices")
             return

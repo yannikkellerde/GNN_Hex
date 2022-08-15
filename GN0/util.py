@@ -4,6 +4,7 @@ import networkx as nx
 from graph_tool.all import Graph,Vertex
 from typing import List
 
+
 def get_one_hot(length:int,index:int,dtype=np.float32):
     """Returns a zero vector with one entry set to one
     

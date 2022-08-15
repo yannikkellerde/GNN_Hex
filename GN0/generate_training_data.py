@@ -12,7 +12,7 @@ import multiprocessing
 import pickle
 from typing import Callable,List
 
-def generate_hex_graphs(games_to_play):
+def generate_hex_graphs(games_to_play,drop=False,game_size=11):
     """ Generate training graphs for the Graph net to learn from.
     Makes random moves in the game and uses voltage drop algorithm
     to evaluate moves. Then stores the graphs as training
@@ -25,7 +25,7 @@ def generate_hex_graphs(games_to_play):
     graphs = []
 
     for _ in trange(games_to_play):
-        game = Hex_game(11)
+        game = Hex_game(game_size)
         # game.board_callback = game.board.graph_callback
         win = False
         while not win:
@@ -37,8 +37,12 @@ def generate_hex_graphs(games_to_play):
                 known_hashes.add(hash)
                 game.prune_irrelevant_subgraphs()
                 voltprop = game.compute_node_voltages_exact()
-                dropprop = game.compute_voltage_drops(voltprop)
-                data = convert_node_switching_game(game.view,dropprop)
+                if drop:
+                    dropprop = game.compute_voltage_drops(voltprop)
+                    prop = dropprop
+                else:
+                    prop = voltprop
+                data = convert_node_switching_game(game.view,prop)
                 graphs.append(data)
             win = game.who_won()
     return graphs
@@ -115,21 +119,26 @@ def generate_winpattern_game_graphs(games_to_play):
         reload(game,start_storage)
     return graphs
 
-def generate_and_store_graphs(generation_func:Callable,games_to_play:int,path:str):
-    graphs = generation_func(games_to_play)
+def generate_and_store_graphs(game_type:str,games_to_play:int,path:str,kwargs):
+    if game_type=="qango":
+        generation_func = generate_winpattern_game_graphs
+    elif game_type=="hex":
+        generation_func = generate_hex_graphs
+    else:
+        raise ValueError("Unkown game type "+game_type)
+    graphs = generation_func(games_to_play,**kwargs)
     with open(path,"wb") as f:
         pickle.dump(graphs,f)
 
 
-def generate_graphs_multiprocess(generation_func:Callable,games_to_play:int,paths:List[str]):
+def generate_graphs_multiprocess(game_type:str,games_to_play:int,paths:List[str],**kwargs):
     cores = multiprocessing.cpu_count()
     print(len(paths),cores)
     assert len(paths)<=cores
     div,mod = divmod(games_to_play,len(paths))
     params = [div + (1 if x < mod else 0) for x in range(len(paths))]
-    partial_generate = lambda *args:generate_and_store_graphs(generation_func,*args)
     with multiprocessing.Pool(len(paths)) as pool:
-        pool.starmap(partial_generate,zip(params,paths))
+        pool.starmap(generate_and_store_graphs,zip([game_type]*len(params),params,paths,[kwargs]*len(params)))
 
 if __name__=="__main__":
     generate_and_store_graphs(generate_hex_graphs,100,"test.pkl")
