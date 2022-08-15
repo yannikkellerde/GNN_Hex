@@ -11,6 +11,22 @@ import numpy as np
 import os
 import random
 
+def test_iterative_voltages():
+    size = 11
+    g = Hex_game(size)
+    vprop_exact = g.compute_node_voltages_exact()
+    dprop_exact = g.compute_voltage_drops(vprop_exact)
+    intprop_exact = g.view.new_vertex_property("int")
+    intprop_exact.a = np.around(dprop_exact.a).astype(int)
+    vprop_approx = g.compute_node_voltages_iterate(30)
+    dprop_approx = g.compute_voltage_drops(vprop_approx,check_validity=False)
+    intprop_approx = g.view.new_vertex_property("int")
+    intprop_approx.a = np.around(dprop_approx.a).astype(int)
+    g.draw_me(fname="voltages.pdf",vprop1=intprop_exact,vprop2=intprop_approx)
+    os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
+    assert np.allclose(dprop_approx.a,dprop_exact.a)
+
+
 def test_voltages():
     size = 6
     g = Hex_game(size)
@@ -342,6 +358,7 @@ if __name__ == "__main__":
     #test_graph_nets()
     #test_hex()
     # play_hex()
-    check_some_hex_patterns()
+    # check_some_hex_patterns()
+    test_iterative_voltages()
     # test_voltages()
     #test_graph_similarity()

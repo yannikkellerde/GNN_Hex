@@ -179,30 +179,41 @@ class Node_switching_game(Abstract_graph_game):
         return g
 
     def prune_irrelevant_subgraphs(self) -> bool:
-        """Prune all subgraphs that are not connected to any terminal nodes
+        """Prune all subgraphs that are not connected to a terminal node.
 
-        As a side effect this will find out if the position is won for breaker
+        Subgraphs that are only reachable from a terminal node by going through the other terminal node
+        will also be pruned. As a side effect this function will find out if the position is won for breaker.
 
         Returns:
             If the position is won for breaker
         """
-        found_vertices = dfs_iterator(self.view,source=self.terminals[0],array=True)
-        if int(self.terminals[1]) not in found_vertices:
-            new_found_vertices = dfs_iterator(self.view,source=self.terminals[1],array=True)
-            if len(found_vertices)>0:
-                if len(new_found_vertices)>0:
-                    found_vertices = np.concatenate((found_vertices,new_found_vertices))
-            else:
-                if len(new_found_vertices)>0:
-                    found_vertices = new_found_vertices
-                else:
-                    found_vertices = np.array([0,1])
-            breaker_wins = True
-        breaker_wins = False
-        leftovers = set(self.view.get_vertices())-set(found_vertices.flatten())-set((0,1))
+        self.view.vp.f[self.terminals[1]] = False
+        found_vertices1 = set(dfs_iterator(self.view,source=self.terminals[0]))
+        self.view.vp.f[self.terminals[1]] = True
+        self.view.vp.f[self.terminals[0]] = False
+        found_vertices2 = set(dfs_iterator(self.view,source=self.terminals[1]))
+        self.view.vp.f[self.terminals[0]] = True
+        valid_vertices = found_vertices1.intersection(found_vertices2)
+        valid_vertices.add(0)
+        valid_vertices.add(1)
+
+        leftovers = set(self.view.get_vertices())-set(valid_vertices)
         for vi in leftovers:
             self.make_move(vi,force_color="b")
-        return breaker_wins
+
+        return self.view.num_vertices==2
+
+    def compute_node_voltages_iterate(self,iterations:int):
+        vprop = self.view.new_vertex_property("double")
+        vprop.a = 50
+        vprop[self.terminals[0]] = 0
+        vprop[self.terminals[1]] = 100
+        for _ in range(iterations):
+            for v in self.view.vertices():
+                if v in self.terminals:
+                    continue
+                vprop[v] = sum(vprop[x] for x in v.all_neighbors())/v.out_degree()
+        return vprop
 
     def compute_node_voltages_exact(self):
         adj = adjacency(self.view).toarray()
@@ -221,7 +232,7 @@ class Node_switching_game(Abstract_graph_game):
         v_prop.fa = voltages
         return v_prop
 
-    def compute_voltage_drops(self,voltage_prop):
+    def compute_voltage_drops(self,voltage_prop,check_validity=True):
         d_prop = self.view.new_vertex_property("double")
         for vertex in self.view.vertices():
             if vertex not in self.terminals:
@@ -240,10 +251,14 @@ class Node_switching_game(Abstract_graph_game):
                         lower_sum += n_volt
                 drop_high = higher_sum-my_volt*num_higher_neighs
                 drop_low = my_volt*num_lower_neighs-lower_sum
-                if not np.isclose(drop_low,drop_high):
-                    self.draw_me("error_graph.pdf",voltage_prop)
-                assert np.isclose(drop_low,drop_high)
-                d_prop[vertex] = drop_low
+                if check_validity:
+                    drop = drop_low
+                    if not np.isclose(drop_low,drop_high):
+                        self.draw_me("error_graph.pdf",voltage_prop)
+                    assert np.isclose(drop_low,drop_high)
+                else:
+                    drop = (drop_low+drop_high)/2
+                d_prop[vertex] = drop
         return d_prop
 
 
