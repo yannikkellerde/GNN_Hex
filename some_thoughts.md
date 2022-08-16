@@ -2,7 +2,8 @@
 ## Before last meeting
 + Implement Graph Representation for Qango/Tic-Tac-Toe/Go-Moku (winnpattern game)
 + Solve Qango using PN-DAG and Threat-space-search [https://python.yannikkeller.de/solver/analyze/qango6x6?ruleset=tournament](https://python.yannikkeller.de/solver/analyze/qango6x6?ruleset=tournament)
-+ Train a Graph Neural Network to simulate Threat-space-search (96% Accuracy, requires graph-level attributes)
++ Train a Graph Neural Network to simulate Threat-space-search on Qango 6x6 (96% Accuracy, requires graph-level attributes)
+	- Performance drops significantly when trying to transfer to Tic-Tac-Toe or other Qango sizes.
 
 ## Since last meeting
 + Implement Graph Representation for Hex (Shannon-node-switching game)
