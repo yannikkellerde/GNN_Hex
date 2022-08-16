@@ -78,7 +78,7 @@ def check_some_hex_patterns():
 
 
 def play_hex():
-    size = 8
+    size = 6
     g = Hex_game(size)
     g.board_callback = g.board.graph_callback
     letters = "abcdefghijklmnopqrstuvwxyz"
@@ -106,6 +106,7 @@ def play_hex():
         if g.move_wins(g.board.board_index_to_vertex[move]):
             print("Move wins")
         g.board.make_move(move,remove_dead_and_captured=True)
+        g.prune_irrelevant_subgraphs()
         os.system("pkill mupdf")
 
      
@@ -357,8 +358,8 @@ if __name__ == "__main__":
     #test_json_game()
     #test_graph_nets()
     #test_hex()
-    # play_hex()
+    play_hex()
     # check_some_hex_patterns()
-    test_iterative_voltages()
+    # test_iterative_voltages()
     # test_voltages()
     #test_graph_similarity()

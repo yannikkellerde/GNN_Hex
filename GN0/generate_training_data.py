@@ -11,8 +11,9 @@ from tqdm import tqdm,trange
 import multiprocessing
 import pickle
 from typing import Callable,List
+from torch_geometric.data import Data
 
-def generate_hex_graphs(games_to_play,drop=False,game_size=11):
+def generate_hex_graphs(games_to_play,drop=False,game_size=11) -> List[Data]:
     """ Generate training graphs for the Graph net to learn from.
     Makes random moves in the game and uses voltage drop algorithm
     to evaluate moves. Then stores the graphs as training
@@ -45,6 +46,8 @@ def generate_hex_graphs(games_to_play,drop=False,game_size=11):
                 data = convert_node_switching_game(game.view,prop)
                 graphs.append(data)
             win = game.who_won()
+            game.draw_me("test.pdf")
+            
     return graphs
 
                 

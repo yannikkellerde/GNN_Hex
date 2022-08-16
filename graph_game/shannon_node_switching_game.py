@@ -188,16 +188,17 @@ class Node_switching_game(Abstract_graph_game):
             If the position is won for breaker
         """
         self.view.vp.f[self.terminals[1]] = False
-        found_vertices1 = set(dfs_iterator(self.view,source=self.terminals[0]))
+        found_vertices1 = set(x[1] for x in dfs_iterator(self.view,source=self.terminals[0],array=True))
         self.view.vp.f[self.terminals[1]] = True
         self.view.vp.f[self.terminals[0]] = False
-        found_vertices2 = set(dfs_iterator(self.view,source=self.terminals[1]))
+        found_vertices2 = set(x[1] for x in dfs_iterator(self.view,source=self.terminals[1],array=True))
         self.view.vp.f[self.terminals[0]] = True
         valid_vertices = found_vertices1.intersection(found_vertices2)
         valid_vertices.add(0)
         valid_vertices.add(1)
 
         leftovers = set(self.view.get_vertices())-set(valid_vertices)
+        print(leftovers)
         for vi in leftovers:
             self.make_move(vi,force_color="b")
 

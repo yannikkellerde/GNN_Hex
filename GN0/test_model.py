@@ -16,22 +16,30 @@ import random
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torchmetrics import Accuracy
+from torch_geometric.data import Batch
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def test_random_graphs(model):
-    dataset = SupervisedDataset(root='./data/testdata', device=device, pre_transform=hex_pre_transform,num_graphs=100,game_type="hex",drop=True,game_size=13)
+    dataset = SupervisedDataset(root='./data/testdata', device=device, pre_transform=hex_pre_transform,num_graphs=100,game_type="hex",drop=True,game_size=11)
     batch_size = 256
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     with torch.no_grad():
         for batch in loader:
+            data_list = [hex_pre_transform(batch.get_example(i)).to(device) for i in range(batch.num_graphs)]
+            small_data = generate_hex_graphs(games_to_play=1,drop=True,game_size=11)[0]
+            data_list[0] = hex_pre_transform(small_data).to(device)
+            batch = Batch.from_data_list(data_list)
+
             tt_mask = batch.train_mask | batch.test_mask
+            # tt_mask = torch.ones(batch.y.size(0),dtype=bool)
             out = model(batch.x,batch.edge_index)
             loss = F.mse_loss(out[tt_mask],batch.y[tt_mask])
             print(loss)
             for i in range(batch_size):
                 data = batch.get_example(i)
                 print(len(data.x))
+                print(data)
                 graph,tprop = convert_node_switching_game_back(data)
                 predprop = graph.new_vertex_property("double")
                 predprop.a = out[batch.batch==i].cpu().numpy()[:,0]
