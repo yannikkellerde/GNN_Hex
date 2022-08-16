@@ -22,7 +22,6 @@
 
 
 # Some thoughts about how to continue
-## Training
 ### Initialization/Transfer
 Maybe initialize the network based on supervised learning on the electrical circuit before going into MCTS?
 ### Curiculum?
