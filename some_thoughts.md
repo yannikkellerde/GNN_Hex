@@ -32,7 +32,7 @@ passing steps. After we master this, grow to 7x7, transfer parameters but add a 
 I am not scared of C. However, I think it makes sense to use python not only because I am more comfortable with it, but also to use pytorch-geometric and
 other modules to build upon in python.
 
-However, I am aware that python can be slow at times and during MCTS this can be a heavy limiting factor. My graph library graph-tool has it's core data
+However, I am aware that python can be slow at times and during MCTS this can be a heavy limiting factor. The graph library that I use, graph-tool, has it's core data
 structures and algorithms implemented in C++. It is possible to [write extensions for it in C++](https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html).
 If it becomes nescessary, I could rewrite some functionalitly of my hex graph as a C++ extension (such as removing dead and captured cells) to decrease runtime.
 ### MCTS and Batching
