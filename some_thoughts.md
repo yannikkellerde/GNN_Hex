@@ -37,6 +37,6 @@ However, I am aware that python can be slow at times and during MCTS this can be
 structures and algorithms implemented in C++. It is possible to [write extensions for it in C++](https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html).
 If it becomes nescessary, I could rewrite some functionalitly of my hex graph as a C++ extension (such as removing dead and captured cells) to decrease runtime.
 ### MCTS and Batching
-For the Graph Net policy and value approximation to be efficient, we need to batch many graphs together. Thus, we either have to play multiple games at once or do the MCTS in an inexact way (e.g. doing new expansions before others where evaluated). There are some approaches in the AlphaGo/AlphaZero papers (APV-MCTS), but there are decisions to be made.
+For the Graph Net policy and value approximation to be efficient, we need to batch many graphs together. Thus, we either have to play multiple games at once or do the MCTS in an inexact way (e.g. doing new expansions before others where evaluated). There are some approaches in the AlphaGo/AlphaZero papers (APV-MCTS, virtual loss), but there are decisions to be made.
 
-It will show itself if CPU computation of positions and tree traversal or GPU policy and value approximation is more of a bottleneck. If the first is the case, it may be usefull to implement MCTS in a multiprocessing fashion.
+It will show itself if CPU computation of positions and tree traversal or GPU policy and value approximation is more of a bottleneck. If the first is the case, it will be usefull to implement MCTS in a multiprocessing fashion.
