@@ -40,3 +40,5 @@ If it becomes nescessary, I could rewrite some functionalitly of my hex graph as
 For the Graph Net policy and value approximation to be efficient, we need to batch many graphs together. Thus, we either have to play multiple games at once or do the MCTS in an inexact way (e.g. doing new expansions before others where evaluated). There are some approaches in the AlphaGo/AlphaZero papers (APV-MCTS, virtual loss), but there are decisions to be made.
 
 It will show itself if CPU computation of positions and tree traversal or GPU policy and value approximation is more of a bottleneck. If the first is the case, it will be usefull to implement MCTS in a multiprocessing fashion.
+### Swap rule
+The swap rule is an important factor for hex, especially when starting with small boards, because starting in the middle is a pretty trivial win and not a lot is to be learned. Thus, I think it is important to implement the swap rule right away. Not to clear how to implement this in the policy/value network and or MCTS though.
