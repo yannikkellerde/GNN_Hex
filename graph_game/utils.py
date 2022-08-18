@@ -3,6 +3,14 @@ from typing import List,Iterator,Union
 import numpy as np
 import math
 
+def to_directed_graph(graph:Graph):
+    graph.set_directed(True)
+    graph.set_reversed(True)
+    rev_edges = graph.get_edges()
+    graph.set_reversed(False)
+    graph.add_edge_list(rev_edges)
+
+
 def get_view_index_map(view:GraphView):
     vi = view.vertex_index.copy().fa
     return dict(zip(range(len(vi)),vi))

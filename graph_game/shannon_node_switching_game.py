@@ -1,8 +1,9 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
 from graph_game.utils import is_fully_connected, double_loop_iterator
-from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency
-from typing import Union, List, Iterator, Set, Callable
+from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency,boykov_kolmogorov_max_flow,min_st_cut
+from typing import Union, List, Iterator, Set, Callable, Tuple
 import numpy as np
+from graph_game.utils import to_directed_graph
 import scipy.linalg
 import sklearn.preprocessing
 from itertools import tee
@@ -198,25 +199,52 @@ class Node_switching_game(Abstract_graph_game):
         valid_vertices.add(1)
 
         leftovers = set(self.view.get_vertices())-set(valid_vertices)
-        print(leftovers)
         for vi in leftovers:
             self.make_move(vi,force_color="b")
 
         return self.view.num_vertices==2
 
-    def compute_node_voltages_iterate(self,iterations:int):
+    def compute_node_voltages_iterate(self,iterations:int,voltage=100):
+        """Compute approximate node voltages by treating the graph as an electrical circuit and using an iterative algorithm
+
+        Some voltage is applied at terminal node 1 and terminal node 0 is the sink.
+        Each edge has 1 Ohm resistance. Using Kirchhoff's current law, we find the node voltages
+        by iteratively setting each nodes voltage to the mean of it's neighbors.
+        The complexity of this is O(k*N*m) for k iterations, N vertices and an average
+        neighborhood size of m.
+
+        Args:
+            voltage: How many volts to be applied at terminal node 1
+        Returns:
+            A vertex property map for the vertex voltages
+            The current at terminal node 0 in Ampere, can be used as evaluation function.
+        """
         vprop = self.view.new_vertex_property("double")
-        vprop.a = 50
+        vprop.a = voltage/2
         vprop[self.terminals[0]] = 0
-        vprop[self.terminals[1]] = 100
+        vprop[self.terminals[1]] = voltage
         for _ in range(iterations):
             for v in self.view.vertices():
                 if v in self.terminals:
                     continue
                 vprop[v] = sum(vprop[x] for x in v.all_neighbors())/v.out_degree()
-        return vprop
+        value = sum(x[1] for x in self.view.iter_all_neighbors(0,[vprop]))
+        return vprop, value
 
-    def compute_node_voltages_exact(self):
+    def compute_node_voltages_exact(self, voltage=100) -> Tuple[VertexPropertyMap,float]:
+        """Compute exact node voltages by treating the graph as an electrical circuit
+
+        Some voltage is applied at terminal node 1 and terminal node 0 is the sink.
+        Each edge has 1 Ohm resistance. Using Kirchhoff's current law, we solve for
+        the node voltages using a linear equation system. The complexity of this is
+        O(N^3) for a graph with N vertices.
+
+        Args:
+            voltage: How many volts to be applied at terminal node 1
+        Returns:
+            A vertex property map for the vertex voltages
+            The current at terminal node 0 in Ampere, can be used as evaluation function.
+        """
         adj = adjacency(self.view).toarray()
         adj = sklearn.preprocessing.normalize(adj,norm="l1")
         i1 = int(self.terminals[0])
@@ -227,13 +255,25 @@ class Node_switching_game(Abstract_graph_game):
         adj[i1,i1] = 1
         adj[i2,i2] = 1
         b = np.zeros(adj.shape[0])
-        b[i2] = 100
+        b[i2] = voltage
         voltages = scipy.linalg.solve(adj,b,overwrite_a=True,overwrite_b=True)
         v_prop = self.view.new_vertex_property("double")
         v_prop.fa = voltages
-        return v_prop
+        value = sum(x[1] for x in self.view.iter_all_neighbors(0,[v_prop]))
+        return v_prop,value
 
-    def compute_voltage_drops(self,voltage_prop,check_validity=True):
+    def compute_node_currents(self,voltage_prop,check_validity=True) -> VertexPropertyMap:
+        """Compute the currents flowing through each node in the electical circuit representation in the graph
+
+        According to Kirchoffs laws, we can compute the current at each node by summing the voltage diffences to
+        all neighbors with higher voltage. This has a runtime of O(N*m) for N vertices and average neighborhood size m.
+
+        Args:
+            voltage_prop: Property map containing vertex voltages.
+            check_validity: If true, check if outgoing and incoming current for each node are the
+                            same and raise error otherwise. This can happen if the node voltages
+                            are not exact.
+        """
         d_prop = self.view.new_vertex_property("double")
         for vertex in self.view.vertices():
             if vertex not in self.terminals:

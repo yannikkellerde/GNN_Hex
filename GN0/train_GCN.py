@@ -1,4 +1,4 @@
-from GN0.GCN import GCN_with_glob, perfs
+from GN0.models import GCN_with_glob, perfs
 import numpy as np
 import os
 from GN0.graph_dataset import SupervisedDataset,winpattern_pre_transform,hex_pre_transform
@@ -6,6 +6,7 @@ from GN0.generate_training_data import generate_hex_graphs, generate_winpattern_
 from GN0.convert_graph import convert_node_switching_game, convert_winpattern_game
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import random_split
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torchmetrics import Accuracy
@@ -18,10 +19,25 @@ if not torch.cuda.is_available():
     print("WARNING: cuda not avaliabe, using cpu")
 
 #loader = DataLoader(dataset, batch_size=64, shuffle=True)
-def train_gcn(model:torch.nn.Module,dataset,model_name:str,loss_func:Callable,eval_func:Callable,
-              writer:SummaryWriter,categorical_eval=False,maximizing_eval=False,epochs=2000,lr=0.002,batch_size=256,hparams_to_log=None):
+def train_gcn(model:torch.nn.Module,dataset,model_name:str,loss_func:Callable,eval_func:Callable,writer:SummaryWriter,
+              categorical_eval=False,maximizing_eval=False,epochs=2000,lr=0.002,batch_size=256,hparams_to_log=None):
+    def save_model(name_modifier):
+        save_dic = {
+            'epoch': epochs,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'ev': ev,
+            'hparams':hparams_to_log,
+            }
+        if hasattr(model,"supports_cache") and model.supports_cache:
+            save_dic["cache"] = model.export_norm_cache()
+        torch.save(save_dic, os.path.join("model",f"{model_name}_{name_modifier}.pt"))
     eval_func_name = eval_func.__name__ if hasattr(eval_func,"__name__") else eval_func.__class__.__name__
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    train_size = int(0.8 * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
     batch = next(iter(loader))
     writer.add_graph(model,(batch.x,batch.edge_index))
 
@@ -33,10 +49,13 @@ def train_gcn(model:torch.nn.Module,dataset,model_name:str,loss_func:Callable,ev
     for epoch in trange(epochs):
         losses = []
         eval_metrics = []
-        for batch in tqdm(loader):
+        for i,batch in tqdm(enumerate(loader)):
             optimizer.zero_grad()
-            out = model(batch.x,batch.edge_index)
-            loss = loss_func(out[batch.train_mask], batch.y[batch.train_mask])
+            if i==len(loader)-1 and hasattr(model,"supports_cache") and model.supports_cache:
+                policy,value = model(batch.x,batch.edge_index,batch.batch,set_cache=True)
+            else:
+                policy,value = model(batch.x,batch.edge_index,batch.batch)
+            loss = loss_func(policy[batch.train_mask], batch.y[batch.train_mask])
             if categorical_eval:
                 eval_res = eval_func(out[batch.test_mask].flatten(), batch.y[batch.test_mask].flatten().long())
             else:
@@ -60,29 +79,10 @@ def train_gcn(model:torch.nn.Module,dataset,model_name:str,loss_func:Callable,ev
         
         if (maximizing_eval and -ev<best_ev) or (not maximizing_eval and ev < best_ev):
             best_ev = ev
-            torch.save({
-                    'epoch': epochs,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'ev': ev,
-                    'hparams':hparams_to_log,
-                    }, os.path.join("model",f"{model_name}_best.pt"))
+            save_model("best")
         elif epoch%100==0:
-            torch.save({
-                    'epoch': epochs,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'ev': ev,
-                    'hparams':hparams_to_log,
-                    }, os.path.join("model",f"{model_name}_{epoch}.pt"))
-
-
-    torch.save({
-            'epoch': epochs,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'ev': ev,
-            }, os.path.join("model","final_"+model_name+".pt"))
+            save_model(str(epoch))
+    save_model("final")
     return best_ev,best_loss
 
 def train_hex():

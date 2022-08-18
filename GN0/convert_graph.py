@@ -50,7 +50,7 @@ def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     
     return node_features,edge_index,targets
 
-def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap):
+def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap,global_input_properties=[],global_output_properties=[]):
     """Convert a graph-tool graph for a shannon node switching game into torch_geometric data
 
     The torch_geometric data stores the follwing features from the input graphs:
@@ -68,11 +68,13 @@ def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap):
         A torch_geometric Data object representing the graph
     """
     n = graph.num_vertices()
-    node_features = torch.zeros((n,3))
+    node_features = torch.zeros((n,3+len(global_input_properties)))
     degprop = graph.degree_property_map("total")
     node_features[:,0] = torch.tensor(degprop.fa).float()
     node_features[0,1] = 1
     node_features[1,2] = 1
+    for i,p in enumerate(global_input_properties):
+        node_features[:,3+i] = p
     verts = graph.get_vertices()
 
     # This is all not super efficient, but as long as I use graph-tool
@@ -87,7 +89,7 @@ def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap):
     targray = target_vp.fa
     targets = torch.tensor(targray).unsqueeze(1)
 
-    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,maker_turn=int(graph.gp["m"]))
+    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,global_y=np.array(global_output_properties))
     return graph_data
 
 def convert_node_switching_game_back(data:Data) -> Tuple[Graph,VertexPropertyMap]:

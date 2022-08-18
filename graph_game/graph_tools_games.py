@@ -15,6 +15,7 @@ class Hex_game(Node_switching_game):
         super().__init__()
         self.board = Hex_board()
         self.board.squares = size**2
+        self.board.size = size
         self.board.game = self
         self.board.position = ["f"]*self.board.squares
         self.board.graph_from_board(redgraph=True)

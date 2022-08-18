@@ -1,6 +1,7 @@
 """ The idea here is to instead of learning with GN0, we just learn the true
 win/loss as a function of the board position."""
 
+from scipy.special import softmax
 from graph_game.graph_tools_games import Qango6x6, Hex_game
 from graph_game.winpattern_game import Graph_Store, Winpattern_game
 from GN0.convert_graph import graph_to_arrays, convert_winpattern_game, convert_node_switching_game
@@ -37,16 +38,18 @@ def generate_hex_graphs(games_to_play,drop=False,game_size=11) -> List[Data]:
             if hash not in known_hashes:
                 known_hashes.add(hash)
                 game.prune_irrelevant_subgraphs()
-                voltprop = game.compute_node_voltages_exact()
+                voltprop,value = game.compute_node_voltages_exact()
                 if drop:
-                    dropprop = game.compute_voltage_drops(voltprop)
+                    dropprop = game.compute_node_currents(voltprop)
                     prop = dropprop
                 else:
                     prop = voltprop
-                data = convert_node_switching_game(game.view,prop)
+                prop.a = softmax(prop.a)
+                value = min(value/200,1)
+                data = convert_node_switching_game(game.view,prop,global_input_properties=[int(game.view.gp["m"])],global_output_properties=[value])
                 graphs.append(data)
             win = game.who_won()
-            game.draw_me("test.pdf")
+            # game.draw_me("test.pdf")
             
     return graphs
 
@@ -144,4 +147,5 @@ def generate_graphs_multiprocess(game_type:str,games_to_play:int,paths:List[str]
         pool.starmap(generate_and_store_graphs,zip([game_type]*len(params),params,paths,[kwargs]*len(params)))
 
 if __name__=="__main__":
-    generate_and_store_graphs(generate_hex_graphs,100,"test.pkl")
+    # generate_and_store_graphs(generate_hex_graphs,100,"test.pkl")
+    pass

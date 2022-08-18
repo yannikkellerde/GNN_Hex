@@ -12,6 +12,7 @@ class Hex_board(Abstract_board_game):
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]
     redgraph:bool
+    size:int
 
     def __init__(self,onturn="r",redgraph=True):
         self.onturn = onturn

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from GN0.graph_dataset import SupervisedDataset,winpattern_pre_transform,hex_pre_transform
 from GN0.train_GCN import train_gcn
+from GN0.models import cachify_gnn,PolicyValueGNN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if not torch.cuda.is_available():
@@ -28,7 +29,8 @@ def run_single_experiment(all_hyperparams):
     writer = SummaryWriter(all_hyperparams["logdir_name"])
     dataset = SupervisedDataset(device=device, pre_transform=hex_pre_transform, **dataset_hyperparams)
     model_hyperparams["norm"] = norm_map[model_hyperparams["norm"]](model_hyperparams["hidden_channels"])
-    model = model_map[all_hyperparams["model_type"]](**model_hyperparams).to(device)
+    cached_model = cachify_gnn(all_hyperparams["model_type"]) 
+    model = PolicyValueGNN(cached_model,**model_hyperparams)
     ev,loss = train_gcn(model,dataset,loss_func=F.mse_loss,eval_func=F.mse_loss,writer=writer,hparams_to_log=all_hyperparams,**train_hyperparams)
 
 def run_experiments():

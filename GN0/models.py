@@ -1,18 +1,132 @@
 import torch
-from torch._C import Graph
+from torch import Tensor
+from typing import Optional, List, Tuple, Dict, Type
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import MessagePassing
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import add_self_loops, degree
-from torch_scatter import scatter
+from torch_scatter import scatter, scatter_mean
+from torch_geometric.nn.norm import GraphNorm
+from torch_geometric.typing import Adj, OptTensor
+from torch.nn import Softmax, Sigmoid
 import numpy as np
 from time import perf_counter
 from collections import defaultdict
+from torch_geometric.nn.models.basic_gnn import BasicGNN
+from torch.nn import Linear
 
 perfs = defaultdict(list)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def cachify_gnn(gnn:Type[BasicGNN]):
+    class CachifiedGNN(gnn):
+        supports_cache = True
+        def __init__(self,*args,**kwargs):
+            super().__init__(*args,**kwargs)
+        
+        def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
+            assert self.has_cache
+            mean_caches = []
+            var_caches = []
+            for norm in self.norms:
+                mean_caches.append(norm.mean_cache)
+                var_caches.append(norm.var_cache)
+            return torch.stack(mean_caches),torch.stack(var_caches)
+
+        def import_norm_cache(self,mean_cache,var_cache):
+            self.has_cache = True
+            for i,norm in enumerate(self.norms):
+                norm.mean_cache = mean_cache[i]
+                norm.var_cache = var_cache[i]
+
+        def forward(self,x: Tensor,edge_index: Adj,*,edge_weight: OptTensor = None,edge_attr: OptTensor = None,set_cache: bool = False) -> Tensor:
+            if set_cache:
+                self.has_cache = True
+            xs: List[Tensor] = []
+            for i in range(self.num_layers):
+                # Tracing the module is not allowed with *args and **kwargs 
+                # As such, we rely on a static solution to pass optional edge
+                # weights and edge attributes to the module.
+                if self.supports_edge_weight and self.supports_edge_attr:
+                    x = self.convs[i](x, edge_index, edge_weight=edge_weight,edge_attr=edge_attr)
+                elif self.supports_edge_weight:
+                    x = self.convs[i](x, edge_index, edge_weight=edge_weight)
+                elif self.supports_edge_attr:
+                    x = self.convs[i](x, edge_index, edge_attr=edge_attr)
+                else:
+                    x = self.convs[i](x, edge_index)
+                if i == self.num_layers - 1 and self.jk_mode is None:
+                    break
+                if self.act is not None and self.act_first:
+                    x = self.act(x)
+                if self.norms is not None:
+                    x = self.norms[i](x,set_cache=set_cache,use_cache=self.has_cache and not self.training)
+                if self.act is not None and not self.act_first:
+                    x = self.act(x)
+                x = F.dropout(x, p=self.dropout, training=self.training)
+                if hasattr(self, 'jk'):
+                    xs.append(x)
+
+            x = self.jk(xs) if hasattr(self, 'jk') else x
+            x = self.lin(x) if hasattr(self, 'lin') else x
+            return x
+    return CachifiedGNN
+
+class PolicyValueGNN(torch.nn.Module):
+    def __init__(self,GNN:Type[BasicGNN],Policy_head:Type=Linear,**gnn_kwargs):
+        super().__init__()
+        self.gnn = GNN(**gnn_kwargs)
+        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
+        self.policy_head = Policy_head(gnn_kwargs["hidden_channels"],1)
+        self.value_head = Linear(gnn_kwargs["hidden_channels"],1)
+        self.policy_activation = Softmax()
+        self.value_activation = Sigmoid()
+
+
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Tensor,set_cache:bool=False) -> Tuple[Tensor,Tensor]:
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            embeds = self.gnn(x,edge_index,set_cache=set_cache)
+        else:
+            embeds = self.gnn(x,edge_index)
+
+        policy = self.policy_head(embeds)
+        policy = self.policy_activation(policy)
+
+        graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
+        value = self.value_head(graph_parts)
+        value = self.value_activation(value)
+        
+        return policy, value
+
+
+class CachedGraphNorm(GraphNorm):
+    def __init__(self, in_channels: int, eps: float = 1e-5):
+        super().__init__(in_channels,eps)
+        self.mean_cache = None
+        self.var_cache = None
+
+    def forward(self, x: Tensor, batch: Optional[Tensor] = None, set_cache=False, use_cache=False) -> Tensor:
+        if batch is None:
+            batch = x.new_zeros(x.size(0), dtype=torch.long)
+
+        batch_size = int(batch.max()) + 1
+        if use_cache and not set_cache:
+            mean = self.mean_cache
+        else:
+            mean = scatter_mean(x, batch, dim=0, dim_size=batch_size)
+            if set_cache:
+                self.mean_cache = mean
+        out = x - mean.index_select(0, batch) * self.mean_scale
+        if use_cache and not set_cache:
+            var = self.var_cache
+        else:
+            var = scatter_mean(out.pow(2), batch, dim=0, dim_size=batch_size)
+            if set_cache:
+                self.var_cache = var
+        std = (var + self.eps).sqrt().index_select(0, batch)
+        return self.weight * out / std + self.bias
 
 class GCNConv_glob(MessagePassing):
     """Bootstrapped from https://pytorch-geometric.readthedocs.io/en/latest/notes/create_gnn.html
@@ -62,7 +176,7 @@ class GCNConv_glob(MessagePassing):
         # graph_parts = torch.stack([torch.max(x[graph_slices[i]:graph_slices[i+1]],0).values for i in range(len(global_attr))])
         
         # Quick cuda aggregation:
-        graph_parts = scatter(x, graph_indices, dim=0, reduce="max")
+        graph_parts = scatter(x, graph_indices, dim=0, reduce="sum")
         
         # Inserted step: Update global attribute using node features (symmetrically reduced)
         global_attr = global_attr + self.node_to_glob_lin(graph_parts)

@@ -14,14 +14,15 @@ import random
 def test_iterative_voltages():
     size = 11
     g = Hex_game(size)
-    vprop_exact = g.compute_node_voltages_exact()
-    dprop_exact = g.compute_voltage_drops(vprop_exact)
+    vprop_exact,value_exact = g.compute_node_voltages_exact()
+    dprop_exact = g.compute_node_currents(vprop_exact)
     intprop_exact = g.view.new_vertex_property("int")
     intprop_exact.a = np.around(dprop_exact.a).astype(int)
-    vprop_approx = g.compute_node_voltages_iterate(30)
-    dprop_approx = g.compute_voltage_drops(vprop_approx,check_validity=False)
+    vprop_approx,value_approx = g.compute_node_voltages_iterate(30)
+    dprop_approx = g.compute_node_currents(vprop_approx,check_validity=False)
     intprop_approx = g.view.new_vertex_property("int")
     intprop_approx.a = np.around(dprop_approx.a).astype(int)
+    print(f"Exact value {value_exact}. Approximate value {value_approx}")
     g.draw_me(fname="voltages.pdf",vprop1=intprop_exact,vprop2=intprop_approx)
     os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
     assert np.allclose(dprop_approx.a,dprop_exact.a)
@@ -30,12 +31,13 @@ def test_iterative_voltages():
 def test_voltages():
     size = 6
     g = Hex_game(size)
-    vprop = g.compute_node_voltages_exact()
-    dprop = g.compute_voltage_drops(vprop)
+    vprop,value = g.compute_node_voltages_exact()
+    dprop = g.compute_node_currents(vprop)
     intprop = g.view.new_vertex_property("int")
     intprop.a = np.around(dprop.a).astype(int)
     g.draw_me(fname="voltages.pdf",vprop=intprop)
     os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
+    print(value)
 
 def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap):
     intprop = g.view.new_vertex_property("int")
@@ -78,7 +80,7 @@ def check_some_hex_patterns():
 
 
 def play_hex():
-    size = 6
+    size = 9
     g = Hex_game(size)
     g.board_callback = g.board.graph_callback
     letters = "abcdefghijklmnopqrstuvwxyz"
@@ -89,11 +91,12 @@ def play_hex():
         elif winner=="b":
             print("Breaker(blue) has won the game")
         print(g.board.draw_me())
-        vprop = g.compute_node_voltages_exact()
-        dprop = g.compute_voltage_drops(vprop)
+        vprop,value = g.compute_node_voltages_exact()
+        dprop = g.compute_node_currents(vprop)
+        print(f"board value {value}")
         intprop = g.view.new_vertex_property("int")
-        intprop.a = np.around(dprop.a).astype(int)
-        g.draw_me("cur_game.pdf")#,vprop=intprop)
+        intprop.a = np.around(vprop.a).astype(int)
+        g.draw_me("cur_game.pdf",vprop1=intprop)
         os.system("nohup mupdf cur_game.pdf > /dev/null 2>&1 &")
         intprop = check_conversion_consistency(g,intprop)
         time.sleep(0.1)
