@@ -5,6 +5,7 @@ from graph_tool.all import Graph,VertexPropertyMap
 from graph_game.winpattern_game import Winpattern_game
 from typing import Tuple
 
+
 def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     """ Convert a graph-tool graph into node_features, edge_index, targets, and vertexmap
     Args:
@@ -89,7 +90,7 @@ def convert_node_switching_game(graph:Graph,target_vp:VertexPropertyMap,global_i
     targray = target_vp.fa
     targets = torch.tensor(targray).unsqueeze(1)
 
-    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,global_y=np.array(global_output_properties))
+    graph_data = Data(x=node_features,edge_index=edge_index,y=targets,global_y=torch.tensor(global_output_properties))
     return graph_data
 
 def convert_node_switching_game_back(data:Data) -> Tuple[Graph,VertexPropertyMap]:

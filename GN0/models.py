@@ -2,10 +2,11 @@ import torch
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, SAGEConv
 from torch_geometric.nn import MessagePassing
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import add_self_loops, degree
+import torch_geometric.utils
 from torch_scatter import scatter, scatter_mean
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.typing import Adj, OptTensor
@@ -15,6 +16,7 @@ from time import perf_counter
 from collections import defaultdict
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 from torch.nn import Linear
+import copy
 
 perfs = defaultdict(list)
 
@@ -22,9 +24,15 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def cachify_gnn(gnn:Type[BasicGNN]):
     class CachifiedGNN(gnn):
+        supports_edge_weight = False
+        supports_edge_attr = False
         supports_cache = True
-        def __init__(self,*args,**kwargs):
-            super().__init__(*args,**kwargs)
+        def __init__(self,*args,out_channels: Optional[int] = None,**kwargs):
+            super().__init__(*args,out_channels=out_channels,**kwargs)
+            self.has_output = out_channels is None
+            self.has_cache = False
+            if self.norms is not None and not self.has_output: # Add final norm layer after last hidden layer if not having output
+                self.norms.append(copy.deepcopy(self.norms[0]))
         
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
             assert self.has_cache
@@ -57,7 +65,7 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                     x = self.convs[i](x, edge_index, edge_attr=edge_attr)
                 else:
                     x = self.convs[i](x, edge_index)
-                if i == self.num_layers - 1 and self.jk_mode is None:
+                if i == self.num_layers - 1 and self.jk_mode is None and self.has_output:
                     break
                 if self.act is not None and self.act_first:
                     x = self.act(x)
@@ -75,24 +83,30 @@ def cachify_gnn(gnn:Type[BasicGNN]):
     return CachifiedGNN
 
 class PolicyValueGNN(torch.nn.Module):
-    def __init__(self,GNN:Type[BasicGNN],Policy_head:Type=Linear,**gnn_kwargs):
+    def __init__(self,GNN:Type[BasicGNN],policy_head:Type=SAGEConv,**gnn_kwargs):
         super().__init__()
         self.gnn = GNN(**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
-        self.policy_head = Policy_head(gnn_kwargs["hidden_channels"],1)
+        self.policy_head = policy_head(gnn_kwargs["hidden_channels"],1)
         self.value_head = Linear(gnn_kwargs["hidden_channels"],1)
-        self.policy_activation = Softmax()
         self.value_activation = Sigmoid()
 
+    def export_norm_cache(self,*args,**kwargs):
+        return self.gnn.export_norm_cache(*args,**kwargs)
+    
+    def import_norm_cache(self,*args,**kwargs):
+        return self.gnn.import_norm_cache(*args,**kwargs)
 
-    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Tensor,set_cache:bool=False) -> Tuple[Tensor,Tensor]:
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,set_cache:bool=False) -> Tuple[Tensor,Tensor]:
+        if graph_indices is None:
+            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)
         if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
             embeds = self.gnn(x,edge_index,set_cache=set_cache)
         else:
             embeds = self.gnn(x,edge_index)
 
-        policy = self.policy_head(embeds)
-        policy = self.policy_activation(policy)
+        policy = self.policy_head(embeds,edge_index)
+        policy = torch_geometric.utils.softmax(policy,graph_indices)
 
         graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
         value = self.value_head(graph_parts)

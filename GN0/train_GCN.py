@@ -13,72 +13,88 @@ from torchmetrics import Accuracy
 from torch_geometric.nn import GCNConv
 from tqdm import trange,tqdm
 from typing import Callable
+from torch.nn import BCELoss,CrossEntropyLoss, MSELoss
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if not torch.cuda.is_available():
     print("WARNING: cuda not avaliabe, using cpu")
 
 #loader = DataLoader(dataset, batch_size=64, shuffle=True)
-def train_gcn(model:torch.nn.Module,dataset,model_name:str,loss_func:Callable,eval_func:Callable,writer:SummaryWriter,
-              categorical_eval=False,maximizing_eval=False,epochs=2000,lr=0.002,batch_size=256,hparams_to_log=None):
+def train_gcn(model:torch.nn.Module,dataset,model_name:str,writer:SummaryWriter,
+              epochs=2000,lr=0.002,batch_size=256,hparams_to_log=None,policy_weighting=1):
     def save_model(name_modifier):
         save_dic = {
             'epoch': epochs,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'ev': ev,
+            'losses': loss_logs,
             'hparams':hparams_to_log,
             }
         if hasattr(model,"supports_cache") and model.supports_cache:
             save_dic["cache"] = model.export_norm_cache()
         torch.save(save_dic, os.path.join("model",f"{model_name}_{name_modifier}.pt"))
-    eval_func_name = eval_func.__name__ if hasattr(eval_func,"__name__") else eval_func.__class__.__name__
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
-    batch = next(iter(loader))
-    writer.add_graph(model,(batch.x,batch.edge_index))
+    # batch = next(iter(train_loader))
+    # writer.add_graph(model,(batch.x,batch.edge_index))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    value_loss_func = MSELoss()
+    # BCELoss() is correct for value
+    policy_loss_func = MSELoss()
+    # CrossEntropyLoss() is more correct, but does not work that easily, because we have one probabilty distribution per graph.
 
     model.train()
     best_ev = np.inf
     best_loss = np.inf
     for epoch in trange(epochs):
-        losses = []
-        eval_metrics = []
-        for i,batch in tqdm(enumerate(loader)):
+        loss_logs = {
+                "Test/loss":[],
+                "Train/loss":[],
+                "Test/value_loss":[],
+                "Test/policy_loss":[],
+                "Train/value_loss":[],
+                "Train/policy_loss":[]
+        }
+        for i,batch in tqdm(enumerate(train_loader),total=len(train_loader)):
             optimizer.zero_grad()
-            if i==len(loader)-1 and hasattr(model,"supports_cache") and model.supports_cache:
-                policy,value = model(batch.x,batch.edge_index,batch.batch,set_cache=True)
+            if i==len(train_loader)-1 and hasattr(model,"supports_cache") and model.supports_cache:
+                policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch,set_cache=True)
             else:
-                policy,value = model(batch.x,batch.edge_index,batch.batch)
-            loss = loss_func(policy[batch.train_mask], batch.y[batch.train_mask])
-            if categorical_eval:
-                eval_res = eval_func(out[batch.test_mask].flatten(), batch.y[batch.test_mask].flatten().long())
-            else:
-                eval_res = eval_func(out[batch.test_mask], batch.y[batch.test_mask])
-            eval_metrics.append(eval_res)
+                policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch)
+            policy_loss = policy_loss_func(policy, batch.y)
+            # print(policy.max(),policy.sum(),policy.min(),batch.y.max(),batch.y.sum(),batch.y.min())
+            # exit()
+            value_loss = value_loss_func(value.squeeze(),batch.global_y)
+            loss = policy_loss*policy_weighting+value_loss
             loss.backward()
             optimizer.step()
-            losses.append(loss)
-        lo = sum(losses)/len(losses)
-        ev = sum(eval_metrics)/len(eval_metrics)
-        if lo<best_loss:
-            best_loss=lo
-        writer.add_scalar("Loss/train",lo,epoch)
-        writer.add_scalar("Test/"+eval_func_name,ev,epoch)
+            loss_logs["Train/loss"].append(loss)
+            loss_logs["Train/value_loss"].append(value_loss)
+            loss_logs["Train/policy_loss"].append(policy_loss)
+        with torch.no_grad():
+            for batch in tqdm(test_loader):
+                policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch)
+                policy_loss = policy_loss_func(policy, batch.y)
+                value_loss = value_loss_func(value.squeeze(),batch.global_y)
+                loss = policy_loss*policy_weighting+value_loss
+                loss_logs["Test/loss"].append(loss)
+                loss_logs["Test/value_loss"].append(value_loss)
+                loss_logs["Test/policy_loss"].append(policy_loss)
 
+        loss_logs = {key:sum(value)/len(value) for key,value in loss_logs.items()}
+        if loss_logs["Train/loss"]<best_loss:
+            best_loss=loss_logs["Train/loss"]
+        for key,value in loss_logs.items():
+            writer.add_scalar(key,value,epoch)
 
-
-        #print({key:sum(value)/len(value) for key,value in perfs.items()})
-        print("Epoch",epoch,"training loss:",sum(losses) / len(losses))
-        print("Testing evaluation:",ev)
+        print("Epoch",epoch,loss_logs)
         
-        if (maximizing_eval and -ev<best_ev) or (not maximizing_eval and ev < best_ev):
-            best_ev = ev
+        if loss_logs["Test/loss"] < best_ev:
+            best_ev = loss_logs["Test/loss"]
             save_model("best")
         elif epoch%100==0:
             save_model(str(epoch))
