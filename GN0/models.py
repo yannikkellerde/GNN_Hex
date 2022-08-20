@@ -29,7 +29,7 @@ def cachify_gnn(gnn:Type[BasicGNN]):
         supports_cache = True
         def __init__(self,*args,out_channels: Optional[int] = None,**kwargs):
             super().__init__(*args,out_channels=out_channels,**kwargs)
-            self.has_output = out_channels is None
+            self.has_output = out_channels is not None
             self.has_cache = False
             if self.norms is not None and not self.has_output: # Add final norm layer after last hidden layer if not having output
                 self.norms.append(copy.deepcopy(self.norms[0]))
@@ -190,7 +190,7 @@ class GCNConv_glob(MessagePassing):
         # graph_parts = torch.stack([torch.max(x[graph_slices[i]:graph_slices[i+1]],0).values for i in range(len(global_attr))])
         
         # Quick cuda aggregation:
-        graph_parts = scatter(x, graph_indices, dim=0, reduce="sum")
+        graph_parts = scatter(x, graph_indices, dim=0, reduce="max")
         
         # Inserted step: Update global attribute using node features (symmetrically reduced)
         global_attr = global_attr + self.node_to_glob_lin(graph_parts)

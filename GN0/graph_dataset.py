@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 class SupervisedDataset(InMemoryDataset):
-    num_data_creation_processes = 15
+    num_data_creation_processes = 7
 
     def __init__(self, root, device="cpu", transform=None, pre_transform=None, num_graphs=10000, game_type:str="qango",**generation_args):
         self.num_graphs = num_graphs
