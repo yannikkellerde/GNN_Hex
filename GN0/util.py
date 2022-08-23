@@ -2,11 +2,57 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 from graph_tool.all import Graph,Vertex
-from typing import List
+from typing import List, Optional
 from torch.utils.tensorboard.writer import SummaryWriter as TorchSummaryWriter
 from torch.utils.tensorboard.summary import hparams
 import torch
 import torch._C
+from torch import Tensor
+import torch_geometric.utils
+from torch_geometric.utils.num_nodes import maybe_num_nodes
+from torch_scatter import gather_csr, scatter, segment_csr
+
+def graph_NLLLoss(
+    pred: Tensor,
+    targets: Tensor,
+    index: Optional[Tensor] = None,
+    ptr: Optional[Tensor] = None,
+    num_nodes: Optional[int] = None,
+    dim: int = 0
+) -> Tensor:
+    r"""Computes the negative log likelihood loss for a graph.
+
+    Args:
+        src (Tensor): The source tensor.
+        index (LongTensor, optional): The indices of elements for applying the
+            softmax. (default: :obj:`None`)
+        ptr (LongTensor, optional): If given, computes the softmax based on
+            sorted inputs in CSR representation. (default: :obj:`None`)
+        num_nodes (int, optional): The number of nodes, *i.e.*
+            :obj:`max_val + 1` of :attr:`index`. (default: :obj:`None`)
+        dim (int, optional): The dimension in which to normalize.
+            (default: :obj:`0`)
+
+    :rtype: :class:`Tensor`
+    """
+    if ptr is not None:
+        dim = dim + pred.dim() if dim < 0 else dim
+        size = ([1] * dim) + [-1]
+        ptr = ptr.view(size)
+        summed = gather_csr(segment_csr(-pred*targets,ptr,reduce='sum'),ptr)
+        res = torch.mean(summed)
+    elif index is not None:
+        N = maybe_num_nodes(index, num_nodes)
+        summed = scatter(-pred*targets,index,dim_size=N, reduce="sum")
+        res = torch.mean(summed)
+    else:
+        raise NotImplementedError
+    return res
+
+def graph_cross_entropy(pred: Tensor, targets:Tensor, index:Optional[Tensor] = None, ptr: Optional[Tensor] = None, num_nodes: Optional[int] = None, dim: int = 0):
+    pred = torch.log(torch_geometric.utils.softmax(pred,index=index,ptr=ptr,num_nodes=num_nodes,dim=dim))
+    return graph_NLLLoss(pred,targets,index=index,ptr=ptr,num_nodes=num_nodes,dim=dim)
+
 
 class SummaryWriter(TorchSummaryWriter):
     def add_hparams(self, hparam_dict, metric_dict, hparam_domain_discrete=None, run_name=None):
