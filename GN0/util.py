@@ -12,6 +12,12 @@ import torch_geometric.utils
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_scatter import gather_csr, scatter, segment_csr
 
+class Identity():
+    def __init__(self,*args,**kwargs):
+        pass
+    def __call__(self,x):
+        return x
+
 def graph_NLLLoss(
     pred: Tensor,
     targets: Tensor,

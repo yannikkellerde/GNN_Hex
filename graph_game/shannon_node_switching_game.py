@@ -304,7 +304,7 @@ class Node_switching_game(Abstract_graph_game):
 
 
 
-    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None):
+    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None,decimal_places=0):
         """Draw the state of the graph and save it into a pdf file.
 
         Args:
@@ -317,8 +317,19 @@ class Node_switching_game(Abstract_graph_game):
             vprop = vprop1
         else:
             vprop = self.view.new_vertex_property("string")
+            lower1 = vprop1.a.max()<1 and vprop2.a.max()<1
             for v in self.view.iter_vertices():
-                vprop[v] = str(int(vprop1[v]))+"/\n"+str(int(vprop2[v]))
+                if decimal_places == 0:
+                    p1 = int(round(vprop1[v],0))
+                    p2 = int(round(vprop2[v],0))
+                else:
+                    p1 = round(vprop1[v],decimal_places)
+                    p2 = round(vprop2[v],decimal_places)
+                    if lower1:
+                        p1 = str(p1)[2:]
+                        p2 = str(p2)[2:]
+                    
+                vprop[v] = str(p1)+"/"+str(p2)
             vprop[0] = ""
             vprop[1] = ""
         if self.view.num_vertices()==0:

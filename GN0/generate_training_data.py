@@ -44,7 +44,7 @@ def generate_hex_graphs(games_to_play,drop=False,game_size=11) -> List[Data]:
                     prop = dropprop
                 else:
                     prop = voltprop
-                prop.a = softmax(prop.a)
+                # prop.a = softmax(prop.a)
                 value = min(value/200,1)
                 data = convert_node_switching_game(game.view,prop,global_input_properties=[int(game.view.gp["m"])],global_output_properties=[value])
                 graphs.append(data)

@@ -105,7 +105,10 @@ def convert_node_switching_game_back(data:Data) -> Tuple[Graph,VertexPropertyMap
     """
     graph = Graph(directed=False)
     graph.gp["m"] = graph.new_graph_property("bool")
-    graph.gp["m"] = bool(data.maker_turn)
+    if hasattr(data,"maker_turn"):
+        graph.gp["m"] = bool(data.maker_turn)
+    else:
+        graph.gp["m"] = bool(data.x[0][3])
     graph.add_vertex(len(data.x))
     edge_list = data.edge_index.cpu().numpy().T
     edge_list = np.array([list(x) for x in set([frozenset(x) for x in edge_list.tolist()])])

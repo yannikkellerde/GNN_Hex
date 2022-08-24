@@ -106,7 +106,7 @@ class PolicyValueGNN(torch.nn.Module):
             embeds = self.gnn(x,edge_index)
 
         policy = self.policy_head(embeds,edge_index)
-        policy = torch_geometric.utils.softmax(policy,graph_indices)
+        # policy = torch_geometric.utils.softmax(policy,graph_indices)
 
         graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
         value = self.value_head(graph_parts)
@@ -116,6 +116,7 @@ class PolicyValueGNN(torch.nn.Module):
 
 
 class CachedGraphNorm(GraphNorm):
+    supports_cache=True
     def __init__(self, in_channels: int, eps: float = 1e-5):
         super().__init__(in_channels,eps)
         self.mean_cache = None

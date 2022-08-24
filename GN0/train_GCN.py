@@ -14,6 +14,9 @@ from torch_geometric.nn import GCNConv
 from tqdm import trange,tqdm
 from typing import Callable
 from torch.nn import BCELoss,CrossEntropyLoss, MSELoss
+from GN0.util import graph_cross_entropy
+import torch_geometric.utils
+from collections import defaultdict
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if not torch.cuda.is_available():
@@ -42,30 +45,25 @@ def train_gcn(model:torch.nn.Module,dataset,model_name:str,writer:SummaryWriter,
     # writer.add_graph(model,(batch.x,batch.edge_index))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    value_loss_func = MSELoss()
+    value_loss_func = BCELoss()
+    mse = MSELoss()
     # BCELoss() is correct for value
-    policy_loss_func = MSELoss()
     # CrossEntropyLoss() is more correct, but does not work that easily, because we have one probabilty distribution per graph.
 
     model.train()
     best_ev = np.inf
     best_loss = np.inf
     for epoch in trange(epochs):
-        loss_logs = {
-                "Test/loss":[],
-                "Train/loss":[],
-                "Test/value_loss":[],
-                "Test/policy_loss":[],
-                "Train/value_loss":[],
-                "Train/policy_loss":[]
-        }
+        loss_logs = defaultdict(list)
         for i,batch in tqdm(enumerate(train_loader),total=len(train_loader)):
+            tt_mask = batch.train_mask | batch.test_mask
             optimizer.zero_grad()
             if i==len(train_loader)-1 and hasattr(model,"supports_cache") and model.supports_cache:
                 policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch,set_cache=True)
             else:
                 policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch)
-            policy_loss = policy_loss_func(policy, batch.y)
+            policy_loss = mse(policy[tt_mask],batch.y[tt_mask])
+            # policy_cross_entropy = graph_cross_entropy(policy[tt_mask].squeeze(), torch_geometric.utils.softmax(batch.y[tt_mask],index=batch.batch[tt_mask]).squeeze(), index=batch.batch[tt_mask])
             # print(policy.max(),policy.sum(),policy.min(),batch.y.max(),batch.y.sum(),batch.y.min())
             # exit()
             value_loss = value_loss_func(value.squeeze(),batch.global_y)
@@ -77,13 +75,18 @@ def train_gcn(model:torch.nn.Module,dataset,model_name:str,writer:SummaryWriter,
             loss_logs["Train/policy_loss"].append(policy_loss)
         with torch.no_grad():
             for batch in tqdm(test_loader):
+                tt_mask = batch.train_mask | batch.test_mask
                 policy,value = model(batch.x,batch.edge_index,graph_indices=batch.batch)
-                policy_loss = policy_loss_func(policy, batch.y)
+                policy_cross_entropy = graph_cross_entropy(policy[tt_mask].squeeze(), torch_geometric.utils.softmax(batch.y[tt_mask],index=batch.batch[tt_mask]).squeeze(), index=batch.batch[tt_mask])
                 value_loss = value_loss_func(value.squeeze(),batch.global_y)
-                loss = policy_loss*policy_weighting+value_loss
+                policy_mse = mse(policy[tt_mask],batch.y[tt_mask])
+                value_mse = mse(value.squeeze(),batch.global_y)
+                loss = policy_mse*policy_weighting+value_loss
                 loss_logs["Test/loss"].append(loss)
                 loss_logs["Test/value_loss"].append(value_loss)
-                loss_logs["Test/policy_loss"].append(policy_loss)
+                loss_logs["Test/value_mse"].append(value_mse)
+                loss_logs["Test/policy_loss"].append(policy_mse)
+                loss_logs["Test/policy_cross_entropy"].append(policy_cross_entropy)
 
         loss_logs = {key:sum(value)/len(value) for key,value in loss_logs.items()}
         if loss_logs["Train/loss"]<best_loss:

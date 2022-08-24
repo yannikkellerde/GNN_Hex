@@ -3,7 +3,7 @@ from torch_geometric.nn.models import GCN, GraphSAGE
 from GN0.model_frontend import evaluate_winpattern_game_state
 from graph_game.winpattern_game import Winpattern_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6
-from GN0.test_model import test_node_switching_model
+from GN0.test_model import test_node_switching_model,evaluate,test_random_graphs
 import sys
 from GN0.models import GCN_with_glob, CachedGraphNorm, cachify_gnn
 import torch
@@ -103,4 +103,9 @@ if __name__ == "__main__":
         state_dict = torch.load("model/GraphSAGE_unnormalized.pt",map_location=device)
         model.load_state_dict(state_dict["model_state_dict"])
         model.import_norm_cache(*state_dict["cache"])
-        test_node_switching_model(model,drop=True)
+        model.eval()
+        if (len(sys.argv)>2) and sys.argv[2] == "eval":
+            # test_random_graphs(model)
+            evaluate(model,old=True)
+        else:
+            test_node_switching_model(model,drop=True)
