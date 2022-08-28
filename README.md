@@ -10,7 +10,8 @@ Hex Variants, hex information: https://www.taylorfrancis.com/books/mono/10.1201/
 Computer Hex: https://webdocs.cs.ualberta.ca/~hayward/hex/#wolve  
 Some MCTS engine: https://github.com/FutaAlice/FutaHex2  
 HEX deep learning RL without MCTS player: https://github.com/harbecke/HexHex  
-General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero
+General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero  
+Latex hex package: https://ctan.org/tex-archive/macros/latex/contrib/hexgame/
 
 ## Some things to note
 Hex: There is an easy, fairly accurate position evaluation function using "voltage flow".
