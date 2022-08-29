@@ -8,37 +8,42 @@
 ## Since last meeting
 + Implement Graph Representation for Hex (Shannon-node-switching game)
 + Implement some basic captured/dead cell analysis, working directly on the graph representation.
-+ Implement Shannons electrical circuit algorithm. (exact linear programming approach as well as iterative approach)
-+ Train Graph Neural Network to reproduce electrical circuit algorithm.
++ Implement Shannons electrical circuit algorithm usidng the exact linear programming approach as well as iterative approach. (Simple evaluation function for hex)
++ Train Graph Neural Networks with policy and value head to reproduce electrical circuit algorithm.
 	- Using GraphSAGE + GraphNorm
-	- Works really well, 0.26 MSE with 100 Volt applied, with 13 message passing steps on 11x11 board.
+	- Works really well, 0.26 MSE on node voltages with 100 Volt applied, with 13 message passing steps, 32 hidden size, on 11x11 board.
+	- Predicts position evaluation function (total current flow) almost perfectly (eg. 0.00001 MSE)
 	- Outperforms iterative approach in terms of message passing steps vs MSE.
 	- Native transfer to smaller board, performance slowly drops when increasing board size.
-	- Similar to other norms, GraphNorm uses batch statistics to normalize layers.
-		* This makes some trouble during testing of the Network. E.g. Evaluating on smaller batch sizes (e.g. on single graph) than during training hurts performance.
-		* Also, evaluating on batch of graphs from hex boards of smaller size than during training destroys batch statistics and kills performance.
-			Thus currently, we only get performance on smaller board if we embed it in a batch of graphs from training distribution.
-		* Might just be an implementation issue and can be fixed by smarter caching of batch statistics. E.g. I'll have to modify/inherit some more torch_geometric code.
-		* However, I had this problem before on other projects using BatchNorm. Wondering what are the smart ways to deal with this...
++ Try out some GNN architectures (see tensorboard). Main results:
+	- ResNet style architectures are superior (e.g. GraphSAGE).
+	- GraphNorm improves convergence speed and stability a lot, but also makes network passes take twice as much time. (Not sure why it is so much)
+	- A lot helps a lot, e.g. more parameters generally improve convergence speed and total performance.
+	- Training using MSE on node voltages turned out working better than using softmax and cross-entropy in this case. This may however have to do with my lack of temperature tuning (For node voltages, the softmax actually acted close to a "max" operator).
 
 
 # Some thoughts about how to continue
 ### Initialization/Transfer
 Maybe initialize the network based on supervised learning on the electrical circuit before going into MCTS?
-### Curiculum?
-Hex 6x6 is a reachable position from any larger Hex board. Knowledge of how to play 6x6 hex is thus verly likely to be usefull for playing on larger boards.
-Maybe it makes sense to train the hex agent in a curriculum with a growing network size: start by learning 6x6 hex with a small network with not a lot of 
-passing steps. After we master this, grow to 7x7, transfer parameters but add a passing step and network width. Iterate to desired hex size (e.g. 13x13).
-### Speed and Programming Language
-I am not scared of C. However, I think it makes sense to use python not only because I am more comfortable with it, but also to use pytorch-geometric and
-other modules to build upon in python.
 
-However, I am aware that python can be slow at times and during MCTS this can be a heavy limiting factor. The graph library that I use, graph-tool, has it's core data
-structures and algorithms implemented in C++. It is possible to [write extensions for it in C++](https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html).
-If it becomes nescessary, I could rewrite some functionalitly of my hex graph as a C++ extension (such as removing dead and captured cells) to decrease runtime.
+### C(++)
+I do think using pytorch\_geometric is pretty essential to be able to build on work from others and not start from scratch.
+When running MCTS it will become clear if network passes or the generation of next positions and converting them into suitable format (playing out moves) will be more of a bottleneck.
+If generating the positions is a significant bottleneck, I have two options:
+1. I could [write extensions for graph-tool in C++](https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html) to speed up some of my subroutines such as pruning captured and dead cells or converting to pytorch\_geometric format.
+2. I could ditch graph-tool and my current implementation of hex and rewrite the whole game logic in C(++) and only use python for MCTS logic and pytorch. [This](https://github.com/richemslie/galvanise_zero) project does seem to do something similar.
+
+I did however find a strong hex ai that is written only in python [https://github.com/harbecke/HexHex](https://github.com/harbecke/HexHex). This one does not use MCTS because it was "prohibitively expensive". Their alterantive method is defenitely worth looking into though, because their ai is acutally really strong.
+
 ### MCTS and Batching
 For the Graph Net policy and value approximation to be efficient, we need to batch many graphs together. Thus, we either have to play multiple games at once or do the MCTS in an inexact way (e.g. doing new expansions before others where evaluated). There are some approaches in the AlphaGo/AlphaZero papers (APV-MCTS, virtual loss), but there are decisions to be made.
 
 It will show itself if CPU computation of positions and tree traversal or GPU policy and value approximation is more of a bottleneck. If the first is the case, it will be usefull to implement MCTS in a multiprocessing fashion.
-### Swap rule
-The swap rule is an important factor for hex, especially when starting with small boards, because starting in the middle is a pretty trivial win and not a lot is to be learned. Thus, I think it is important to implement the swap rule right away. Not to clear how to implement this in the policy/value network and or MCTS though.
+
+### Where do we stand in the world of hex?
+There have been multiple approaches at transfering the AlphaZero method to hex. The strongest hex ai ever build is likely [galvanise\_zero](https://github.com/richemslie/galvanise_zero). According to most people in the hex community, it was already at superhuman level. The GNN approach however stands out as something that I haven't found any examples of being tried on hex.
+
+### Curiculum?
+Hex 6x6 is a reachable position from any larger Hex board. Knowledge of how to play 6x6 hex is thus verly likely to be usefull for playing on larger boards.
+Maybe it makes sense to train the hex agent in a curriculum with a growing network size: start by learning 6x6 hex with a small network with not a lot of 
+passing steps. After we master this, grow to 7x7, transfer parameters but add a passing step and network width. Iterate to desired hex size (e.g. 13x13).
