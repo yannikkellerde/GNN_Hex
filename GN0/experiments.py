@@ -20,19 +20,19 @@ norm_map = {x.__name__:x for x in norm_types}
 policy_heads = [SAGEConv,GCNConv,GATv2Conv,PNAConv]
 policy_map = {x.__name__:x for x in policy_heads}
 
-
+dataset_params = ["root","game_type","num_graphs","drop"]
+model_params = ["in_channels","num_layers","hidden_channels","norm","act","policy_head","project","aggr"]
+train_params = ["lr","batch_size","model_name","epochs","policy_weighting"]
 default_dataset_hyperparams = dict(root='./data/policy_value',game_type="hex",num_graphs=5000,drop=True)
 default_model_hyperparams = dict(in_channels=4,num_layers=13,hidden_channels=32,norm="CachedGraphNorm",act="relu",policy_head="SAGEConv")
 default_train_hyperparams = dict(lr=0.002,batch_size=256,model_name="GCN_hex",epochs=200,policy_weighting=0.01)
 default_all_hyperparams = {**default_dataset_hyperparams,**default_model_hyperparams,**default_train_hyperparams,"logdir_name":"run/GNNs_master","model_type":"GraphSAGE"} 
 
 def run_single_experiment(all_hyperparams):
-    dataset_hyperparams = {key:all_hyperparams[key] for key in default_dataset_hyperparams.keys()}
-    model_hyperparams = {key:all_hyperparams[key] for key in default_model_hyperparams.keys()}
-    train_hyperparams = {key:all_hyperparams[key] for key in default_train_hyperparams.keys()}
+    dataset_hyperparams = {key:all_hyperparams[key] for key in dataset_params if key in all_hyperparams}
+    model_hyperparams = {key:all_hyperparams[key] for key in model_params if key in all_hyperparams}
+    train_hyperparams = {key:all_hyperparams[key] for key in train_params if key in all_hyperparams}
 
-    writer = SummaryWriter(all_hyperparams["logdir_name"])
-    metrics = {'Test/loss': None, 'Train/loss': None, 'Train/value_loss':None, 'Train/policy_loss':None, 'Test/value_loss':None,'Test/policy_loss':None}
     dataset = SupervisedDataset(device=device, pre_transform=hex_pre_transform, **dataset_hyperparams)
     if model_hyperparams["norm"] is not None:
         model_hyperparams["norm"] = norm_map[model_hyperparams["norm"]](model_hyperparams["hidden_channels"])
@@ -42,6 +42,9 @@ def run_single_experiment(all_hyperparams):
     else:
         body_model = model_map[all_hyperparams["model_type"]]
     model = PolicyValueGNN(body_model,**model_hyperparams).to(device)
+    all_hyperparams["total_params"] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    writer = SummaryWriter(all_hyperparams["logdir_name"])
+    metrics = {'Test/loss': None, 'Train/loss': None, 'Train/value_loss':None, 'Train/policy_loss':None, 'Test/value_loss':None,'Test/policy_loss':None}
     ev,loss = train_gcn(model,dataset,writer=writer,hparams_to_log=all_hyperparams,**train_hyperparams)
     writer.add_hparams(all_hyperparams,metrics)
     writer.close()
@@ -50,34 +53,23 @@ def run_experiments():
     hyper_param_sets = [
         {"model_type":"GraphSAGE",
          "lr":0.001,
-         "model_name":"GraphSAGE_deep_thin",
+         "model_name":"GraphSAGE_max_aggr",
          "policy_head":"SAGEConv",
-         "logdir_name":"run/GraphSAGE_deep_thin",
+         "logdir_name":"run/GraphSAGE_max_aggr",
+         "hidden_channels":32,
+         "aggr":"max"},
+        {"model_type":"GraphSAGE",
+         "lr":0.002,
+         "model_name":"GraphSAGE_higher_lr",
+         "policy_head":"SAGEConv",
+         "logdir_name":"run/GraphSAGE_higher_lr"},
+        {"model_type":"GraphSAGE",
+         "lr":0.001,
+         "model_name":"GraphSAGE_thick_deep",
+         "policy_head":"SAGEConv",
+         "logdir_name":"run/GraphSAGE_thick_deep",
          "num_layers":18,
-         "hidden_channels":16},
-        {"model_type":"GraphSAGE",
-         "lr":0.001,
-         "model_name":"GraphSAGE_shallow_thick",
-         "policy_head":"SAGEConv",
-         "logdir_name":"run/GraphSAGE_shallow_thick",
-         "num_layers":9,
          "hidden_channels":48},
-        {"model_type":"GraphSAGE",
-         "lr":0.001,
-         "model_name":"GraphSAGE_no_norm",
-         "policy_head":"SAGEConv",
-         "logdir_name":"run/GraphSAGE_no_norm",
-         "norm":None},
-        {"model_type":"GAT",
-         "lr":0.001,
-         "model_name":"GATv2",
-         "policy_head":"GATv2Conv",
-         "logdir_name":"run/GATv2"},
-        {"model_type":"PNA",
-         "lr":0.001,
-         "model_name":"PNA",
-         "policy_head":"PNAConv",
-         "logdir_name":"run/PNA"},
     ]
     for hyper_params in hyper_param_sets:
         hyper_params["logdir_name"] = f'{hyper_params["logdir_name"]}_{datetime.now().isoformat()}'

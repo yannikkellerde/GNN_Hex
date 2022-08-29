@@ -1,6 +1,6 @@
 import torch
 from torch import Tensor
-from typing import Optional, List, Tuple, Dict, Type
+from typing import Optional, List, Tuple, Dict, Type, Union
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, SAGEConv
 from torch_geometric.nn import MessagePassing
@@ -9,7 +9,7 @@ from torch_geometric.utils import add_self_loops, degree
 import torch_geometric.utils
 from torch_scatter import scatter, scatter_mean
 from torch_geometric.nn.norm import GraphNorm
-from torch_geometric.typing import Adj, OptTensor
+from torch_geometric.typing import Adj, OptTensor, OptPairTensor, SparseTensor
 from torch.nn import Softmax, Sigmoid
 import numpy as np
 from time import perf_counter
@@ -87,7 +87,9 @@ class PolicyValueGNN(torch.nn.Module):
         super().__init__()
         self.gnn = GNN(**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
-        self.policy_head = policy_head(gnn_kwargs["hidden_channels"],1)
+        possible_head_args = ("aggr","project")
+        head_kwargs = {key:value for key,value in gnn_kwargs.items() if key in possible_head_args}
+        self.policy_head = policy_head(gnn_kwargs["hidden_channels"],1,**head_kwargs)
         self.value_head = Linear(gnn_kwargs["hidden_channels"],1)
         self.value_activation = Sigmoid()
 
