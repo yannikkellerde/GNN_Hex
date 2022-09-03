@@ -19,6 +19,10 @@ class Node_switching_game(Abstract_graph_game):
     def onturn(self):
         return "m" if self.view.gp["m"] else "b" # m for maker, b for breaker
 
+    @property
+    def not_onturn(self):
+        return "b" if self.view.gp["m"] else "m" # m for maker, b for breaker
+
     def get_actions(self):
         return self.view.vertex_index.copy().fa[2:] # We assume terminals in vertex index 0 and 1 for efficiency here
 

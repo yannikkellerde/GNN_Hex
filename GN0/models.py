@@ -10,7 +10,7 @@ import torch_geometric.utils
 from torch_scatter import scatter, scatter_mean
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.typing import Adj, OptTensor, OptPairTensor, SparseTensor
-from torch.nn import Softmax, Sigmoid
+from torch.nn import Softmax, Sigmoid, Tanh
 import numpy as np
 from time import perf_counter
 from collections import defaultdict
@@ -101,7 +101,7 @@ class PolicyValueGNN(torch.nn.Module):
 
     def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,set_cache:bool=False) -> Tuple[Tensor,Tensor]:
         if graph_indices is None:
-            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)
+            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
         if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
             embeds = self.gnn(x,edge_index,set_cache=set_cache)
         else:
@@ -115,6 +115,43 @@ class PolicyValueGNN(torch.nn.Module):
         value = self.value_activation(value)
         
         return policy, value
+
+class Duelling(PolicyValueGNN):
+    def __init__(self,*args,advantage_head=None,**kwargs):
+        if advantage_head is not None:
+            kwargs["policy_head"] = advantage_head
+        super().__init__(*args,**kwargs)
+        self.advantage_head = self.policy_head
+        self.value_activation = Tanh()
+        self.advantage_activation = Tanh()
+
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,set_cache:bool=False,adv_only=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            embeds = self.gnn(x,edge_index,set_cache=set_cache)
+        else:
+            embeds = self.gnn(x,edge_index)
+
+        advantages = self.advantage_head(embeds,edge_index)
+        advantages = 2*self.advantage_activation(advantages) # Advantage range: -2, 2
+        if adv_only:
+            return advantages
+        
+        if graph_indices is None:
+            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
+
+        graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
+        value = self.value_head(graph_parts)
+        value = self.value_activation(value) # Value range: -1, 1
+
+        batch_size = int(graph_indices.max()) + 1
+
+        color_multiplier = x[:,3]*2-1  # This ensures that value is computed in terms of the player that is on turn. Hacky, but whatever.
+        advantages *= color_multiplier
+        value*= color_multiplier
+
+        adv_means = scatter(advantages,graph_indices,dim=0,dim_size=batch_size)
+        
+        return value + (advantages - adv_means.index_select(0, graph_indices))
 
 
 class CachedGraphNorm(GraphNorm):
@@ -277,3 +314,8 @@ class GCN_with_glob(torch.nn.Module):
         x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, graph_indices)
         return torch.sigmoid(x)
 
+def get_pre_defined(name):
+    if name == "sage+norm":
+        body_model = cachify_gnn(GraphSAGE) 
+        model = Duelling(body_model,in_channels=4,num_layers=13,hidden_channels=32,norm=CachedGraphNorm,act="relu",advantage_head=SAGEConv)
+    return model
