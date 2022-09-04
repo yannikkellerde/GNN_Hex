@@ -9,7 +9,7 @@ Hex Graphs: https://webdocs.cs.ualberta.ca/~hayward/theses/ph.pdf
 Hex Variants, hex information: https://www.taylorfrancis.com/books/mono/10.1201/9780429031960/hex-inside-ryan-hayward-bjarne-toft  
 Computer Hex: https://webdocs.cs.ualberta.ca/~hayward/hex/#wolve  
 Some MCTS engine: https://github.com/FutaAlice/FutaHex2  
-HEX deep RL TD0 like (no MCTS): https://github.com/harbecke/HexHex  
+HEX Monte Carlo Value Iteration: https://github.com/harbecke/HexHex  
 General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero  
 Latex hex package: https://ctan.org/tex-archive/macros/latex/contrib/hexgame/
 
