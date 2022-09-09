@@ -5,18 +5,27 @@ from typing import List,Dict,Union
 from blessings import Terminal
 from graph_game.utils import fully_connect_lists,take_step,greedy_search
 import math
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.patches import RegularPolygon
 
 class Hex_board(Abstract_board_game):
-    game:Union["Node_switching_game","Clique_node_switching_game"]
+    game:Union["Node_switching_game"]
     position:List[str]
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]
+    vertex_index_to_board_index:Dict[int,int]
     redgraph:bool
     size:int
 
     def __init__(self,onturn="r",redgraph=True):
         self.onturn = onturn
         self.redgraph = redgraph
+
+    def vertex_index_to_string_move(self,vi):
+        board_index = self.vertex_index_to_board_index[vi]
+        letters = "abcdefghikjlmnopqrstuvwxyz"
+        return letters[board_index%self.size]+str(board_index//self.size+1)
 
     def make_move(self, move:int, force_color=None, remove_dead_and_captured=False):
         """Make a move on the board representation and update the graph representation.
@@ -196,6 +205,7 @@ class Hex_board(Abstract_board_game):
         self.game.graph.vp.f = filt_prop # For filtering in the GraphView
         self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices()).astype(bool)
         self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
+        self.vertex_index_to_board_index = {int(key):value for key,value in self.vertex_to_board_index.items()}
 
         for i in range(self.squares):
             if (self.position[i] == "r" and redgraph) or (self.position[i]=="b" and not redgraph):
@@ -205,8 +215,20 @@ class Hex_board(Abstract_board_game):
                 self.game.graph.gp["m"] = False
                 self.game.make_move(self.board_index_to_vertex[i])
 
+    def matplotlib_me(self,vprop=None,color_based_on_vprop=False):
+        colors = [[("w" if y=="f" else y) for y in self.position[x:x+self.size]] for x in range(0,self.size*self.size,self.size)]
+        labels = None
+        if vprop is not None:
+            labelist = [vprop[self.board_index_to_vertex[i]] for i in range(len(self.position))]
+            labels = [labelist[x:x+self.size] for x in range(0,self.size**2,self.size)]
+            if color_based_on_vprop:
+                colors = [[("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
 
-    def draw_me(self,pos=None):
+        return build_hex_grid(colors,labels)
+
+
+
+    def draw_me(self,pos=None,green=False):
         out_str = ""
         t = Terminal()
         if pos is None:
@@ -217,13 +239,15 @@ class Hex_board(Abstract_board_game):
         row_width=1
         row_index=0
         before_center=True
+        c1 = t.red
+        c2 = t.green if green else t.blue
         out_str+=" "*before_spacing
-        out_str+=t.blue("/")
+        out_str+=c2("/")
         for p in pos:
             if p=="b":
-                out_str+=t.blue("⬢")
+                out_str+=c2("⬢")
             elif p=="r":
-                out_str+=t.red("⬢")
+                out_str+=c1("⬢")
             elif p=="f":
                 out_str+=t.white("⬢")
             
@@ -235,27 +259,56 @@ class Hex_board(Abstract_board_game):
                 if before_center:
                     row_width+=1
                     before_spacing-=1
-                    out_str+=t.red("\\")+"\n"
+                    out_str+=c1("\\")+"\n"
                     out_str+=before_spacing*" "
                     if row_width==sq_squares:
                         out_str+=t.magenta("|")
                     else:
-                        out_str+=t.blue("/")
+                        out_str+=c2("/")
                 else:
                     before_spacing+=1
                     if row_width==sq_squares:
                         out_str+=t.magenta("|")
                     else:
-                        out_str+=t.blue("/")
+                        out_str+=c2("/")
                     row_width-=1
                     out_str+="\n"+before_spacing*" "
                     if row_width==0:
                         out_str+=t.magenta("‾")
                     else:
-                        out_str+=t.red("\\")
+                        out_str+=c1("\\")
             else:
                 out_str+=" "
         return out_str
+
+def build_hex_grid(colors,labels=None):
+    if labels is not None:
+        labels = [[str(x)[:6] for x in y] for y in labels]
+    fig, ax = plt.subplots(1,figsize=(16,16))
+    size = len(colors)
+    xstart = -(size//2)*1.5
+    ystart = -(size/2*np.sqrt(3/4))+0.5
+    xend = xstart+1.5*(size-1)
+    yend = ystart+np.sqrt(3/4)*(size-1)
+    ax.set_aspect('equal')
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="r",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="b",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="r",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="b",alpha=0.7)
+    ax.add_patch(tri)
+    for i,cylist in enumerate(colors):
+        for j,color in enumerate(cylist):
+            coords = [xstart+0.5*j+i,ystart+np.sqrt(3/4)*j]
+            hexagon = RegularPolygon((coords[0], coords[1]), numVertices=6, radius=np.sqrt(1/3), alpha=1, edgecolor='k', facecolor=color,linewidth=2)
+            if labels is not None:
+                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=32-2*size)
+            ax.add_patch(hexagon)
+    plt.autoscale(enable=True)
+    plt.axis("off")
+    return fig
 
 if __name__=="__main__":
     import random

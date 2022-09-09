@@ -3,7 +3,7 @@ from torch_geometric.data import Data
 import numpy as np
 from graph_tool.all import Graph,VertexPropertyMap
 from graph_game.winpattern_game import Winpattern_game
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 
 def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
@@ -51,7 +51,7 @@ def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     
     return node_features,edge_index,targets
 
-def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[]):
+def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[],need_backmap=False):
     """Convert a graph-tool graph for a shannon node switching game into torch_geometric data
 
     The torch_geometric data stores the follwing features from the input graphs:
@@ -69,13 +69,13 @@ def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap
         A torch_geometric Data object representing the graph
     """
     n = graph.num_vertices()
-    node_features = torch.zeros((n,3+len(global_input_properties)))
+    node_features = torch.zeros((n,2+len(global_input_properties)))
     degprop = graph.degree_property_map("total")
     node_features[:,0] = torch.tensor(degprop.fa).float()
     node_features[0,1] = 1
-    node_features[1,2] = 1
+    node_features[1,1] = 1
     for i,p in enumerate(global_input_properties):
-        node_features[:,3+i] = p
+        node_features[:,2+i] = p
     verts = graph.get_vertices()
 
     # This is all not super efficient, but as long as I use graph-tool
@@ -89,6 +89,8 @@ def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap
         edge_index = torch.cat((edge_index,torch.flip(edge_index,dims=(0,))),dim=1)  # Make sure, the graph is undirected.
 
     graph_data = Data(x=node_features,edge_index=edge_index)
+    if need_backmap:
+        setattr(graph_data,"backmap",torch.tensor(verts).long())
     if target_vp is not None:
         targray = target_vp.fa
         targets = torch.tensor(targray).unsqueeze(1)
@@ -98,7 +100,7 @@ def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap
 
     return graph_data
 
-def convert_node_switching_game_back(data:Data) -> Tuple[Graph,VertexPropertyMap]:
+def convert_node_switching_game_back(data:Data) -> Union[Tuple[Graph,VertexPropertyMap],Graph]:
     """Convert a torch_geometric data object into a graph-tool graph for shannon node-switching
     
     Args:
@@ -113,14 +115,16 @@ def convert_node_switching_game_back(data:Data) -> Tuple[Graph,VertexPropertyMap
     if hasattr(data,"maker_turn"):
         graph.gp["m"] = bool(data.maker_turn)
     else:
-        graph.gp["m"] = bool(data.x[0][3])
+        graph.gp["m"] = bool(data.x[0][2])
     graph.add_vertex(len(data.x))
     edge_list = data.edge_index.cpu().numpy().T
     edge_list = np.array([list(x) for x in set([frozenset(x) for x in edge_list.tolist()])])
     graph.add_edge_list(edge_list)
-    tprop = graph.new_vertex_property("double")
-    tprop.a = data.y.cpu().numpy()[:,0]
-    return graph,tprop
+    if hasattr(data,"y") and data.y is not None:
+        tprop = graph.new_vertex_property("double")
+        tprop.a = data.y.cpu().numpy()[:,0]
+        return graph,tprop
+    return graph
 
 
 def convert_winpattern_game(graph:Graph) -> Tuple[Data,dict]:

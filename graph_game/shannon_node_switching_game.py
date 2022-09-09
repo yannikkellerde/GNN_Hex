@@ -7,6 +7,7 @@ from graph_game.utils import to_directed_graph
 import scipy.linalg
 import sklearn.preprocessing
 from itertools import tee
+import time
 
 class Node_switching_game(Abstract_graph_game):
     terminals:List[Vertex]
@@ -14,6 +15,8 @@ class Node_switching_game(Abstract_graph_game):
 
     def __init__(self):
         self.board_callback = None
+        self.total_num_moves = 0
+        self.creation_time = time.perf_counter()
 
     @property
     def onturn(self):
@@ -47,6 +50,7 @@ class Node_switching_game(Abstract_graph_game):
                                       a consequence of this move
         """
         if force_color is None:
+            self.total_num_moves+=1
             makerturn = self.view.gp["m"]
         else:
             makerturn = force_color=="m"

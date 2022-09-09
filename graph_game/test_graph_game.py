@@ -10,6 +10,10 @@ import pickle
 import numpy as np
 import os
 import random
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+mpl.use('GTK3Cairo')
 
 def test_iterative_voltages():
     size = 11
@@ -29,14 +33,16 @@ def test_iterative_voltages():
 
 
 def test_voltages():
-    size = 6
+    size = 11
     g = Hex_game(size)
     vprop,value = g.compute_node_voltages_exact()
     dprop = g.compute_node_currents(vprop)
     intprop = g.view.new_vertex_property("int")
     intprop.a = np.around(dprop.a).astype(int)
-    g.draw_me(fname="voltages.pdf",vprop=intprop)
-    os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
+    g.board.matplotlib_me(vprop=dprop)
+    plt.show()
+    # g.draw_me(fname="voltages.pdf",vprop=intprop)
+    # os.system("nohup mupdf voltages.pdf > /dev/null 2>&1 &")
     print(value)
 
 def check_conversion_consistency(g:Node_switching_game, vprop:VertexPropertyMap):
@@ -361,8 +367,8 @@ if __name__ == "__main__":
     #test_json_game()
     #test_graph_nets()
     #test_hex()
-    play_hex()
+    # play_hex()
     # check_some_hex_patterns()
     # test_iterative_voltages()
-    # test_voltages()
+    test_voltages()
     #test_graph_similarity()

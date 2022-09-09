@@ -1,7 +1,19 @@
 from graph_tool.all import Graph, Vertex, GraphView
+import torch
+from torch_scatter import scatter_max, scatter_add
+from torch_geometric.utils.num_nodes import maybe_num_nodes
 from typing import List,Iterator,Union
 import numpy as np
 import math
+
+def approximately_equal_numbers(a, n):
+    k, m = divmod(a,n)
+    return [(i+1)*k+min(i+1, m)-(i*k+min(i, m)) for i in range(n)]
+
+
+def approximately_equal_split(a, n):
+    k, m = divmod(len(a), n)
+    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 def to_directed_graph(graph:Graph):
     graph.set_directed(True)
@@ -100,3 +112,37 @@ def is_fully_connected(g:Graph,vertices:Iterator[int]) -> bool:
         if not g.edge(v1,v2):
             return False
     return True
+
+def tempered_geometric_softmax(src,index,num_nodes=None,temperature=1):
+    r"""Computes a sparsely evaluated softmax.
+    Given a value tensor :attr:`src`, this function first groups the values
+    along the first dimension based on the indices specified in :attr:`index`,
+    and then proceeds to compute the softmax individually for each group.
+
+    Args:
+        src (Tensor): The source tensor.
+        index (LongTensor): The indices of elements for applying the softmax.
+        num_nodes (int, optional): The number of nodes, *i.e.*
+            :obj:`max_val + 1` of :attr:`index`. (default: :obj:`None`)
+        temperature: the softmax temperature
+
+    :rtype: :class:`Tensor`
+    """
+
+    num_nodes = maybe_num_nodes(index, num_nodes)
+    if temperature == 0:
+        out = torch.zeros_like(src)
+        out[scatter_max(src,index,dim=0,dim_size=num_nodes)[1]] = 1
+        return out
+    else:
+        src = src/temperature # Does not modify original src
+        out = src - scatter_max(src, index, dim=0, dim_size=num_nodes)[0][index]
+        out = out.exp()
+        out = out / (
+            scatter_add(out, index, dim=0, dim_size=num_nodes)[index] + 1e-16)
+
+        return out
+
+if __name__ == "__main__":
+    print(approximately_equal_numbers(20,6))
+    print(list(approximately_equal_split([0 for _ in range(20)],6)))

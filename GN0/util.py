@@ -11,6 +11,18 @@ from torch import Tensor
 import torch_geometric.utils
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_scatter import gather_csr, scatter, segment_csr
+from collections import defaultdict
+
+class fix_size_defaultdict(defaultdict):
+    def __init__(self, *args, max=0, **kwargs):
+        self._max = max
+        super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        defaultdict.__setitem__(self, key, value)
+        if self._max > 0:
+            if len(self) > self._max:
+                self.pop(next(iter(self)))
 
 class Identity():
     def __init__(self,*args,**kwargs):

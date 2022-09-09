@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type, Union
 import torch.nn.functional as F
+from torch_geometric.nn.models import GraphSAGE
 from torch_geometric.nn import GCNConv, SAGEConv
 from torch_geometric.nn import MessagePassing
 from torch_geometric.data import Batch, Data
@@ -35,6 +36,8 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 self.norms.append(copy.deepcopy(self.norms[0]))
         
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
+            if self.norms is None:
+                return
             assert self.has_cache
             mean_caches = []
             var_caches = []
@@ -44,6 +47,8 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             return torch.stack(mean_caches),torch.stack(var_caches)
 
         def import_norm_cache(self,mean_cache,var_cache):
+            if self.norms is None:
+                return
             self.has_cache = True
             for i,norm in enumerate(self.norms):
                 norm.mean_cache = mean_cache[i]
@@ -116,6 +121,27 @@ class PolicyValueGNN(torch.nn.Module):
         
         return policy, value
 
+class ActionValue(torch.nn.Module):
+    def __init__(self,GNN:Type[BasicGNN],**gnn_kwargs):
+        super().__init__()
+        gnn_kwargs["out_channels"] = 1
+        self.gnn = GNN(**gnn_kwargs)
+        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
+        self.value_activation = torch.nn.Tanh()
+
+    def export_norm_cache(self,*args,**kwargs):
+        return self.gnn.export_norm_cache(*args,**kwargs)
+    
+    def import_norm_cache(self,*args,**kwargs):
+        return self.gnn.import_norm_cache(*args,**kwargs)
+
+    def forward(self,x:Tensor,edge_index:Adj,set_cache:bool=False) -> Tensor:
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            res = self.gnn(x,edge_index,set_cache=set_cache)
+        else:
+            res = self.gnn(x,edge_index)
+        return self.value_activation(res)
+
 class Duelling(PolicyValueGNN):
     def __init__(self,*args,advantage_head=None,**kwargs):
         if advantage_head is not None:
@@ -124,8 +150,9 @@ class Duelling(PolicyValueGNN):
         self.advantage_head = self.policy_head
         self.value_activation = Tanh()
         self.advantage_activation = Tanh()
+        self.final_activation = Tanh()
 
-    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,set_cache:bool=False,adv_only=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,ptr:Optional[Tensor]=None,set_cache:bool=False,advantages_only=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
         if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
             embeds = self.gnn(x,edge_index,set_cache=set_cache)
         else:
@@ -133,25 +160,35 @@ class Duelling(PolicyValueGNN):
 
         advantages = self.advantage_head(embeds,edge_index)
         advantages = 2*self.advantage_activation(advantages) # Advantage range: -2, 2
-        if adv_only:
-            return advantages
+
+
+        # color_multiplier = (x[:,2]*2-1).unsqueeze(1)  # This ensures that value is computed in terms of the player that is on turn. Hacky, but whatever.
+        # advantages = advantages*color_multiplier
         
+        if advantages_only:
+            return advantages
+
         if graph_indices is None:
             graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
-
+        
         graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
         value = self.value_head(graph_parts)
         value = self.value_activation(value) # Value range: -1, 1
 
         batch_size = int(graph_indices.max()) + 1
 
-        color_multiplier = x[:,3]*2-1  # This ensures that value is computed in terms of the player that is on turn. Hacky, but whatever.
-        advantages *= color_multiplier
-        value*= color_multiplier
+        # value_color_multiplier = (x[:,2:3][ptr[:-1]]*2-1)
+        # value = value*value_color_multiplier
 
-        adv_means = scatter(advantages,graph_indices,dim=0,dim_size=batch_size)
+        adv_means = scatter(advantages,graph_indices,dim=0,dim_size=batch_size,reduce="mean")
         
-        return value + (advantages - adv_means.index_select(0, graph_indices))
+        return self.final_activation((value.index_select(0,graph_indices) + (advantages - adv_means.index_select(0, graph_indices))).squeeze())
+    
+    def simple_forward(self,data:Union[Data,Batch]):
+        if isinstance(data,Batch):
+            return self.forward(data.x,data.edge_index,data.batch,data.ptr)
+        else:
+            return self.forward(data.x,data.edge_index)
 
 
 class CachedGraphNorm(GraphNorm):
@@ -317,5 +354,11 @@ class GCN_with_glob(torch.nn.Module):
 def get_pre_defined(name):
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
-        model = Duelling(body_model,in_channels=4,num_layers=13,hidden_channels=32,norm=CachedGraphNorm,act="relu",advantage_head=SAGEConv)
+        model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",advantage_head=SAGEConv)
+        # model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=None,act="relu",advantage_head=SAGEConv)
+    elif name == "action_value":
+        model = ActionValue(cachify_gnn(GraphSAGE),in_channels=3,out_channels=1,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu")
+    else:
+        print(name)
+        raise NotImplementedError
     return model

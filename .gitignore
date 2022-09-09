@@ -14,6 +14,9 @@ GN0/run
 !GN0/model/GCN_model.pt 
 !GN0/model/GraphSAGE_hex_best.pt
 !GN0/model/GraphSAGE_unnormalized.pt
+Rainbow/
+Elo/
+model/
 
 gctest.py
 *.pyc
