@@ -3,19 +3,41 @@ from GN0.convert_graph import convert_node_switching_game
 from graph_game.graph_tools_games import Hex_game
 import os
 import torch
+from graph_game.hex_gui import playerify_model,interactive_hex_window, playerify_maker_breaker, maker_breaker_evaluater
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def play_vs_model():
+def play_in_gui():
     breaker = get_pre_defined("sage+norm").to(device)
     maker = get_pre_defined("sage+norm").to(device)
-    stuff_breaker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22/checkpoint_breaker_4800000.pt")
+    stuff_breaker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt")
 
     breaker.load_state_dict(stuff_breaker["state_dict"])
     if "cache" in stuff_breaker and stuff_breaker["cache"] is not None:
         breaker.import_norm_cache(*stuff_breaker["cache"])
     breaker.eval()
-    stuff_maker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22/checkpoint_maker_4800000.pt")
+    stuff_maker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt")
+    maker.load_state_dict(stuff_maker["state_dict"])
+    if "cache" in stuff_maker and stuff_maker["cache"] is not None:
+        maker.import_norm_cache(*stuff_maker["cache"])
+    maker.eval()
+
+    player = playerify_maker_breaker(maker,breaker)
+    evaluater = maker_breaker_evaluater(maker,breaker)
+    interactive_hex_window(11,model_player=player,model_evaluater=evaluater)
+
+
+def play_vs_model():
+    breaker = get_pre_defined("sage+norm").to(device)
+    maker = get_pre_defined("sage+norm").to(device)
+    stuff_breaker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_4800000.pt")
+
+    breaker.load_state_dict(stuff_breaker["state_dict"])
+    if "cache" in stuff_breaker and stuff_breaker["cache"] is not None:
+        breaker.import_norm_cache(*stuff_breaker["cache"])
+    breaker.eval()
+    stuff_maker = torch.load("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_4800000.pt")
     maker.load_state_dict(stuff_maker["state_dict"])
     if "cache" in stuff_maker and stuff_maker["cache"] is not None:
         maker.import_norm_cache(*stuff_maker["cache"])
@@ -63,4 +85,6 @@ def play_vs_model():
             print(game.board.draw_me(green=True))
 
 if __name__ == "__main__":
-    play_vs_model()
+    # play_vs_model()
+    # interactive_hex_window(11)
+    play_in_gui()

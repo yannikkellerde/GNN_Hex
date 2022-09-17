@@ -8,6 +8,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import RegularPolygon
+from graph_game.shannon_node_switching_game import Node_switching_game
 
 class Hex_board(Abstract_board_game):
     game:Union["Node_switching_game"]
@@ -22,17 +23,29 @@ class Hex_board(Abstract_board_game):
         self.onturn = onturn
         self.redgraph = redgraph
 
+    def copy(self):
+        new_board = Hex_board(onturn=self.onturn,redgraph=self.redgraph)
+        new_board.position = self.position.copy()
+        new_board.squares = self.size**2
+        new_board.size = self.size
+        new_board.game = Node_switching_game()
+        new_board.graph_from_board(redgraph=self.redgraph)
+        new_board.game.view.gp["m"] = self.game.view.gp["m"]
+        return new_board
+
     def vertex_index_to_string_move(self,vi):
         board_index = self.vertex_index_to_board_index[vi]
         letters = "abcdefghikjlmnopqrstuvwxyz"
         return letters[board_index%self.size]+str(board_index//self.size+1)
 
-    def make_move(self, move:int, force_color=None, remove_dead_and_captured=False):
+    def make_move(self, move:int, force_color=None, remove_dead_and_captured=False, only_legal=True):
         """Make a move on the board representation and update the graph representation.
         
         Args:
             move: The square the move is to be made on."""
         color = self.onturn if force_color is None else force_color
+        if only_legal and self.position[move]!="f":
+            return
         self.position[move] = color
         if force_color is None:
             self.onturn = "r" if color == "b" else "b"
@@ -121,7 +134,7 @@ class Hex_board(Abstract_board_game):
         known_pos[known_pos==0] = res
         self.position = [str_map[x] for x in known_pos]
 
-    def clique_graph_from_board(self, redgraph:bool):
+    def clique_graph_from_board(self, redgraph:bool): # Deprecated
         self.redgraph = redgraph
         sq_squares = int(math.sqrt(self.squares))
         self.board_index_to_vertex = {}
@@ -215,16 +228,16 @@ class Hex_board(Abstract_board_game):
                 self.game.graph.gp["m"] = False
                 self.game.make_move(self.board_index_to_vertex[i])
 
-    def matplotlib_me(self,vprop=None,color_based_on_vprop=False):
+    def matplotlib_me(self,vprop=None,color_based_on_vprop=False,fig=None):
         colors = [[("w" if y=="f" else y) for y in self.position[x:x+self.size]] for x in range(0,self.size*self.size,self.size)]
         labels = None
         if vprop is not None:
             labelist = [vprop[self.board_index_to_vertex[i]] for i in range(len(self.position))]
-            labels = [labelist[x:x+self.size] for x in range(0,self.size**2,self.size)]
+            labels = [["" if x == 0 else x for x in labelist[x:x+self.size]] for x in range(0,self.size**2,self.size)]
             if color_based_on_vprop:
                 colors = [[("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
 
-        return build_hex_grid(colors,labels)
+        return build_hex_grid(colors,labels,fig=fig)
 
 
 
@@ -281,10 +294,13 @@ class Hex_board(Abstract_board_game):
                 out_str+=" "
         return out_str
 
-def build_hex_grid(colors,labels=None):
+def build_hex_grid(colors,labels=None,fig=None):
     if labels is not None:
         labels = [[str(x)[:6] for x in y] for y in labels]
-    fig, ax = plt.subplots(1,figsize=(16,16))
+    if fig is not None:
+        ax = fig.axes[0]
+    else:
+        fig, ax = plt.subplots(1,figsize=(16,16))
     size = len(colors)
     xstart = -(size//2)*1.5
     ystart = -(size/2*np.sqrt(3/4))+0.5

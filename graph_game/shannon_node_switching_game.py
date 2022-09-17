@@ -174,6 +174,20 @@ class Node_switching_game(Abstract_graph_game):
             return True
         return False
 
+    def copy(self):
+        if not hasattr(self,"board") or self.board is None:
+            game =  Node_switching_game.from_graph(graph=Graph(self.view))
+        else:
+            new_board = self.board.copy()
+            game = new_board.game
+            game.board = new_board
+            if self.board_callback is not None:
+                game.board_callback = new_board.graph_callback
+
+        return game
+
+
+
     @staticmethod
     def from_graph(graph:Graph):
         g = Node_switching_game()

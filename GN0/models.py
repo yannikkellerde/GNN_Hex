@@ -355,7 +355,9 @@ def get_pre_defined(name):
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
         model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",advantage_head=SAGEConv)
-        # model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=None,act="relu",advantage_head=SAGEConv)
+    elif name == "sage":
+        body_model = cachify_gnn(GraphSAGE) 
+        model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=None,act="relu",advantage_head=SAGEConv)
     elif name == "action_value":
         model = ActionValue(cachify_gnn(GraphSAGE),in_channels=3,out_channels=1,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu")
     else:
