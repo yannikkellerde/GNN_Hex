@@ -12,8 +12,79 @@ import os
 import random
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from alive_progress import alive_bar,alive_it
 
-mpl.use('GTK3Cairo')
+def test_dead_and_captured_consistency():
+    size = 11
+    for i in alive_it(range(500)):
+        simple_game = Hex_game(size)
+        fancy_game = Hex_game(size)
+        simple_game.board_callback = simple_game.board.graph_callback
+        fancy_game.board_callback = fancy_game.board.graph_callback
+        while simple_game.who_won() is None:
+            move = random.choice(simple_game.get_actions())
+            # print("chose",simple_game.board.vertex_index_to_string_move(move))
+            simple_game.make_move(move,remove_dead_and_captured=False)
+            if move in fancy_game.get_actions():
+                if fancy_game.who_won() is None:
+                    fancy_game.make_move(move,remove_dead_and_captured=True)
+                else:
+                    fancy_game.view.gp["m"] = not fancy_game.view.gp["m"]
+            else:
+                response = fancy_game.get_response(move,for_maker=not fancy_game.view.gp["m"])
+                if response is not None:
+                    vertex_response = simple_game.board.board_index_to_vertex[response]
+                    # print("responded with",simple_game.board.vertex_index_to_string_move(vertex_response))
+                    simple_game.make_move(vertex_response,remove_dead_and_captured=False)
+                else:
+                    # print("No response for",move,"\nResponses:",fancy_game.response_set_breaker if fancy_game.view.gp["m"] else fancy_game.response_set_maker)
+                    fancy_game.view.gp["m"] = not fancy_game.view.gp["m"]
+            # print("simple\n",simple_game.board.draw_me())
+            # print("fancy\n",fancy_game.board.draw_me())
+        print(simple_game.who_won(),fancy_game.who_won())
+        # print("AAAAAAAAAAAAAAA")
+        assert simple_game.who_won()==fancy_game.who_won()
+
+def test_color_consistency():
+    size = 11
+    g = Hex_game(size)
+    g2 = Hex_game(size)
+    g.board_callback = g.board.graph_callback
+    g2.board_callback = g2.board.graph_callback
+    g2.view.gp["m"] = False
+    with alive_bar(10000) as bar:
+        for i in range(10000):
+            actions = g.get_actions()
+            actions2 = g2.get_actions()
+            # if set(actions)!=set(actions2):
+            #     g.board.draw()
+            #     g2.board.draw()
+            #     return
+            a = np.random.choice(actions)
+            a2 = g2.board.board_index_to_vertex[g2.board.transpose_move(g.board.vertex_index_to_board_index[a])]
+            # if int(a2) not in actions2:
+            #     print(g.board.draw_me())
+            #     print(g2.board.draw_me())
+            #     return
+            g.make_move(a,remove_dead_and_captured=True)
+            g2.make_move(a2,remove_dead_and_captured=True)
+            winner = g.who_won()
+            if winner is not None:
+                # if g2.who_won() is None or g2.who_won()==winner:
+                #     print(g.board.draw_me())
+                #     print(g2.board.draw_me())
+                #     return
+                # print(g.board.draw_me())
+                # print(g2.board.draw_me())
+                g = Hex_game(size)
+                g2 = Hex_game(size)
+                g.board_callback = g.board.graph_callback
+                g2.board_callback = g2.board.graph_callback
+                g2.view.gp["m"] = False
+            bar()
+
+
+
 
 def test_iterative_voltages():
     size = 11
@@ -370,5 +441,7 @@ if __name__ == "__main__":
     # play_hex()
     # check_some_hex_patterns()
     # test_iterative_voltages()
-    test_voltages()
+    # test_voltages()
+    # test_color_consistency()
+    test_dead_and_captured_consistency()
     #test_graph_similarity()

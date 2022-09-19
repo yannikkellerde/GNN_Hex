@@ -23,6 +23,12 @@ class Hex_board(Abstract_board_game):
         self.onturn = onturn
         self.redgraph = redgraph
 
+    def transpose_move(self,move):
+        x = move%self.size
+        y = move//self.size
+        return x*self.size+y
+
+
     def copy(self):
         new_board = Hex_board(onturn=self.onturn,redgraph=self.redgraph)
         new_board.position = self.position.copy()

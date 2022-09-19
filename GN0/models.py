@@ -18,10 +18,71 @@ from collections import defaultdict
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 from torch.nn import Linear
 import copy
+from math import sqrt
 
 perfs = defaultdict(list)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+class FactorizedNoisyLinear(torch.nn.Module):
+    """ The factorized Gaussian noise layer for noisy-nets dqn. """
+    def __init__(self, in_features: int, out_features: int, sigma_0: float) -> None:
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.sigma_0 = sigma_0
+
+        # weight: w = \mu^w + \sigma^w . \epsilon^w
+        self.weight_mu = torch.nn.Parameter(torch.empty(out_features, in_features))
+        self.weight_sigma = torch.nn.Parameter(torch.empty(out_features, in_features))
+        self.register_buffer('weight_epsilon', torch.empty(out_features, in_features))
+
+        # bias: b = \mu^b + \sigma^b . \epsilon^b
+        self.bias_mu = torch.nn.Parameter(torch.empty(out_features))
+        self.bias_sigma = torch.nn.Parameter(torch.empty(out_features))
+        self.register_buffer('bias_epsilon', torch.empty(out_features))
+
+        self.reset_parameters()
+        self.reset_noise()
+
+    @torch.no_grad()
+    def reset_parameters(self) -> None:
+        # initialization is similar to Kaiming uniform (He. initialization) with fan_mode=fan_in
+        scale = 1 / sqrt(self.in_features)
+
+        torch.nn.init.uniform_(self.weight_mu, -scale, scale)
+        torch.nn.init.uniform_(self.bias_mu, -scale, scale)
+
+        torch.nn.init.constant_(self.weight_sigma, self.sigma_0 * scale)
+        torch.nn.init.constant_(self.bias_sigma, self.sigma_0 * scale)
+
+    @torch.no_grad()
+    def _get_noise(self, size: int) -> Tensor:
+        noise = torch.randn(size, device=self.weight_mu.device)
+        # f(x) = sgn(x)sqrt(|x|)
+        return noise.sign().mul_(noise.abs().sqrt_())
+
+    @torch.no_grad()
+    def reset_noise(self) -> None:
+        # like in eq 10 and 11 of the paper
+        epsilon_in = self._get_noise(self.in_features)
+        epsilon_out = self._get_noise(self.out_features)
+        self.weight_epsilon.copy_(epsilon_out.outer(epsilon_in))
+        self.bias_epsilon.copy_(epsilon_out)
+
+    @torch.no_grad()
+    def disable_noise(self) -> None:
+        self.weight_epsilon[:] = 0
+        self.bias_epsilon[:] = 0
+
+    def forward(self, input: Tensor) -> Tensor:
+        # y = wx + d, where
+        # w = \mu^w + \sigma^w * \epsilon^w
+        # b = \mu^b + \sigma^b * \epsilon^b
+        return F.linear(input,
+                        self.weight_mu + self.weight_sigma*self.weight_epsilon,
+                        self.bias_mu + self.bias_sigma*self.bias_epsilon)
+
 
 def cachify_gnn(gnn:Type[BasicGNN]):
     class CachifiedGNN(gnn):
@@ -33,8 +94,11 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             self.has_output = out_channels is not None
             self.has_cache = False
             if self.norms is not None and not self.has_output: # Add final norm layer after last hidden layer if not having output
-                self.norms.append(copy.deepcopy(self.norms[0]))
-        
+                if len(self.norms)>0:
+                    self.norms.append(copy.deepcopy(self.norms[0]))
+                else:
+                    self.norms.append(copy.deepcopy(kwargs["norm"]))
+
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
             if self.norms is None:
                 return
@@ -51,8 +115,8 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 return
             self.has_cache = True
             for i,norm in enumerate(self.norms):
-                norm.mean_cache = mean_cache[i]
-                norm.var_cache = var_cache[i]
+                norm.mean_cache = mean_cache[i].to(norm.weight.device)
+                norm.var_cache = var_cache[i].to(norm.weight.device)
 
         def forward(self,x: Tensor,edge_index: Adj,*,edge_weight: OptTensor = None,edge_attr: OptTensor = None,set_cache: bool = False) -> Tensor:
             if set_cache:
@@ -141,6 +205,117 @@ class ActionValue(torch.nn.Module):
         else:
             res = self.gnn(x,edge_index)
         return self.value_activation(res)
+
+class HeadNetwork(torch.nn.Module):
+    def __init__(self,in_channels,hidden_channels,out_channels,GNN:Type[BasicGNN],noisy_dqn=True,noise_sigma=0,**gnn_kwargs):
+        super().__init__()
+        self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,**gnn_kwargs)
+        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
+        self.value_head = Linear(hidden_channels,1)
+        if noisy_dqn:
+            self.linear = FactorizedNoisyLinear(hidden_channels,out_channels,noise_sigma)
+        else:
+            self.linear = torch.nn.Linear(hidden_channels,out_channels)
+
+    def export_norm_cache(self,*args,**kwargs):
+        return self.gnn.export_norm_cache(*args,**kwargs)
+    
+    def import_norm_cache(self,*args,**kwargs):
+        return self.gnn.import_norm_cache(*args,**kwargs)
+
+    def forward(self,x:Tensor,edge_index:Tensor,graph_indices,advantages_only=False,set_cache=False):
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            x = self.gnn(x,edge_index,set_cache=set_cache)
+        else:
+            x = self.gnn(x,edge_index)
+        
+        advantages = self.linear(x)
+        if advantages_only:
+            return advantages
+
+        graph_parts = scatter(x,graph_indices,dim=0,reduce="sum")
+        value = self.value_head(graph_parts)
+        return advantages,value
+
+class DuellingTwoHeaded(torch.nn.Module):
+    def __init__(self,GNN:Type[BasicGNN],advantage_head,gnn_kwargs,head_kwargs):
+        super().__init__()
+        self.gnn = GNN(**gnn_kwargs)
+        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
+        self.value_activation = Tanh()
+        self.advantage_activation = Tanh()
+        self.maker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
+        self.breaker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
+
+    def export_norm_cache(self,*args):
+        cache_list = []
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            cache_list.append(self.gnn.export_norm_cache(*args))
+        if hasattr(self.maker_head,"supports_cache") and self.maker_head.supports_cache:
+            cache_list.append(self.maker_head.export_norm_cache(*args))
+        if hasattr(self.breaker_head,"supports_cache") and self.breaker_head.supports_cache:
+            cache_list.append(self.breaker_head.export_norm_cache(*args))
+        return cache_list
+    
+    def import_norm_cache(self,*args):
+        ind = 0
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            if args[ind] is not None:
+                self.gnn.import_norm_cache(*args[ind])
+            ind+=1
+        if hasattr(self.maker_head,"supports_cache") and self.maker_head.supports_cache:
+            if args[ind] is not None:
+                self.maker_head.import_norm_cache(*args[ind])
+            ind+=1
+        if hasattr(self.breaker_head,"supports_cache") and self.breaker_head.supports_cache:
+            if args[ind] is not None:
+                self.breaker_head.import_norm_cache(*args[ind])
+
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,ptr:Optional[Tensor]=None,set_cache:bool=False,advantages_only=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
+        assert torch.all(x[:,2] == x[0,2])
+        is_maker = x[0,2]
+        x = x[:,:2]
+
+        if graph_indices is None:
+            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
+        
+        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
+            embeds = self.gnn(x,edge_index,set_cache=set_cache)
+        else:
+            embeds = self.gnn(x,edge_index)
+
+        if is_maker==1:
+            if hasattr(self.maker_head,"supports_cache") and self.maker_head.supports_cache:
+                head_res = self.maker_head(embeds,edge_index,graph_indices,advantages_only=advantages_only,set_cache=set_cache)
+            else:
+                head_res = self.maker_head(embeds,edge_index,graph_indices,advantages_only=advantages_only)
+        else:
+            if hasattr(self.breaker_head,"supports_cache") and self.breaker_head.supports_cache:
+                head_res = self.breaker_head(embeds,edge_index,graph_indices,advantages_only=advantages_only,set_cache=set_cache)
+            else:
+                head_res = self.breaker_head(embeds,edge_index,graph_indices,advantages_only=advantages_only)
+
+        if advantages_only:
+            advantages = 2*self.advantage_activation(head_res) # Advantage range: -2, 2
+            return advantages
+        else:
+            advantages = 2*self.advantage_activation(head_res[0]) # Advantage range: -2, 2
+            value = head_res[1]
+            
+        value = self.value_activation(value) # Value range: -1, 1
+
+        batch_size = int(graph_indices.max()) + 1
+
+        adv_means = scatter(advantages,graph_indices,dim=0,dim_size=batch_size,reduce="mean")
+        
+        # No final activation -> Outputs range from -5 to +5
+        return (value.index_select(0,graph_indices) + (advantages - adv_means.index_select(0, graph_indices))).squeeze()
+    
+    def simple_forward(self,data:Union[Data,Batch]):
+        if isinstance(data,Batch):
+            return self.forward(data.x,data.edge_index,data.batch,data.ptr)
+        else:
+            return self.forward(data.x,data.edge_index)
 
 class Duelling(PolicyValueGNN):
     def __init__(self,*args,advantage_head=None,**kwargs):
@@ -351,7 +526,7 @@ class GCN_with_glob(torch.nn.Module):
         x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, graph_indices)
         return torch.sigmoid(x)
 
-def get_pre_defined(name):
+def get_pre_defined(name,args=None):
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
         model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",advantage_head=SAGEConv)
@@ -360,6 +535,22 @@ def get_pre_defined(name):
         model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=None,act="relu",advantage_head=SAGEConv)
     elif name == "action_value":
         model = ActionValue(cachify_gnn(GraphSAGE),in_channels=3,out_channels=1,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu")
+    elif name == "two_headed":
+        model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,
+            gnn_kwargs=dict(
+                in_channels=2,
+                num_layers=args.num_layers,
+                hidden_channels=args.hidden_channels,
+                norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
+                act="relu"
+            ),head_kwargs=dict(
+                GNN=cachify_gnn(GraphSAGE),
+                num_layers=2,
+                noisy_dqn=args.noisy_dqn,
+                noise_sigma=args.noisy_sigma0,
+                norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
+                act="relu"
+            ))
     else:
         print(name)
         raise NotImplementedError

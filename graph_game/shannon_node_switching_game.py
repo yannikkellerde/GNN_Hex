@@ -17,6 +17,8 @@ class Node_switching_game(Abstract_graph_game):
         self.board_callback = None
         self.total_num_moves = 0
         self.creation_time = time.perf_counter()
+        self.response_set_maker = {}
+        self.response_set_breaker = {}
 
     @property
     def onturn(self):
@@ -38,7 +40,19 @@ class Node_switching_game(Abstract_graph_game):
                 change_set.add(v1)
                 change_set.add(v2)
         return change_set
-        
+
+    def get_response(self,move,for_maker):
+        move = int(move)
+        response_vertex = None
+        if for_maker and move in self.response_set_maker:
+            response_vertex = self.response_set_maker[move]
+        if not for_maker and move in self.response_set_breaker:
+            response_vertex = self.response_set_breaker[move]
+
+        if response_vertex is not None:
+            return self.board.vertex_index_to_board_index[response_vertex]
+        else:
+            return None
 
     def make_move(self,square_node:Union[int,Vertex],force_color=None,remove_dead_and_captured=False):
         """Make a move by choosing a vertex in the graph
@@ -122,6 +136,8 @@ class Node_switching_game(Abstract_graph_game):
                 without_him = neighset-{neighbor}
                 if without_me == without_him:  # Maker captures
                     # print(f"maker captured {node}, {neighbor}")
+                    self.response_set_maker[node] = neighbor
+                    self.response_set_maker[neighbor] = node
                     self.make_move(neighbor,force_color="b")
                     change_set = self.make_move(node,force_color="m")
                     if iterate:
@@ -138,6 +154,8 @@ class Node_switching_game(Abstract_graph_game):
                 without_me = set(self.view.get_all_neighbors(neighbor))-{node}
                 without_him = neighset-{neighbor}
                 if is_fully_connected(self.view,without_me) and is_fully_connected(self.view,without_him): # Breaker captures
+                    self.response_set_breaker[node] = neighbor
+                    self.response_set_breaker[neighbor] = node
                     # print(f"breaker captured {node}, {neighbor}")
                     if iterate:
                         big_set.update(without_me)

@@ -1,4 +1,3 @@
-from elosports.elo import Elo
 import os
 import numpy as np
 import random
@@ -13,83 +12,83 @@ from alive_progress import alive_bar
 from GN0.models import get_pre_defined
 from collections import defaultdict,deque
 from GN0.util import fix_size_defaultdict
+from collections import defaultdict
 
 class Elo_handler():
     def __init__(self,hex_size,empty_model_func=None,device="cpu"):
         self.players = {}
-        self.league = Elo(k=20,homefield=0)
         self.size = hex_size
-        self.elo_league_contestants = fix_size_defaultdict(dict,max=10)
-        self.all_elo_league_contestants = list()
+        self.elo_league_contestants = list()
         self.device = device
+        self.K = 3
         if empty_model_func is not None:
             self.empty_model1 = empty_model_func().to(device)
-            self.empty_model2 = empty_model_func().to(device)
             self.empty_model1.eval()
+            self.empty_model2 = empty_model_func().to(device)
             self.empty_model2.eval()
 
-    def add_player(self,name,model,fix_rating=None,simple=False):
-        self.players[name] = {"model":model,"simple":simple}
-        if fix_rating:
-            self.league.addPlayer(name,rating=fix_rating)
-        else:
-            self.league.addPlayer(name)
+    def add_player(self,name,model,set_rating=1500,simple=False):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating}
 
     def load_into_empty_model(self,empty_model,checkpoint):
         stuff = torch.load(checkpoint)
         empty_model.load_state_dict(stuff["state_dict"])
         if "cache" in stuff and stuff["cache"] is not None:
-            empty_model.import_norm_cache(*[x.to(self.device) for x in stuff["cache"]])
+            empty_model.import_norm_cache(*stuff["cache"])
         else:
             print("Warning, no cache")
 
 
-    def add_elo_league_contestant(self,name,maker_checkpoint,breaker_checkpoint,simple=False):
-        self.add_player(name+"_maker",self.empty_model1,fix_rating=1500,simple=simple)
-        self.add_player(name+"_breaker",self.empty_model1,fix_rating=1500,simple=simple)
-        for contestant in self.elo_league_contestants:
-            self.load_into_empty_model(self.empty_model1,maker_checkpoint)
-            self.load_into_empty_model(self.empty_model2,self.elo_league_contestants[contestant]["checkpoint_breaker"])
-            self.players[contestant+"_breaker"]["model"] = self.empty_model2
-            print(self.play_some_games(name+"_maker",contestant+"_breaker",64,0,random_first_move=True))
-            self.load_into_empty_model(self.empty_model1,breaker_checkpoint)
-            self.load_into_empty_model(self.empty_model2,self.elo_league_contestants[contestant]["checkpoint_maker"])
-            self.players[contestant+"_maker"]["model"] = self.empty_model2
-            print(self.play_some_games(contestant+"_maker",name+"_breaker",64,0,random_first_move=True))
-        self.elo_league_contestants[name]["checkpoint_maker"] = maker_checkpoint
-        self.elo_league_contestants[name]["checkpoint_breaker"] = breaker_checkpoint
-        self.all_elo_league_contestants.append(name)
-        return self.get_rating(name+"_maker"), self.get_rating(name+"_breaker")
+    def add_elo_league_contestant(self,name,checkpoint,model=None,simple=False):
+        if model is None:
+            self.load_into_empty_model(self.empty_model1,checkpoint)
+            self.add_player(name,self.empty_model1,set_rating=1500,simple=simple)
+        else:
+            self.load_into_empty_model(model,checkpoint)
+            self.add_player(name,model,set_rating=1500)
+
+        all_stats = []
+        for contestant in self.elo_league_contestants[:10]:
+            if "model" in contestant and contestant["model"] is not None:
+                self.players[contestant["name"]]["model"] = contestant["model"]
+            else:
+                self.load_into_empty_model(self.empty_model2,contestant["checkpoint"])
+                self.players[contestant["name"]]["model"] = self.empty_model2
+            statistics = self.play_some_games(name,contestant["name"],64,0,random_first_move=True)
+            all_stats.append(statistics)
+            statistics = self.play_some_games(contestant["name"],name,64,0,random_first_move=True)
+            all_stats.append(statistics)
+        self.score_some_statistics(all_stats)
+        self.elo_league_contestants.append({"name":name,"checkpoint":checkpoint,"model":model})
+        self.elo_league_contestants.sort(key=lambda x:-self.get_rating(x["name"]))
+        return self.get_rating(name)
+
+    def score_some_statistics(self,statistics):
+        player_expect_vs_score = defaultdict(lambda :dict(expectation=0,score=0,num_games=0))
+        for stats in statistics:
+            keys = list(stats.keys())
+            num_games = sum([int(x) for x in stats.values()])
+            player_expect_vs_score[keys[0]]["expectation"] += (1/(1+10**((self.get_rating(keys[1])-self.get_rating(keys[0]))/400)))*num_games
+            player_expect_vs_score[keys[1]]["expectation"] += (1/(1+10**((self.get_rating(keys[0])-self.get_rating(keys[1]))/400)))*num_games
+            player_expect_vs_score[keys[0]]["score"] += stats[keys[0]]
+            player_expect_vs_score[keys[1]]["score"] += stats[keys[1]]
+            player_expect_vs_score[keys[0]]["num_games"] += num_games
+            player_expect_vs_score[keys[1]]["num_games"] += num_games
+        
+        for key in player_expect_vs_score:
+            self.players[key]["rating"] += self.K*(player_expect_vs_score[key]["score"]-player_expect_vs_score[key]["expectation"])
+
 
     def get_rating_table(self):
         columns = ["name","rating"]
         data = []
-        for contestant in self.all_elo_league_contestants:
-            data.append([contestant+"_maker",self.get_rating(contestant+"_maker")])
-            data.append([contestant+"_breaker",self.get_rating(contestant+"_breaker")])
+        for contestant in self.elo_league_contestants:
+            data.append([contestant["name"],self.get_rating(contestant["name"])])
         data.sort(key=lambda x:-x[1])
         return columns,data
 
-    def get_best_contestants(self):
-        best_maker = None
-        best_maker_elo = 0
-        best_breaker = None
-        best_breaker_elo = 0
-        for contestant in self.elo_league_contestants:
-            maker_rating = self.get_rating(contestant+"_maker")
-            breaker_rating = self.get_rating(contestant+"_breaker")
-            if maker_rating > best_maker_elo:
-                best_maker_elo = maker_rating
-                best_maker = contestant
-            
-            if breaker_rating > best_breaker_elo:
-                best_breaker_elo = breaker_rating
-                best_breaker = contestant
-        return (best_maker,best_breaker),(best_maker_elo,best_breaker_elo)
-
-
     def get_rating(self,player_name):
-        return self.league.ratingDict[player_name]
+        return self.players[player_name]["rating"]
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False):
         print("Playing games between",maker,"and",breaker)
@@ -178,14 +177,15 @@ class Elo_handler():
         print("Mean game length",np.mean(game_lengths))
 
         statistics = wins.copy()
+        # to_score_games = []
 
-        while wins[maker]>0 or wins[breaker]>0:
-            if wins[maker]>0:
-                self.league.gameOver(winner=maker,loser=breaker, winnerHome=True)
-                wins[maker]-=1
-            if wins[breaker]>0:
-                self.league.gameOver(winner=breaker,loser=maker, winnerHome=True)
-                wins[breaker]-=1
+        # while wins[maker]>0 or wins[breaker]>0:
+        #     if wins[maker]>0:
+        #         to_score_games.append({"winner":maker,"loser":breaker,"winnerHome":True})
+        #         wins[maker]-=1
+        #     if wins[breaker]>0:
+        #         to_score_games.append({"winner":breaker,"loser":maker,"winnerHome":True})
+        #         wins[breaker]-=1
         return statistics
 
 def random_player(batch):
@@ -209,10 +209,8 @@ def evaluate_elo_between(elo_handler:Elo_handler,model1,model2,checkpoint1,check
 
     elo_handler.add_player("model1",model1)
     elo_handler.add_player("model2",model2)
-    res = elo_handler.play_some_games("model1","model2",num_games=256,temperature=0,random_first_move=True)
+    res,to_score = elo_handler.play_some_games("model1","model2",num_games=256,temperature=0,random_first_move=True)
     print(res)
-    print(elo_handler.get_rating("model1"))
-    print(elo_handler.get_rating("model2"))
 
 def run_league(checkpoint_folder):
     elo_handler = Elo_handler(5,empty_model_func=lambda :get_pre_defined("sage+norm"))
@@ -238,8 +236,8 @@ def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint
     model.cpu()
     elo_handler.add_player("model",model)
     elo_handler.add_player("model2",model)
-    elo_handler.add_player("random",random_player,fix_rating=1500,simple=True)
-    elo_handler.add_player("random2",random_player,fix_rating=1500,simple=True)
+    elo_handler.add_player("random",random_player,set_rating=1500,simple=True)
+    elo_handler.add_player("random2",random_player,set_rating=1500,simple=True)
     # res = elo_handler.play_some_games("model","random",num_games=64,temperature=0)
     res = elo_handler.play_some_games("model","model2",num_games=64,temperature=0.0001,random_first_move=False)
     # res = elo_handler.play_some_games("random2","random",num_games=64,temperature=0)
@@ -247,11 +245,25 @@ def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint
     print(elo_handler.get_rating("model"))
     print(elo_handler.get_rating("random"))
 
+
+def test_elo_handler():
+    e = Elo_handler(5)
+    e.add_player("maker",1500)
+    e.add_player("breaker",1500)
+    e.add_player("random",1500)
+    s1 = {"maker":120,"random":8}
+    s2 = {"breaker":110,"random":18}
+    s3 = {"maker":80,"breaker":48}
+    e.score_some_statistics([s1,s2,s3])
+    print(e.get_rating("maker"),e.get_rating("breaker"),e.get_rating("random"))
+
+
 if __name__ == "__main__":
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
     # model = get_pre_defined("sage+norm")
     # evaluate_checkpoint_against_random_mover(elo_handler,checkpoint,model)
-    run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
+    # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
+    test_elo_handler()
 
 
