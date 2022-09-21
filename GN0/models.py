@@ -16,9 +16,10 @@ import numpy as np
 from time import perf_counter
 from collections import defaultdict
 from torch_geometric.nn.models.basic_gnn import BasicGNN
-from torch.nn import Linear
+from torch.nn import Linear,ModuleList
 import copy
 from math import sqrt
+from argparse import Namespace
 
 perfs = defaultdict(list)
 
@@ -109,7 +110,20 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             self.has_cache = False
 
         def grow_width(self,new_width):
-            pass
+            old_convs = self.convs
+            self.convs = ModuleList()
+            self.convs.append(self.init_conv(self.in_channels,new_width))
+            for _ in range(self.num_layers-2):
+                self.convs.append(self.init_conv(new_width,new_width))
+            if self.out_channels is not None and self.jk is None:
+                self.convs.append(
+                    self.init_conv(new_width, self.out_channels))
+            else:
+                self.convs.append(
+                    self.init_conv(new_width, new_width))
+            for conv in self.convs:
+                conv.lin_l.weight.data.fill_(0)
+                conv.lin_l.bias.data.fill_(0)
 
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
             if self.norms is None:
@@ -563,7 +577,13 @@ def get_pre_defined(name,args=None):
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
+        print([name for name, _ in model.gnn.convs[2].named_children()])
+        print(model.gnn.convs[2].lin_l.__dict__)
+        print(model.gnn.convs[2].lin_l.weight)
     else:
         print(name)
         raise NotImplementedError
     return model
+
+if __name__ == "__main__":
+    get_pre_defined("two_headed",args=Namespace(num_layers=3,hidden_channels=8,norm=False,noisy_dqn=False,noisy_sigma0=False))

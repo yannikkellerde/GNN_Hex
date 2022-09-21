@@ -18,6 +18,7 @@ Rainbow/
 Elo/
 model/
 .ssh/
+.secrets/
 
 gctest.py
 *.pyc
