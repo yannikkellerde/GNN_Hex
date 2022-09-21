@@ -23,4 +23,4 @@ WORKDIR /root/Gabor_Graph_Networks/
 RUN python3.8 -m pip install -e .
 WORKDIR /root/
 COPY .secrets/api_key .
-wandb login $(cat api_key)
+RUN wandb login $(cat api_key)

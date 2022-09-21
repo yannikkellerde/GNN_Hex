@@ -115,15 +115,35 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             self.convs.append(self.init_conv(self.in_channels,new_width))
             for _ in range(self.num_layers-2):
                 self.convs.append(self.init_conv(new_width,new_width))
-            if self.out_channels is not None and self.jk is None:
+            if self.out_channels is not None:
                 self.convs.append(
                     self.init_conv(new_width, self.out_channels))
             else:
                 self.convs.append(
                     self.init_conv(new_width, new_width))
-            for conv in self.convs:
+            for i,(conv,old_conv) in enumerate(zip(self.convs,old_convs)):
                 conv.lin_l.weight.data.fill_(0)
+                conv.lin_r.weight.data.fill_(0)
                 conv.lin_l.bias.data.fill_(0)
+                if i == 0:
+                    conv.lin_l.weight.data[:self.hidden_channels,:] = old_conv.lin_l.weight.data[:self.hidden_channels,:]
+                    conv.lin_r.weight.data[:self.hidden_channels,:] = old_conv.lin_r.weight.data[:self.hidden_channels,:]
+                else:
+                    conv.lin_l.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_l.weight.data[:self.hidden_channels,:self.hidden_channels]
+                    conv.lin_r.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_r.weight.data[:self.hidden_channels,:self.hidden_channels]
+                conv.lin_l.bias.data[:self.hidden_channels] = old_conv.lin_l.bias.data[:self.hidden_channels]
+
+
+            if self.norms is not None:
+                new_norms = ModuleList()
+                new_norms.append(self.norms[0].__class__(new_width))
+                for _ in range(self.num_layers - 1 if self.has_output else self.num_layers-2):
+                    new_norms.append(copy.deepcopy(new_norms[0]))
+                self.norms = new_norms
+
+            self.has_cache = False
+            self.hidden_channels = new_width
+
 
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
             if self.norms is None:
@@ -238,10 +258,33 @@ class HeadNetwork(torch.nn.Module):
         self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
         self.value_head = Linear(hidden_channels,1)
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
         if noisy_dqn:
             self.linear = FactorizedNoisyLinear(hidden_channels,out_channels,noise_sigma)
         else:
             self.linear = torch.nn.Linear(hidden_channels,out_channels)
+
+    def grow_width(self,new_width):
+        assert isinstance(self.linear,torch.nn.Linear)
+        self.gnn.grow_width(new_width)
+
+        old_linear = self.linear
+        self.linear = torch.nn.Linear(new_width,self.out_channels)
+        self.linear.weight.data.fill_(0)
+        self.linear.weight.data[:self.hidden_channels] = old_linear.weight.data[:self.hidden_channels]
+        self.linear.bias.data[:] = old_linear.bias.data[:]
+
+        old_head = self.value_head
+        self.value_head = torch.nn.Linear(new_width,self.out_channels)
+        self.value_head.weight.data.fill_(0)
+        self.value_head.weight.data[:self.hidden_channels] = old_head.weight.data[:self.hidden_channels]
+        self.value_head.bias.data[:] = old_head.bias.data[:]
+
+        self.hidden_channels = new_width
+
+    def grow_depth(self,additional_layers):
+        self.gnn.grow_depth(additional_layers)
 
     def export_norm_cache(self,*args,**kwargs):
         return self.gnn.export_norm_cache(*args,**kwargs)
@@ -272,6 +315,14 @@ class DuellingTwoHeaded(torch.nn.Module):
         self.advantage_activation = Tanh()
         self.maker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
         self.breaker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
+
+    def grow_depth(self,additional_layers):
+        self.gnn.grow_depth(additional_layers)
+
+    def grow_width(self,new_width):
+        self.gnn.grow_width(new_width)
+        self.maker_head.grow_width(new_width)
+        self.breaker_head.grow_width(new_width)
 
     def export_norm_cache(self,*args):
         cache_list = []
@@ -577,9 +628,12 @@ def get_pre_defined(name,args=None):
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
-        print([name for name, _ in model.gnn.convs[2].named_children()])
-        print(model.gnn.convs[2].lin_l.__dict__)
-        print(model.gnn.convs[2].lin_l.weight)
+        model.gnn.convs[0].lin_r.weight.data[:] = 10
+        model.gnn.grow_width(10)
+        print(len(model.gnn.convs))
+        model.gnn.grow_depth(additional_layers=2)
+        print(len(model.gnn.convs))
+        print(model.maker_head.linear.__dict__)
     else:
         print(name)
         raise NotImplementedError
