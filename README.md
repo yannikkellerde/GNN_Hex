@@ -30,3 +30,6 @@ In a next step, I created [https://python.yannikkeller.de/solver/](https://pytho
 Now I am working on making Graph-Neural networks learn to play games represented by my graph structure. The idea is to use the Monte Carlo Tree Search approach that is used by Alpha Zero to train the Graph-Neural network. However, currently I am just trying to make the network learn by using my previously computed solutions. Situation right now, is that my network is slow because of x[graph_assignment == i] stuff. I fixed this using torch_scatter.
 
 Now I am creating a script to evaluate a trained model.
+
+## Tips
+Use build pytorch with gpu support without attached gpu: TORCH_CUDA_ARCH_LIST=Turing
