@@ -194,15 +194,22 @@ class Node_switching_game(Abstract_graph_game):
 
     def copy(self):
         if not hasattr(self,"board") or self.board is None:
-            game =  Node_switching_game.from_graph(graph=Graph(self.view))
+            g =  Node_switching_game.from_graph(graph=Graph(self.view))
         else:
             new_board = self.board.copy()
-            game = new_board.game
-            game.board = new_board
+            g = Node_switching_game()
+            g.graph = Graph(self.graph)
+            g.view = GraphView(g.graph,g.graph.vp.f)
+            new_board.game = g
+            new_board.vertex_to_board_index = {g.graph.vertex(int(key)):value for key,value in self.board.vertex_to_board_index.items()}
+            new_board.board_index_to_vertex = {key:g.graph.vertex(int(value)) for key,value in self.board.board_index_to_vertex.items()}
+            g.terminals = [g.graph.vertex(0),g.graph.vertex(1)]
+            g.name = self.name
+            g.board = new_board
             if self.board_callback is not None:
-                game.board_callback = new_board.graph_callback
+                g.board_callback = new_board.graph_callback
 
-        return game
+        return g
 
 
 

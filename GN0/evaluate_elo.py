@@ -13,6 +13,8 @@ from GN0.models import get_pre_defined
 from collections import defaultdict,deque
 from GN0.util import fix_size_defaultdict
 from collections import defaultdict
+from argparse import Namespace
+
 
 class Elo_handler():
     def __init__(self,hex_size,empty_model_func=None,device="cpu"):
@@ -38,6 +40,32 @@ class Elo_handler():
         else:
             print("Warning, no cache")
 
+    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500):
+        for player in players:
+            self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating)
+        
+        all_stats = []
+        for player1 in players:
+            self.players[player1["name"]]["model"] = self.empty_model1
+            if "checkpoint" in player1:
+                self.load_into_empty_model(self.empty_model1,player1["checkpoint"])
+            for player2 in players:
+                if player1==player2:
+                    continue
+                self.players[player2["name"]]["model"] = self.empty_model2
+                if "checkpoint" in player2:
+                    self.load_into_empty_model(self.empty_model2,player2["checkpoint"])
+                statistics = self.play_some_games(player1["name"],player2["name"],64,0,random_first_move=True)
+                all_stats.append(statistics)
+                statistics = self.play_some_games(player2["name"],player1["name"],64,0,random_first_move=True)
+                all_stats.append(statistics)
+
+        self.score_some_statistics(all_stats)
+        if add_to_elo_league:
+            for player in players:
+                self.elo_league_contestants.append(player.copy())
+                self.elo_league_contestants.sort(key=lambda x:-self.get_rating(x["name"]))
+
 
     def add_elo_league_contestant(self,name,checkpoint,model=None,simple=False):
         if model is None:
@@ -58,13 +86,29 @@ class Elo_handler():
             all_stats.append(statistics)
             statistics = self.play_some_games(contestant["name"],name,64,0,random_first_move=True)
             all_stats.append(statistics)
-        self.score_some_statistics(all_stats)
+        self.score_some_statistics(all_stats,firsto=name)
         self.elo_league_contestants.append({"name":name,"checkpoint":checkpoint,"model":model})
         self.elo_league_contestants.sort(key=lambda x:-self.get_rating(x["name"]))
         return self.get_rating(name)
 
-    def score_some_statistics(self,statistics):
+    def score_some_statistics(self,statistics,firsto=None):
         player_expect_vs_score = defaultdict(lambda :dict(expectation=0,score=0,num_games=0))
+        if firsto is not None:
+            expectation = 0
+            score = 0
+            for stats in statistics:
+                keys = list(stats.keys())
+                if firsto in keys:
+                    if keys[0] == firsto:
+                        not_firsto = keys[1]
+                    else:
+                        not_firsto = keys[0]
+                    num_games = sum([int(x) for x in stats.values()])
+                    expectation += (1/(1+10**((self.get_rating(not_firsto)-self.get_rating(firsto))/400)))*num_games
+                    score += stats[firsto]
+            self.players[firsto]["rating"] += self.K*(score-expectation)
+
+
         for stats in statistics:
             keys = list(stats.keys())
             num_games = sum([int(x) for x in stats.values()])
@@ -72,8 +116,9 @@ class Elo_handler():
             player_expect_vs_score[keys[1]]["expectation"] += (1/(1+10**((self.get_rating(keys[0])-self.get_rating(keys[1]))/400)))*num_games
             player_expect_vs_score[keys[0]]["score"] += stats[keys[0]]
             player_expect_vs_score[keys[1]]["score"] += stats[keys[1]]
-            player_expect_vs_score[keys[0]]["num_games"] += num_games
-            player_expect_vs_score[keys[1]]["num_games"] += num_games
+
+        if firsto is not None and firsto in player_expect_vs_score:
+            del player_expect_vs_score[firsto]
         
         for key in player_expect_vs_score:
             self.players[key]["rating"] += self.K*(player_expect_vs_score[key]["score"]-player_expect_vs_score[key]["expectation"])
@@ -177,6 +222,7 @@ class Elo_handler():
         print("Mean game length",np.mean(game_lengths))
 
         statistics = wins.copy()
+        print("stats:",statistics)
         # to_score_games = []
 
         # while wins[maker]>0 or wins[breaker]>0:
@@ -187,6 +233,26 @@ class Elo_handler():
         #         to_score_games.append({"winner":breaker,"loser":maker,"winnerHome":True})
         #         wins[breaker]-=1
         return statistics
+
+def battle_it_out():
+    basepath = os.path.dirname(get_highest_model_path("hopeful-voice-108"))
+    cps = [6240000,
+          6080000,
+          5920000,
+          5760000,
+          5600000,
+          5440000,
+          5280000,
+          5120000,
+          4320000,
+          4960000]
+    players = [{"name":str(x),"checkpoint":os.path.join(basepath,f"checkpoint_{x}.pt")} for x in cps]
+    args = Namespace(**{"norm":True,"noisy_dqn":False,"noisy_sigma0":0.5,"hidden_channels":32,"num_layers":15})
+    create_func = lambda :get_pre_defined("two_headed",args).cpu()
+    elo = Elo_handler(11,empty_model_func=create_func)
+    elo.run_tournament(players,add_to_elo_league=True)
+    print(elo.get_rating_table())
+    print([[x["name"],elo.get_rating(x["name"])] for x in players])
 
 def random_player(batch):
     # print(batch.ptr[1:]-batch.ptr[:-1])
@@ -259,11 +325,13 @@ def test_elo_handler():
 
 
 if __name__ == "__main__":
+    from Rainbow.common.utils import get_highest_model_path
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
     # model = get_pre_defined("sage+norm")
     # evaluate_checkpoint_against_random_mover(elo_handler,checkpoint,model)
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
-    test_elo_handler()
+    # test_elo_handler()
+    battle_it_out()
 
 

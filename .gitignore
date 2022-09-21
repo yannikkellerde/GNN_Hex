@@ -17,6 +17,7 @@ GN0/run
 Rainbow/
 Elo/
 model/
+.ssh/
 
 gctest.py
 *.pyc

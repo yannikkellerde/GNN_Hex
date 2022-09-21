@@ -34,9 +34,7 @@ class Hex_board(Abstract_board_game):
         new_board.position = self.position.copy()
         new_board.squares = self.size**2
         new_board.size = self.size
-        new_board.game = Node_switching_game()
-        new_board.graph_from_board(redgraph=self.redgraph)
-        new_board.game.view.gp["m"] = self.game.view.gp["m"]
+        new_board.vertex_index_to_board_index = self.vertex_index_to_board_index.copy()
         return new_board
 
     def vertex_index_to_string_move(self,vi):

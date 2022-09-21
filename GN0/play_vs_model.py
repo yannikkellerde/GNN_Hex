@@ -11,9 +11,13 @@ from Rainbow.common.utils import get_highest_model_path
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def play_in_gui():
-    args = Namespace(**{"norm":False,"noisy_dqn":False,"noisy_sigma0":0.5})
+    version = 3840000
+    path = get_highest_model_path("genial-dawn-110")
+    if version is not None:
+        path = os.path.join(os.path.dirname(path),f"checkpoint_{version}.pt")
+    stuff = torch.load(path)
+    args = stuff["args"]
     model = get_pre_defined("two_headed",args).to(device)
-    stuff = torch.load(get_highest_model_path("fine-shape-94"))
 
     model.load_state_dict(stuff["state_dict"])
     if "cache" in stuff and stuff["cache"] is not None:
@@ -22,7 +26,7 @@ def play_in_gui():
 
     player = playerify_model(model)
     evaluater = model_to_evaluater(model)
-    interactive_hex_window(11,model_player=player,model_evaluater=evaluater)
+    interactive_hex_window(7,model_player=player,model_evaluater=evaluater)
 
 
 def play_vs_model():

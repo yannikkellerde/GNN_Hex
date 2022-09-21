@@ -9,7 +9,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def playerify_model(model):
     def model_player(game):
+        print(int(game.view.gp["m"]))
         data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(device)
+        print(data)
         res = model(data.x,data.edge_index).squeeze()
         raw_move = torch.argmax(res[2:]).item()+2
         move = data.backmap[raw_move].item()

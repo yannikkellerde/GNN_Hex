@@ -99,6 +99,18 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 else:
                     self.norms.append(copy.deepcopy(kwargs["norm"]))
 
+        def grow_depth(self,additional_layers):
+            assert not self.has_output
+            self.num_layers+=additional_layers
+            for _ in range(additional_layers):
+                self.convs.append(self.init_conv(self.hidden_channels,self.hidden_channels))
+                if self.norms is not None:
+                    self.norms.append(copy.deepcopy(self.norms[0]))
+            self.has_cache = False
+
+        def grow_width(self,new_width):
+            pass
+
         def export_norm_cache(self) -> Tuple[Tensor,Tensor]:
             if self.norms is None:
                 return
