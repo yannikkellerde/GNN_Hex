@@ -104,41 +104,61 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             assert not self.has_output
             self.num_layers+=additional_layers
             for _ in range(additional_layers):
-                self.convs.append(self.init_conv(self.hidden_channels,self.hidden_channels))
+                conv_layer = self.init_conv(self.hidden_channels,self.hidden_channels).to(self.convs[0].lin_l.weight.device)
+                conv_layer.lin_l.weight.data[:] = 0
+                conv_layer.lin_l.bias.data[:] = 0
+                conv_layer.lin_r.weight.data[:] = torch.eye(self.hidden_channels)
+                self.convs.append(conv_layer)
+            
                 if self.norms is not None:
-                    self.norms.append(copy.deepcopy(self.norms[0]))
+                    new_norm = self.norms[0].__class__(self.hidden_channels).to(self.convs[0].lin_l.weight.device)
+                    new_norm.mean_scale.data[:] = 0
+                    self.norms.append(new_norm)
             self.has_cache = False
 
-        def grow_width(self,new_width):
+        def grow_width(self,new_width,new_in_channels=None):
             old_convs = self.convs
+            if new_in_channels is not None:
+                old_in_channels = self.in_channels
+                self.in_channels = new_in_channels
             self.convs = ModuleList()
-            self.convs.append(self.init_conv(self.in_channels,new_width))
+            self.convs.append(self.init_conv(self.in_channels,new_width).to(old_convs[0].lin_l.weight.device))
             for _ in range(self.num_layers-2):
-                self.convs.append(self.init_conv(new_width,new_width))
-            if self.out_channels is not None:
+                self.convs.append(self.init_conv(new_width,new_width).to(old_convs[0].lin_l.weight.device))
+            if self.has_output:
                 self.convs.append(
-                    self.init_conv(new_width, self.out_channels))
+                    self.init_conv(new_width, self.out_channels).to(old_convs[0].lin_l.weight.device)
+                )
             else:
                 self.convs.append(
-                    self.init_conv(new_width, new_width))
+                    self.init_conv(new_width, new_width).to(old_convs[0].lin_l.weight.device))
             for i,(conv,old_conv) in enumerate(zip(self.convs,old_convs)):
-                conv.lin_l.weight.data.fill_(0)
-                conv.lin_r.weight.data.fill_(0)
-                conv.lin_l.bias.data.fill_(0)
                 if i == 0:
-                    conv.lin_l.weight.data[:self.hidden_channels,:] = old_conv.lin_l.weight.data[:self.hidden_channels,:]
-                    conv.lin_r.weight.data[:self.hidden_channels,:] = old_conv.lin_r.weight.data[:self.hidden_channels,:]
+                    if new_in_channels is None:
+                        conv.lin_l.weight.data[:self.hidden_channels,:] = old_conv.lin_l.weight.data
+                        conv.lin_r.weight.data[:self.hidden_channels,:] = old_conv.lin_r.weight.data
+                    else:
+                        conv.lin_l.weight.data[:self.hidden_channels,:old_in_channels] = old_conv.lin_l.weight.data
+                        conv.lin_r.weight.data[:self.hidden_channels,:old_in_channels] = old_conv.lin_r.weight.data
+                        conv.lin_l.weight.data[:self.hidden_channels,old_in_channels:] = 0
+                        conv.lin_r.weight.data[:self.hidden_channels,old_in_channels:] = 0
+
                 else:
-                    conv.lin_l.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_l.weight.data[:self.hidden_channels,:self.hidden_channels]
-                    conv.lin_r.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_r.weight.data[:self.hidden_channels,:self.hidden_channels]
-                conv.lin_l.bias.data[:self.hidden_channels] = old_conv.lin_l.bias.data[:self.hidden_channels]
+                    conv.lin_l.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_l.weight.data
+                    conv.lin_r.weight.data[:self.hidden_channels,:self.hidden_channels] = old_conv.lin_r.weight.data
+                    conv.lin_l.weight.data[:self.hidden_channels,self.hidden_channels:] = 0
+                    conv.lin_r.weight.data[:self.hidden_channels,self.hidden_channels:] = 0
+                conv.lin_l.bias.data[:self.hidden_channels] = old_conv.lin_l.bias.data
 
 
             if self.norms is not None:
                 new_norms = ModuleList()
-                new_norms.append(self.norms[0].__class__(new_width))
-                for _ in range(self.num_layers - 1 if self.has_output else self.num_layers-2):
-                    new_norms.append(copy.deepcopy(new_norms[0]))
+                for i in range(self.num_layers-1 if self.has_output else self.num_layers):
+                    new_norm = self.norms[i].__class__(new_width).to(old_convs[0].lin_l.weight.device)
+                    new_norm.weight.data[:self.hidden_channels] = self.norms[i].weight.data
+                    new_norm.bias.data[:self.hidden_channels] = self.norms[i].bias.data
+                    new_norm.mean_scale.data[:self.hidden_channels] = self.norms[i].mean_scale.data
+                    new_norms.append(new_norm)
                 self.norms = new_norms
 
             self.has_cache = False
@@ -265,20 +285,20 @@ class HeadNetwork(torch.nn.Module):
         else:
             self.linear = torch.nn.Linear(hidden_channels,out_channels)
 
-    def grow_width(self,new_width):
+    def grow_width(self,new_width,new_in_channels=None):
         assert isinstance(self.linear,torch.nn.Linear)
-        self.gnn.grow_width(new_width)
+        self.gnn.grow_width(new_width,new_in_channels=new_in_channels)
 
         old_linear = self.linear
-        self.linear = torch.nn.Linear(new_width,self.out_channels)
+        self.linear = torch.nn.Linear(new_width,self.out_channels).to(old_linear.weight.device)
         self.linear.weight.data.fill_(0)
-        self.linear.weight.data[:self.hidden_channels] = old_linear.weight.data[:self.hidden_channels]
+        self.linear.weight.data[:,:self.hidden_channels] = old_linear.weight.data
         self.linear.bias.data[:] = old_linear.bias.data[:]
 
         old_head = self.value_head
-        self.value_head = torch.nn.Linear(new_width,self.out_channels)
+        self.value_head = torch.nn.Linear(new_width,self.out_channels).to(old_head.weight.device)
         self.value_head.weight.data.fill_(0)
-        self.value_head.weight.data[:self.hidden_channels] = old_head.weight.data[:self.hidden_channels]
+        self.value_head.weight.data[:,:self.hidden_channels] = old_head.weight.data
         self.value_head.bias.data[:] = old_head.bias.data[:]
 
         self.hidden_channels = new_width
@@ -321,8 +341,8 @@ class DuellingTwoHeaded(torch.nn.Module):
 
     def grow_width(self,new_width):
         self.gnn.grow_width(new_width)
-        self.maker_head.grow_width(new_width)
-        self.breaker_head.grow_width(new_width)
+        self.maker_head.grow_width(new_width,new_in_channels=new_width)
+        self.breaker_head.grow_width(new_width,new_in_channels=new_width)
 
     def export_norm_cache(self,*args):
         cache_list = []
@@ -603,7 +623,7 @@ class GCN_with_glob(torch.nn.Module):
         x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, graph_indices)
         return torch.sigmoid(x)
 
-def get_pre_defined(name,args=None):
+def get_pre_defined(name,args=None) -> torch.nn.Module:
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
         model = Duelling(body_model,in_channels=3,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",advantage_head=SAGEConv)
@@ -628,16 +648,10 @@ def get_pre_defined(name,args=None):
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
-        model.gnn.convs[0].lin_r.weight.data[:] = 10
-        model.gnn.grow_width(10)
-        print(len(model.gnn.convs))
-        model.gnn.grow_depth(additional_layers=2)
-        print(len(model.gnn.convs))
-        print(model.maker_head.linear.__dict__)
     else:
         print(name)
         raise NotImplementedError
     return model
 
 if __name__ == "__main__":
-    get_pre_defined("two_headed",args=Namespace(num_layers=3,hidden_channels=8,norm=False,noisy_dqn=False,noisy_sigma0=False))
+    get_pre_defined("two_headed",args=Namespace(num_layers=3,hidden_channels=8,norm=True,noisy_dqn=False,noisy_sigma0=False))

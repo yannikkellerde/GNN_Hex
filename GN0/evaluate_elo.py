@@ -24,10 +24,13 @@ class Elo_handler():
         self.device = device
         self.K = 3
         if empty_model_func is not None:
-            self.empty_model1 = empty_model_func().to(device)
-            self.empty_model1.eval()
-            self.empty_model2 = empty_model_func().to(device)
-            self.empty_model2.eval()
+            self.create_empty_models(empty_model_func)
+
+    def create_empty_models(self,empty_model_func):
+        self.empty_model1 = empty_model_func().to(self.device)
+        self.empty_model1.eval()
+        self.empty_model2 = empty_model_func().to(self.device)
+        self.empty_model2.eval()
 
     def add_player(self,name,model,set_rating=1500,simple=False):
         self.players[name] = {"model":model,"simple":simple,"rating":set_rating}

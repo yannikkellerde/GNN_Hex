@@ -47,3 +47,6 @@ There have been multiple approaches at transfering the AlphaZero method to hex. 
 Hex 6x6 is a reachable position from any larger Hex board. Knowledge of how to play 6x6 hex is thus verly likely to be usefull for playing on larger boards.
 Maybe it makes sense to train the hex agent in a curriculum with a growing network size: start by learning 6x6 hex with a small network with not a lot of 
 passing steps. After we master this, grow to 7x7, transfer parameters but add a passing step and network width. Iterate to desired hex size (e.g. 13x13).
+
+### Pyramid style GNNs?
+Dense neural networks are known to perform better with a pyramid style architecture. E.g. start with large hidden size and shrink each layer. Does this also make sense for GNNs?

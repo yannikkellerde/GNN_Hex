@@ -1,14 +1,15 @@
 from GN0.model_frontend import evaluate_graph,evaluate_node_switching_game_state, evaluate_winpattern_game_state
+from argparse import Namespace
 import scipy.special
 import torch_geometric.utils
-from GN0.convert_graph import convert_node_switching_game_back
+from GN0.convert_graph import convert_node_switching_game_back, convert_node_switching_game
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.nn.models import GCN, GraphSAGE
 from torch_geometric.nn.conv import SAGEConv
 import os
 import time
 from GN0.generate_training_data import generate_winpattern_game_graphs, generate_hex_graphs
-from GN0.models import GCN_with_glob, CachedGraphNorm, cachify_gnn, PolicyValueGNN
+from GN0.models import GCN_with_glob, CachedGraphNorm, cachify_gnn, PolicyValueGNN, get_pre_defined
 import torch
 from graph_game.winpattern_game import Winpattern_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6,Hex_game
@@ -23,7 +24,24 @@ from torch_geometric.data import Batch
 from torch.utils.data import random_split
 import torch_geometric.utils
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def test_network_growth():
+    args=Namespace(num_layers=3,hidden_channels=8,norm=False,noisy_dqn=False,noisy_sigma0=False)
+    model = get_pre_defined("two_headed",args=args)
+    game = Hex_game(11)
+    data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])])
+    res = model(data.x,data.edge_index)
+    model.grow_width(10)
+    res2 = model(data.x,data.edge_index)
+    print(res==res2)
+    model.grow_depth(2)
+    res3 = model(data.x,data.edge_index)
+    print(res==res3)
+    print(res,res3)
+
+
 
 def test_random_graphs(model):
     dataset = SupervisedDataset(root='./data/policy_value', device=device, pre_transform=hex_pre_transform,num_graphs=100,game_type="hex",drop=True,game_size=11)
@@ -121,11 +139,12 @@ def test_node_switching_model(model,drop=False):
         game.prune_irrelevant_subgraphs()
 
 if __name__ == "__main__":
-    default_model_hyperparams = dict(in_channels=4,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",policy_head=SAGEConv)
-    cached_model = cachify_gnn(GraphSAGE) 
-    model = PolicyValueGNN(GNN=cached_model,**default_model_hyperparams).to(device)
-    state_dict = torch.load("model/GraphSAGE_best.pt",map_location=device)
-    model.load_state_dict(state_dict["model_state_dict"])
-    model.import_norm_cache(*state_dict["cache"])
-    model.eval()
-    test_random_graphs(model)
+    test_network_growth()
+    # default_model_hyperparams = dict(in_channels=4,num_layers=13,hidden_channels=32,norm=CachedGraphNorm(32),act="relu",policy_head=SAGEConv)
+    # cached_model = cachify_gnn(GraphSAGE) 
+    # model = PolicyValueGNN(GNN=cached_model,**default_model_hyperparams).to(device)
+    # state_dict = torch.load("model/GraphSAGE_best.pt",map_location=device)
+    # model.load_state_dict(state_dict["model_state_dict"])
+    # model.import_norm_cache(*state_dict["cache"])
+    # model.eval()
+    # test_random_graphs(model)

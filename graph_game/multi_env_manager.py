@@ -15,11 +15,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Env_manager():
     last_obs:List[Data]
 
-    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1]):
+    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True):
         self.num_envs = num_envs
         self.gamma = gamma
         self.global_onturn = "m"
         self.n_steps = n_steps
+        self.prune_exploratories = prune_exploratories
         self.change_hex_size(hex_size)
 
     def change_hex_size(self,new_size):
@@ -80,7 +81,7 @@ class Env_manager():
         self.envs = [Hex_game(self.hex_size) for _ in range(self.num_envs)]
         return self.observe()
 
-    def get_transitions(self,starting_states:list,state_history:list,action_history:list,reward_history:list,done_history:list):
+    def get_transitions(self,starting_states:list,state_history:list,action_history:list,reward_history:list,done_history:list,exploratories_history:list):
         """Converts history of s,r,d from the step function to s,r,d transitions as they will be used in RL
 
         This is nescessary, because we are playing a two player game and thus, the 'next' state is the state after the
@@ -110,6 +111,8 @@ class Env_manager():
                         assert action[k]<len(start_state[k].x)
                         reward = 0
                         for j in range(i,i+2*n_step):
+                            if self.prune_exploratories and j>i and exploratories_history[j][k]: # Prune transitions where exploratory actions have been taken after the original action.
+                                break
                             reward+=reward_history[j][k]*((-((j-i)%2))*2+1)
                             if done_history[j][k]:
                                 sobs = self.starting_obs
