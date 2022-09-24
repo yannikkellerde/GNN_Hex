@@ -11,9 +11,10 @@ from Rainbow.common.utils import get_highest_model_path
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def play_in_gui():
-    # version = 11360000
+    version = 7840000
     version = None
-    path = get_highest_model_path("daily-totem-131")
+    # path = get_highest_model_path("daily-totem-131")
+    path = get_highest_model_path("azure-snowball-157")
     if version is not None:
         path = os.path.join(os.path.dirname(path),f"checkpoint_{version}.pt")
     stuff = torch.load(path)
@@ -27,7 +28,7 @@ def play_in_gui():
 
     player = playerify_model(model)
     evaluater = model_to_evaluater(model)
-    interactive_hex_window(5,model_player=player,model_evaluater=evaluater)
+    interactive_hex_window(8,model_player=player,model_evaluater=evaluater)
 
 
 def play_vs_model():

@@ -17,12 +17,12 @@ from argparse import Namespace
 
 
 class Elo_handler():
-    def __init__(self,hex_size,empty_model_func=None,device="cpu"):
+    def __init__(self,hex_size,empty_model_func=None,device="cpu",k=3):
         self.players = {}
         self.size = hex_size
         self.elo_league_contestants = list()
         self.device = device
-        self.K = 3
+        self.K = k
         if empty_model_func is not None:
             self.create_empty_models(empty_model_func)
 
@@ -43,7 +43,7 @@ class Elo_handler():
         else:
             print("Warning, no cache")
 
-    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500):
+    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=64):
         for player in players:
             self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
@@ -60,9 +60,9 @@ class Elo_handler():
                     self.players[player2["name"]]["model"] = self.empty_model2
                 if "checkpoint" in player2:
                     self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
-                statistics = self.play_some_games(player1["name"],player2["name"],64,0,random_first_move=True)
+                statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True)
                 all_stats.append(statistics)
-                statistics = self.play_some_games(player2["name"],player1["name"],64,0,random_first_move=True)
+                statistics = self.play_some_games(player2["name"],player1["name"],num_games,0,random_first_move=True)
                 all_stats.append(statistics)
 
         self.score_some_statistics(all_stats)
@@ -242,7 +242,7 @@ class Elo_handler():
 def multi_model_battle(model_names,size=5):
     paths = [get_highest_model_path(m) for m in model_names]
     players = []
-    elo = Elo_handler(size)
+    elo = Elo_handler(size,k=0.2)
     for name,path in zip(model_names,paths):
         stuff = torch.load(path)
         args = stuff["args"]
@@ -252,7 +252,7 @@ def multi_model_battle(model_names,size=5):
         players.append({"name":name,"checkpoint":path,"model":model})
         print("Evaluating",name,"against random mover")
         evaluate_checkpoint_against_random_mover(elo,path,model)
-    elo.run_tournament(players,add_to_elo_league=True) 
+    elo.run_tournament(players,add_to_elo_league=True,num_games=1024) 
     print(elo.get_rating_table())
 
 def battle_it_out():
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
     # test_elo_handler()
     # battle_it_out()
-    multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143"])
+    multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
 
 
 
