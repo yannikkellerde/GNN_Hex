@@ -32,8 +32,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model,set_rating=1500,simple=False):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating}
+    def add_player(self,name,model,set_rating=1500,simple=False,original_model=False):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"original_model":original_model}
 
     def load_into_empty_model(self,empty_model,checkpoint):
         stuff = torch.load(checkpoint)
@@ -45,19 +45,21 @@ class Elo_handler():
 
     def run_tournament(self,players,add_to_elo_league=False,set_rating=1500):
         for player in players:
-            self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating)
+            self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
         all_stats = []
         for player1 in players:
-            self.players[player1["name"]]["model"] = self.empty_model1
+            if not "model" in player1:
+                self.players[player1["name"]]["model"] = self.empty_model1
             if "checkpoint" in player1:
-                self.load_into_empty_model(self.empty_model1,player1["checkpoint"])
+                self.load_into_empty_model(self.players[player1["name"]]["model"],player1["checkpoint"])
             for player2 in players:
                 if player1==player2:
                     continue
-                self.players[player2["name"]]["model"] = self.empty_model2
+                if not "model" in player2:
+                    self.players[player2["name"]]["model"] = self.empty_model2
                 if "checkpoint" in player2:
-                    self.load_into_empty_model(self.empty_model2,player2["checkpoint"])
+                    self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
                 statistics = self.play_some_games(player1["name"],player2["name"],64,0,random_first_move=True)
                 all_stats.append(statistics)
                 statistics = self.play_some_games(player2["name"],player1["name"],64,0,random_first_move=True)
@@ -237,6 +239,22 @@ class Elo_handler():
         #         wins[breaker]-=1
         return statistics
 
+def multi_model_battle(model_names,size=5):
+    paths = [get_highest_model_path(m) for m in model_names]
+    players = []
+    elo = Elo_handler(size)
+    for name,path in zip(model_names,paths):
+        stuff = torch.load(path)
+        args = stuff["args"]
+        model = get_pre_defined(args.model_name,args)
+        if "cache" in stuff and stuff["cache"] is not None:
+            model.import_norm_cache(*stuff["cache"])
+        players.append({"name":name,"checkpoint":path,"model":model})
+        print("Evaluating",name,"against random mover")
+        evaluate_checkpoint_against_random_mover(elo,path,model)
+    elo.run_tournament(players,add_to_elo_league=True) 
+    print(elo.get_rating_table())
+
 def battle_it_out():
     basepath = os.path.dirname(get_highest_model_path("hopeful-voice-108"))
     cps = [6240000,
@@ -266,19 +284,13 @@ def random_player(batch):
 def evaluate_elo_between(elo_handler:Elo_handler,model1,model2,checkpoint1,checkpoint2):
     stuff = torch.load(checkpoint1)
     model1.load_state_dict(stuff["state_dict"])
-    model1.import_norm_cache(*[x.cpu() for x in stuff["cache"]])
+    model1.import_norm_cache(*stuff["cache"])
     model1.eval()
     model1.cpu()
 
-    stuff = torch.load(checkpoint2)
-    model2.load_state_dict(stuff["state_dict"])
-    model2.import_norm_cache(*[x.cpu() for x in stuff["cache"]])
-    model2.eval()
-    model2.cpu()
-
     elo_handler.add_player("model1",model1)
     elo_handler.add_player("model2",model2)
-    res,to_score = elo_handler.play_some_games("model1","model2",num_games=256,temperature=0,random_first_move=True)
+    res= elo_handler.play_some_games("model1","model2",num_games=256,temperature=0,random_first_move=True)
     print(res)
 
 def run_league(checkpoint_folder):
@@ -300,16 +312,14 @@ def run_league(checkpoint_folder):
 def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint, model):
     stuff = torch.load(checkpoint)
     model.load_state_dict(stuff["state_dict"])
-    model.import_norm_cache(*[x.cpu() for x in stuff["cache"]])
+    model.import_norm_cache(*stuff["cache"])
     model.eval()
     model.cpu()
     elo_handler.add_player("model",model)
-    elo_handler.add_player("model2",model)
     elo_handler.add_player("random",random_player,set_rating=1500,simple=True)
-    elo_handler.add_player("random2",random_player,set_rating=1500,simple=True)
-    # res = elo_handler.play_some_games("model","random",num_games=64,temperature=0)
-    res = elo_handler.play_some_games("model","model2",num_games=64,temperature=0.0001,random_first_move=False)
-    # res = elo_handler.play_some_games("random2","random",num_games=64,temperature=0)
+    res = elo_handler.play_some_games("model","random",num_games=64,temperature=0)
+    # res = elo_handler.play_some_games("model","model2",num_games=64,temperature=0.0001,random_first_move=False)
+    res = elo_handler.play_some_games("random","model",num_games=64,temperature=0)
     print(res)
     print(elo_handler.get_rating("model"))
     print(elo_handler.get_rating("random"))
@@ -335,6 +345,8 @@ if __name__ == "__main__":
     # evaluate_checkpoint_against_random_mover(elo_handler,checkpoint,model)
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
     # test_elo_handler()
-    battle_it_out()
+    # battle_it_out()
+    multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143"])
+
 
 

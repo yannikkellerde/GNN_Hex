@@ -52,10 +52,12 @@ def maker_breaker_evaluater(maker,breaker):
 
 
 def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game
+    global manual_mode,game,remove_dead_and_captured
     plt.rcParams['keymap.save'].remove('s')
     game_history = []
     manual_mode = True
+    remove_dead_and_captured=True
+
 
     xstart = -(size//2)*1.5
     ystart = -(size/2*np.sqrt(3/4))+0.5
@@ -67,7 +69,7 @@ def interactive_hex_window(size, model_player=None, model_evaluater=None):
 
     def place_stone(action):
         game_history.append(game.copy())
-        game.board.make_move(action,remove_dead_and_captured=True)
+        game.board.make_move(action,remove_dead_and_captured=remove_dead_and_captured)
         fig.axes[0].cla()
         game.board.matplotlib_me(fig=fig)
         winner = game.who_won()
@@ -86,10 +88,11 @@ def interactive_hex_window(size, model_player=None, model_evaluater=None):
             plt.pause(0.001)
 
     def on_press(event):
-        print(event.key)
-        global manual_mode, game
+        global manual_mode, game,remove_dead_and_captured
         if event.key == "m":
             manual_mode = not manual_mode
+        elif event.key == "c":
+            remove_dead_and_captured=not remove_dead_and_captured
         elif event.key == " " and model_player is not None:
             action = model_player(game)
             place_stone(action)

@@ -108,18 +108,23 @@ class Env_manager():
             for n_step in self.n_steps:
                 if len(sh)>i+2*n_step:
                     for k in range(len(start_state)):
+                        start_state[k].__delattr__("backmap")
                         assert action[k]<len(start_state[k].x)
                         reward = 0
                         for j in range(i,i+2*n_step):
-                            if self.prune_exploratories and j>i and exploratories_history[j][k]: # Prune transitions where exploratory actions have been taken after the original action.
-                                break
                             reward+=reward_history[j][k]*((-((j-i)%2))*2+1)
                             if done_history[j][k]:
                                 sobs = self.starting_obs
+                                sobs.__delattr__("backmap")
                                 sobs.x[:,2] = start_state[k].x[0,2]
+                                # print("done",len(start_state[k].x),action[k],reward)
                                 transits.append((start_state[k],action[k],reward,sobs,True))
                                 break
+                            if self.prune_exploratories and j>i and exploratories_history[j][k]: # Prune transitions where exploratory actions have been taken after the original action.
+                                break
                         else:
+                            sh[i+2*n_step][k].__delattr__("backmap")
+                            # print(len(start_state[k].x),len(sh[i+2*n_step][k].x),reward,start_state[k].x[0,2],sh[i+2*n_step][k].x[0,2])
                             transits.append((start_state[k],action[k],reward,sh[i+2*n_step][k],False))
         return maker_transitions,breaker_transitions
 
