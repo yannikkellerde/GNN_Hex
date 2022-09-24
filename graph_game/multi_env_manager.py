@@ -112,7 +112,7 @@ class Env_manager():
                         assert action[k]<len(start_state[k].x)
                         reward = 0
                         for j in range(i,i+2*n_step):
-                            reward+=reward_history[j][k]*((-((j-i)%2))*2+1)
+                            reward+=reward_history[j][k]*((-((j-i)%2))*2+1)*(self.gamma**((j-i)//2))
                             if done_history[j][k]:
                                 sobs = self.starting_obs
                                 sobs.__delattr__("backmap")

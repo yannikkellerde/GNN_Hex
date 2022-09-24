@@ -11,8 +11,8 @@ from Rainbow.common.utils import get_highest_model_path
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def play_in_gui():
-    version = 7840000
-    version = None
+    version = 11040000
+    # version = None
     # path = get_highest_model_path("daily-totem-131")
     path = get_highest_model_path("azure-snowball-157")
     if version is not None:

@@ -19,6 +19,7 @@ class Node_switching_game(Abstract_graph_game):
         self.creation_time = time.perf_counter()
         self.response_set_maker = {}
         self.response_set_breaker = {}
+        self.callback_everything = True
 
     @property
     def onturn(self):
@@ -43,6 +44,7 @@ class Node_switching_game(Abstract_graph_game):
 
     def get_response(self,move,for_maker):
         move = int(move)
+        print(move,self.response_set_maker,self.response_set_breaker,for_maker)
         response_vertex = None
         if for_maker and move in self.response_set_maker:
             response_vertex = self.response_set_maker[move]
@@ -84,7 +86,7 @@ class Node_switching_game(Abstract_graph_game):
         self.view.vp.f[square_node] = False
         if force_color is None:
             self.view.gp["m"] = not self.view.gp["m"]
-        if self.board_callback is not None:
+        if self.board_callback is not None and (self.callback_everything or force_color is None):
             self.board_callback(int(square_node),makerturn)
         if remove_dead_and_captured:
             self.dead_and_captured(set(self.view.iter_all_neighbors(square_node)).union(change_set),True)
@@ -208,6 +210,9 @@ class Node_switching_game(Abstract_graph_game):
             g.board = new_board
             if self.board_callback is not None:
                 g.board_callback = new_board.graph_callback
+        g.response_set_breaker = self.response_set_breaker.copy()
+        g.response_set_maker = self.response_set_maker.copy()
+        g.callback_everything = self.callback_everything
 
         return g
 

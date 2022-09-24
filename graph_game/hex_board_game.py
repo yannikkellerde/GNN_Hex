@@ -42,6 +42,9 @@ class Hex_board(Abstract_board_game):
         letters = "abcdefghikjlmnopqrstuvwxyz"
         return letters[board_index%self.size]+str(board_index//self.size+1)
 
+    def get_actions(self):
+        return [i for i in range(len(self.position)) if self.position[i]=="f"]
+
     def make_move(self, move:int, force_color=None, remove_dead_and_captured=False, only_legal=True):
         """Make a move on the board representation and update the graph representation.
         
@@ -49,7 +52,7 @@ class Hex_board(Abstract_board_game):
             move: The square the move is to be made on."""
         color = self.onturn if force_color is None else force_color
         if only_legal and self.position[move]!="f":
-            return
+            return "illegal"
         self.position[move] = color
         if force_color is None:
             self.onturn = "r" if color == "b" else "b"
@@ -59,7 +62,11 @@ class Hex_board(Abstract_board_game):
                 to_force = "m"
             else:
                 to_force = "b"
+        if not self.game.graph.vp.f[self.board_index_to_vertex[move]] and only_legal:
+            self.game.view.gp["m"] = not self.game.view.gp["m"]
+            return "only board"
         self.game.make_move(self.board_index_to_vertex[move],force_color=to_force,remove_dead_and_captured=remove_dead_and_captured)
+        return "legal"
 
     def graph_callback(self, vertex_move:int, makerturn:bool):
         color = "r" if makerturn==self.redgraph else "b"
