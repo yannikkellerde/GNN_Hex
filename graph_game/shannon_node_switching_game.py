@@ -44,7 +44,6 @@ class Node_switching_game(Abstract_graph_game):
 
     def get_response(self,move,for_maker):
         move = int(move)
-        print(move,self.response_set_maker,self.response_set_breaker,for_maker)
         response_vertex = None
         if for_maker and move in self.response_set_maker:
             response_vertex = self.response_set_maker[move]

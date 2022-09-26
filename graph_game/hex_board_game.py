@@ -42,6 +42,20 @@ class Hex_board(Abstract_board_game):
         letters = "abcdefghikjlmnopqrstuvwxyz"
         return letters[board_index%self.size]+str(board_index//self.size+1)
 
+    def fill_dead_and_captured(self):
+        for key,value in self.game.response_set_maker.items():
+            self.position[self.vertex_index_to_board_index[int(key)]] = "r"
+            self.position[self.vertex_index_to_board_index[int(value)]] = "b"
+
+        for key,value in self.game.response_set_breaker.items():
+            self.position[self.vertex_index_to_board_index[int(key)]] = "b"
+            self.position[self.vertex_index_to_board_index[int(value)]] = "b"
+
+        for i in range(len(self.position)):
+            if self.position[i]=="f" and not self.game.graph.vp.f[self.board_index_to_vertex[i]]:
+                self.position[i] = "b"
+        
+
     def get_actions(self):
         return [i for i in range(len(self.position)) if self.position[i]=="f"]
 
