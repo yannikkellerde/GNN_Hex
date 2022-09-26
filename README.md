@@ -33,3 +33,6 @@ Now I am creating a script to evaluate a trained model.
 
 ## Tips
 Use build pytorch with gpu support without attached gpu: TORCH_CUDA_ARCH_LIST=Turing
+
+## Name of thesis
+Maybe: "Improving Generalization of Self-Play Reinforcement Learning Algorithms with Graph Neural Networks"
