@@ -140,104 +140,106 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
-    def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False):
+    def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False):
         print("Playing games between",maker,"and",breaker)
         wins = {maker:0,breaker:0}
         game_lengths = []
-        with torch.no_grad():
-            for i in range(2):
-                if i==0:
-                    p1 = maker
-                    p2 = breaker
-                else:
-                    p1 = breaker
-                    p2 = maker
+        with alive_bar(num_games,disable=not progress) as bar:
+            with torch.no_grad():
+                for i in range(2):
+                    if i==0:
+                        p1 = maker
+                        p2 = breaker
+                    else:
+                        p1 = breaker
+                        p2 = maker
 
-                games = [Hex_game(self.size) for _ in range(num_games//2)]
-                if p1 == breaker:
+                    games = [Hex_game(self.size) for _ in range(num_games//2)]
+                    if p1 == breaker:
+                        for game in games:
+                            game.view.gp["m"] = False
                     for game in games:
-                        game.view.gp["m"] = False
-                for game in games:
-                    game.board_callback = game.board.graph_callback
-                move_num = 0
-                current_player = p1
+                        game.board_callback = game.board.graph_callback
+                    move_num = 0
+                    current_player = p1
 
-                while len(games)>0:
-                    datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True) for game in games]
-                    batch = Batch.from_data_list(datas)
+                    while len(games)>0:
+                        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True) for game in games]
+                        batch = Batch.from_data_list(datas)
 
-                    if move_num == 0 and random_first_move:
-                        actions = [random.randint(2,after-before-1) for before,after in zip(batch.ptr,batch.ptr[1:])]
-                    else:
-                        if self.players[current_player]["simple"]:
-                            actions = self.players[current_player]["model"](batch)
+                        if move_num == 0 and random_first_move:
+                            actions = [random.randint(2,after-before-1) for before,after in zip(batch.ptr,batch.ptr[1:])]
                         else:
-                            action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).cpu()
-                            actions = []
-                            for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):  # This isn't great, but I didn't find any method for sampling in pytorch_scatter. Maybe need to implement myself at some point.
-                                action_part = action_values[start+2:fin]
-                                if len(action_part)==1:
-                                    actions.append(2)
-                                    continue
-                                if temperature==0:
+                            if self.players[current_player]["simple"]:
+                                actions = self.players[current_player]["model"](batch)
+                            else:
+                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).cpu()
+                                actions = []
+                                for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):  # This isn't great, but I didn't find any method for sampling in pytorch_scatter. Maybe need to implement myself at some point.
+                                    action_part = action_values[start+2:fin]
+                                    if len(action_part)==1:
+                                        actions.append(2)
+                                        continue
+                                    if temperature==0:
+                                        try:
+                                            action = torch.argmax(action_part)+2
+                                        except Exception as e:
+                                            print(action_part,type(action_part))
+                                            print(action_part.size())
+                                            raise ValueError(str(e))
+                                        actions.append(action)
+                                        continue
+                                    prob_part = F.softmax(action_part/temperature, dim=0)
                                     try:
-                                        action = torch.argmax(action_part)+2
-                                    except Exception as e:
-                                        print(action_part,type(action_part))
-                                        print(action_part.size())
-                                        raise ValueError(str(e))
-                                    actions.append(action)
-                                    continue
-                                prob_part = F.softmax(action_part/temperature, dim=0)
-                                try:
-                                    distrib = Categorical(prob_part.squeeze())
-                                except ValueError:
-                                    raise ValueError
-                                sample = distrib.sample()
-                                action = sample+2
-                                actions.append(action.item())
-                    to_del = []
-                    actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
-                    # if actions[0]!=0:
-                    #     print(games[0].board.vertex_to_board_index[games[0].view.vertex(actions[0])])
-                    #     print(f"Red:{p1}, Blue:{p2}, onturn: {games[0].onturn}, action: {games[0].board.vertex_index_to_string_move(actions[0])}")
-                    #     print(games[0].board.draw_me())
-                    for i,action in enumerate(actions):
-                        if action!=0:
-                            games[i].make_move(action,remove_dead_and_captured=True)
-                            winner = games[i].who_won()
-                            
-                            if winner is not None:
-                                game_lengths.append(games[i].total_num_moves)
-                                if winner == games[i].not_onturn:
-                                    wins[current_player]+=1
-                                else:
-                                    wins[p1 if current_player==p2 else p1] += 1
-                                to_del.append(i)
-                    for i in reversed(to_del):
-                        del games[i]
+                                        distrib = Categorical(prob_part.squeeze())
+                                    except ValueError:
+                                        raise ValueError
+                                    sample = distrib.sample()
+                                    action = sample+2
+                                    actions.append(action.item())
+                        to_del = []
+                        actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
+                        # if actions[0]!=0:
+                        #     print(games[0].board.vertex_to_board_index[games[0].view.vertex(actions[0])])
+                        #     print(f"Red:{p1}, Blue:{p2}, onturn: {games[0].onturn}, action: {games[0].board.vertex_index_to_string_move(actions[0])}")
+                        #     print(games[0].board.draw_me())
+                        for i,action in enumerate(actions):
+                            if action!=0:
+                                games[i].make_move(action,remove_dead_and_captured=True)
+                                winner = games[i].who_won()
+                                
+                                if winner is not None:
+                                    bar()
+                                    game_lengths.append(games[i].total_num_moves)
+                                    if winner == games[i].not_onturn:
+                                        wins[current_player]+=1
+                                    else:
+                                        wins[p1 if current_player==p2 else p1] += 1
+                                    to_del.append(i)
+                        for i in reversed(to_del):
+                            del games[i]
 
-                    if current_player == p1:
-                        current_player = p2
-                    else:
-                        current_player = p1
-                    move_num += 1
+                        if current_player == p1:
+                            current_player = p2
+                        else:
+                            current_player = p1
+                        move_num += 1
 
-        print("scoring games")
-        print("Mean game length",np.mean(game_lengths))
+            print("scoring games")
+            print("Mean game length",np.mean(game_lengths))
 
-        statistics = wins.copy()
-        print("stats:",statistics)
-        # to_score_games = []
+            statistics = wins.copy()
+            print("stats:",statistics)
+            # to_score_games = []
 
-        # while wins[maker]>0 or wins[breaker]>0:
-        #     if wins[maker]>0:
-        #         to_score_games.append({"winner":maker,"loser":breaker,"winnerHome":True})
-        #         wins[maker]-=1
-        #     if wins[breaker]>0:
-        #         to_score_games.append({"winner":breaker,"loser":maker,"winnerHome":True})
-        #         wins[breaker]-=1
-        return statistics
+            # while wins[maker]>0 or wins[breaker]>0:
+            #     if wins[maker]>0:
+            #         to_score_games.append({"winner":maker,"loser":breaker,"winnerHome":True})
+            #         wins[maker]-=1
+            #     if wins[breaker]>0:
+            #         to_score_games.append({"winner":breaker,"loser":maker,"winnerHome":True})
+            #         wins[breaker]-=1
+            return statistics
 
 def multi_model_battle(model_names,size=5):
     paths = [get_highest_model_path(m) for m in model_names]
@@ -288,10 +290,85 @@ def evaluate_elo_between(elo_handler:Elo_handler,model1,model2,checkpoint1,check
     model1.eval()
     model1.cpu()
 
+    stuff = torch.load(checkpoint1)
+    model2.load_state_dict(stuff["state_dict"])
+    model2.import_norm_cache(*stuff["cache"])
+    model2.eval()
+    model2.cpu()
+
     elo_handler.add_player("model1",model1)
     elo_handler.add_player("model2",model2)
     res= elo_handler.play_some_games("model1","model2",num_games=256,temperature=0,random_first_move=True)
     print(res)
+
+def maker_breaker_model(maker_model,breaker_model):
+    class mb_model(torch.nn.Module):
+        def __init__(self,mm,bm):
+            super().__init__()
+            self.maker_model = mm
+            self.breaker_model = bm
+        def forward(self,*args):
+            if args[0][0,2] == 1:
+                return self.maker_model(*args)
+            else:
+                return self.breaker_model(*args)
+        def simple_forward(self,data):
+            return self.forward(data.x,data.edge_index)
+
+    return mb_model(maker_model,breaker_model)
+
+def old_vs_new(old_breaker_path,old_maker_path,old_model_name,new_model_name,new_model_path):
+    elo_handler = Elo_handler(hex_size=11)
+    breaker = get_pre_defined(old_model_name).to(device)
+    maker = get_pre_defined(old_model_name).to(device)
+    stuff_breaker = torch.load(old_breaker_path,map_location=device)
+
+    breaker.load_state_dict(stuff_breaker["state_dict"])
+    if "cache" in stuff_breaker and stuff_breaker["cache"] is not None:
+        breaker.import_norm_cache(*stuff_breaker["cache"])
+    breaker.eval()
+    stuff_maker = torch.load(old_maker_path,map_location=device)
+    maker.load_state_dict(stuff_maker["state_dict"])
+    if "cache" in stuff_maker and stuff_maker["cache"] is not None:
+        maker.import_norm_cache(*stuff_maker["cache"])
+    maker.eval()
+    model1 = maker_breaker_model(maker,breaker)
+
+
+    stuff = torch.load(new_model_path,map_location=device)
+    args = stuff["args"]
+    model2 = get_pre_defined(new_model_name,args).to(device)
+    model2.load_state_dict(stuff["state_dict"])
+    if "cache" in stuff and stuff["cache"] is not None:
+        model2.import_norm_cache(*stuff["cache"])
+    model2.eval()
+
+    elo_handler.add_player("random",random_player,simple=True)
+    elo_handler.add_player("old",model1)
+    elo_handler.add_player("new",model2)
+    stats = []
+    res= elo_handler.play_some_games("old","random",num_games=64,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    res= elo_handler.play_some_games("new","random",num_games=64,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    res= elo_handler.play_some_games("random","old",num_games=64,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    res= elo_handler.play_some_games("random","new",num_games=64,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    res= elo_handler.play_some_games("old","new",num_games=256,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    res= elo_handler.play_some_games("new","old",num_games=256,temperature=0,random_first_move=True,progress=True)
+    print(res)
+    stats.append(res)
+    print(stats)
+    elo_handler.score_some_statistics(stats)
+
+    print(f'old: {elo_handler.get_rating("old")}\nnew: {elo_handler.get_rating("new")}\nrandom: {elo_handler.get_rating("random")}')
 
 def run_league(checkpoint_folder):
     elo_handler = Elo_handler(5,empty_model_func=lambda :get_pre_defined("sage+norm"))
@@ -346,7 +423,9 @@ if __name__ == "__main__":
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
     # test_elo_handler()
     # battle_it_out()
-    multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
+    # multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path=get_highest_model_path("azure-snowball-157"),new_model_name="two_headed")
 
 
 
