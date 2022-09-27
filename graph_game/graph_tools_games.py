@@ -8,6 +8,7 @@ import os,sys
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_game.clique_node_switching_game import Clique_node_switching_game
 from graph_game.hex_board_game import Hex_board
+
 base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 
 class Hex_game(Node_switching_game):
@@ -20,6 +21,19 @@ class Hex_game(Node_switching_game):
         self.board.position = ["f"]*self.board.squares
         self.board.graph_from_board(redgraph=True)
         self.name = f"Hex {size}x{size}"
+
+starting_graphs = {}
+def get_graph_only_hex_game(size:int):
+    if size not in starting_graphs:
+        board = Hex_board()
+        board.squares = size**2
+        board.size = size
+        board.game = Node_switching_game()
+        board.position = ["f"]*board.squares
+        board.graph_from_board(redgraph=True)
+        starting_graphs[size] = board.game.graph
+        
+    return Node_switching_game.from_graph(Graph(starting_graphs[size]))
 
 class Clique_hex_game(Clique_node_switching_game):
     def __init__(self,size:int):

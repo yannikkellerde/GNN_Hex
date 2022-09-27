@@ -215,19 +215,21 @@ class Node_switching_game(Abstract_graph_game):
 
         return g
 
+    def set_to_graph(self,graph:Graph):
+        self.graph = graph
+        self.terminals = [self.graph.vertex(0),self.graph.vertex(1)]
+        self.graph.vp.f = self.graph.new_vertex_property("bool")
+        self.graph.vp.f.a = np.ones(self.graph.num_vertices()).astype(bool)
+        self.view = GraphView(self.graph,vfilt=self.graph.vp.f)
+        self.view.vp.f = self.view.get_vertex_filter()[0]
+        self.board = None
+        self.name = "Shannon_node_switching_game"
 
 
     @staticmethod
     def from_graph(graph:Graph):
         g = Node_switching_game()
-        g.graph = graph
-        g.terminals = [g.graph.vertex(0),g.graph.vertex(1)]
-        if not hasattr(g.graph.vp,"f"):
-            g.graph.vp.f = g.graph.new_vertex_property("bool")
-            g.graph.vp.f.a = True
-        g.view = GraphView(g.graph,vfilt=g.graph.vp.f)
-        g.board = None
-        g.name = "Shannon_node_switching_game"
+        g.set_to_graph(graph)
         return g
 
     def prune_irrelevant_subgraphs(self) -> bool:

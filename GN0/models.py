@@ -368,7 +368,7 @@ class DuellingTwoHeaded(torch.nn.Module):
             if args[ind] is not None:
                 self.breaker_head.import_norm_cache(*args[ind])
 
-    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,ptr:Optional[Tensor]=None,set_cache:bool=False,advantages_only=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
+    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,ptr:Optional[Tensor]=None,set_cache:bool=False,advantages_only=False,seperate=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
         assert torch.all(x[:,2] == x[0,2])
         is_maker = x[0,2]
         x = x[:,:2]
@@ -405,8 +405,11 @@ class DuellingTwoHeaded(torch.nn.Module):
 
         adv_means = scatter(advantages,graph_indices,dim=0,dim_size=batch_size,reduce="mean")
         
-        # No final activation -> Outputs range from -5 to +5
-        return (value.index_select(0,graph_indices) + (advantages - adv_means.index_select(0, graph_indices))).squeeze()
+        if seperate:
+            return value.squeeze(),(advantages - adv_means.index_select(0, graph_indices)).squeeze()
+        else:
+            # No final activation -> Outputs range from -5 to +5
+            return (value.index_select(0,graph_indices) + (advantages - adv_means.index_select(0, graph_indices))).squeeze()
     
     def simple_forward(self,data:Union[Data,Batch]):
         if isinstance(data,Batch):

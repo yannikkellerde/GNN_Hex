@@ -243,6 +243,7 @@ class Hex_board(Abstract_board_game):
         self.game.graph.vp.f = filt_prop # For filtering in the GraphView
         self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices()).astype(bool)
         self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
+
         self.vertex_index_to_board_index = {int(key):value for key,value in self.vertex_to_board_index.items()}
 
         for i in range(self.squares):

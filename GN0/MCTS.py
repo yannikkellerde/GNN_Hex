@@ -1,26 +1,32 @@
 from __future__ import annotations
+import time
 import numpy as np
-from typing import NamedTuple,Union,Callable
+from typing import NamedTuple,Union,Callable,List
 from graph_tool.all import Graph
-from game.winpattern_game import Winpattern_game,Graph_Store
-import GNZero.util as util
+from graph_game.shannon_node_switching_game import Node_switching_game
+from dataclasses import dataclass
+from GN0.util import get_one_hot
 
-class Node(NamedTuple):
+@dataclass
+class Node:
     """A non-leaf node in the MCTS tree."""
     parent:Union[Node,None]
-    storage:Graph_Store
-    children:tuple
+    storage:Graph
+    children:list
     moves:Union[None,np.ndarray]
     priors:np.ndarray
     visits:np.ndarray
     total_value:np.ndarray
     Q:np.ndarray
 
-class Leafnode(NamedTuple):
+@dataclass
+class Leafnode:
     """A leaf node in the MCTS tree."""
     move:int
-    parent:Node
     done:bool
+    parent:Node
+    makerturn:bool
+    value:int = -1
 
 def upper_confidence_bound(node:Node,exploration_constant:float):
     """Computes the upper confidence bound for a node.
@@ -31,7 +37,7 @@ def upper_confidence_bound(node:Node,exploration_constant:float):
     Returns:
         The upper confidence bound for the node.
     """
-    return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)))/(1+node.visits))
+    return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)+1))/(1+node.visits))
 
 class MCTS():
     """Implements MCTS for Graph games with a neural network for initial node probabilities
@@ -42,13 +48,15 @@ class MCTS():
         exploration_constant: A temperature parameter that controls exploration.
         NN: A function that takes a graph and returns a tuple of (moves,probs,value)
     """
-    def __init__(self,game:Winpattern_game,NN:Callable[[Graph],(np.ndarray,np.ndarray,float)]):
+    def __init__(self,game:Node_switching_game,NN:Callable):
         self.game = game
-        self.root = Leafnode(move=-1,parent=None,done=False)
+        self.root = Leafnode(move=-1,parent=None,done=False,makerturn=game.view.gp["m"])
         self.exploration_constant = 1
         self.NN = NN
+        self.done = False
+        self.winning_move = None
 
-    def reset(self,storage:Graph_Store):
+    def reset(self,storage:Graph):
         """Resets the MCTS tree to the given storage.
         Removes all nodes except the root and sets the state
         of the game to the given storage.
@@ -56,8 +64,8 @@ class MCTS():
         Args:
             storage: The storage to reset the tree to.
         """
-        self.game.load_storage(storage)
-        self.root = Leafnode(move=-1,parent=None,done=False)
+        self.game.set_to_graph(storage)
+        self.root = Leafnode(move=-1,parent=None,done=False,makerturn=self.game.view.gp["m"])
 
     def choose_child(self,node:Node):
         """Chooses a child of a node according to the upper confidence bound.
@@ -82,9 +90,48 @@ class MCTS():
             node = node.children[child_index]
             path.append(child_index)
         if node!=self.root and not node.done:
-            self.game.load_storage(node.parent.storage)
-            node.done = self.game.make_move(node.move)
+            self.game.set_to_graph(Graph(node.parent.storage,prune=True))
+            self.game.draw_me("hm.pdf")
+            self.game.make_move(node.move,remove_dead_and_captured=True)
+            winner = self.game.who_won()
+            node.done = winner is not None
+            if winner is not None:
+                node.done = True
+                if winner==self.game.onturn: # The color the player at the leafnode is on
+                    node.value = 1
+                else:
+                    node.value = 0
+                depth,node = self.backup_victory(node)
+                for _ in range(depth):
+                    if len(path)>0:
+                        path.pop()
         return path,node
+
+    def backup_victory(self,node):
+        pnode = node
+        depth = 0
+        if node.value == 0:
+            if node.parent == self.root:
+                self.done = True
+                self.winning_move = self.root.moves[self.root.children.index(node)]
+                return 1,self.root
+            new_parent = Leafnode(move=None,parent=node.parent.parent,done=True,makerturn=node.parent.storage.gp["m"],value=1)
+            node.parent.parent.children[node.parent.parent.children.index(node.parent)] = new_parent
+            depth,pnode=self.backup_victory(new_parent)
+        elif node.value == 1:
+            for c in node.parent.children:
+                if not isinstance(c,Leafnode) or not c.done or c.value!=1:
+                    return 0,node
+            else:
+                if node.parent == self.root:
+                    self.done = True
+                    self.winning_move = None
+                    return 0,self.root
+                new_parent = Leafnode(move=None,parent=node.parent.parent,done=True,makerturn=node.parent.storage.gp["m"],value=0)
+                node.parent.parent.children[node.parent.parent.children.index(node.parent)] = new_parent
+                depth,pnode=self.backup_victory(new_parent)
+        return depth,pnode
+        
 
     def expand(self,leafnode:Leafnode): # Assumes that self.game is in correct state
         """Expands a leaf node in the MCTS tree.
@@ -94,24 +141,27 @@ class MCTS():
         Returns:
             The value estimate for the leaf node.
         """
-        moves,probs,value = self.NN(self.game.view)
-        children = (Leafnode(move=m,done=False) for m in moves)
+        self.game.set_to_graph(Graph(self.game.view,prune=True))
+        moves,probs,value = self.NN(self.game)
+        children = [Leafnode(move=m,done=False,parent=None,makerturn=not self.game.view.gp["m"]) for m in moves]
         node = Node(parent=leafnode.parent,
-                    storage=self.game.extract_storage(),
+                    storage=Graph(self.game.graph),
                     children=children,
                     priors=probs,
                     visits=np.zeros(probs.shape,dtype=int),
                     total_value=np.zeros_like(probs),
                     moves=moves if leafnode==self.root else None,
-                    Q = np.zeros_like(probs))
+                    Q = np.ones_like(probs)) # Encourage first exploration
         for child in children:
             child.parent = node
-        leafnode.parent.children[leafnode.parent.children.index(leafnode)] = node
         if leafnode == self.root:
             self.root = node
-        return value
+        else:
+            leafnode.parent.children[leafnode.parent.children.index(leafnode)] = node
 
-    def backtrack(self,path,value):
+        return node,value
+
+    def backtrack(self,path,value,leaf_makerturn):
         """Backtracks the MCTS tree to update the values and visits of the nodes.
         
         Args:
@@ -122,28 +172,50 @@ class MCTS():
         for ind in path:
             if isinstance(node,Node):
                 node.visits[ind]+=1
-                node.total_value[ind]+=value
-                node.Q[ind] = node.total_value/node.visits
+                if node.storage.gp["m"] == leaf_makerturn:
+                    node.total_value[ind]+=value
+                else:
+                    node.total_value[ind]+=1-value
+                node.Q[ind] = node.total_value[ind]/node.visits[ind]
                 node = node.children[ind]
             else:
                 assert node.done
 
-    def run(self,iterations):
+    def single_iteration(self):
+        if self.done:
+            return self.winning_move,0 if self.winning_move is None else 1,[]
+        path,leaf = self.select_most_promising()
+        if leaf==self.root and isinstance(self.root,Node):
+            assert self.done
+            return self.winning_move,0 if self.winning_move is None else 1,[]
+            
+        leaf_makerturn = leaf.makerturn
+        if leaf.done:
+            value = leaf.value
+        else:
+            leaf,value = self.expand(leaf)
+        self.backtrack(path,value,leaf_makerturn=leaf_makerturn)
+        return leaf,value,path
+
+
+    def run(self,iterations=None,max_time=None):
         """Runs the MCTS algorithm for the given number of iterations.
         
         Args:
             iterations: The number of iterations to run the MCTS algorithm for.
         """
-        for i in iterations:
-            path,leaf = self.select_most_promising()
-            if leaf.done:
-                if self.game.onturn == "b":
-                    value = -1
-                else:
-                    value = 1
-            else:
-                value = self.expand(leaf)
-            self.backtrack(path,value)
+        assert iterations is not None or max_time is not None
+        start = time.perf_counter()
+        it = 0
+        while 1:
+            if self.done:
+                return self.winning_move
+            if iterations is not None and it>=iterations:
+                break
+            if max_time is not None and time.perf_counter()-start>max_time:
+                break
+            self.single_iteration()
+            it+=1
 
     def extract_result(self,temperature):
         """Extracts the move probabilities from the MCTS tree.
@@ -156,7 +228,7 @@ class MCTS():
         """
         assert isinstance(self.root,Node)
         if temperature == 0:
-            probs = util.get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
+            probs = get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
         else:
             powered = self.root.visits**(1/temperature)
             probs = powered/np.sum(powered)

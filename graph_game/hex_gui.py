@@ -136,6 +136,7 @@ c: toggle show dead and captured""", end="")
             action_history.append(None)
             if show_graph:
                 do_graph_show()
+        return result
 
     def show_assoc():
         fig.axes[0].cla()
@@ -228,16 +229,16 @@ c: toggle show dead and captured""", end="")
             
 
     def onclick(event):
-        if is_over:
-            return
+        # if is_over:
+            # return
         plt.title("")
         if not hasattr(event,"xdata") or event.xdata is None:
             return
         click_coord = np.array([event.xdata, event.ydata])
         distances = np.sum((coords-click_coord)**2,axis=1)
         to_place = np.argmin(distances)
-        place_stone(to_place)
-        if model_player is not None and not manual_mode:
+        result = place_stone(to_place)
+        if model_player is not None and not manual_mode and result!="illegal":
             action = model_player(game,respond_to=action_history[-1])
             place_stone(action)
 
