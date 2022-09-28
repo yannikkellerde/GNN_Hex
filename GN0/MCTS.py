@@ -90,9 +90,8 @@ class MCTS():
             node = node.children[child_index]
             path.append(child_index)
         if node!=self.root and not node.done:
-            self.game.set_to_graph(Graph(node.parent.storage,prune=True))
-            self.game.draw_me("hm.pdf")
-            self.game.make_move(node.move,remove_dead_and_captured=True)
+            self.game.set_to_graph(Graph(node.parent.storage))
+            self.game.make_move(node.move,remove_dead_and_captured=False)
             winner = self.game.who_won()
             node.done = winner is not None
             if winner is not None:
@@ -113,7 +112,7 @@ class MCTS():
         if node.value == 0:
             if node.parent == self.root:
                 self.done = True
-                self.winning_move = self.root.moves[self.root.children.index(node)]
+                self.winning_move = self.root.children.index(node)
                 return 1,self.root
             new_parent = Leafnode(move=None,parent=node.parent.parent,done=True,makerturn=node.parent.storage.gp["m"],value=1)
             node.parent.parent.children[node.parent.parent.children.index(node.parent)] = new_parent
@@ -141,7 +140,6 @@ class MCTS():
         Returns:
             The value estimate for the leaf node.
         """
-        self.game.set_to_graph(Graph(self.game.view,prune=True))
         moves,probs,value = self.NN(self.game)
         children = [Leafnode(move=m,done=False,parent=None,makerturn=not self.game.view.gp["m"]) for m in moves]
         node = Node(parent=leafnode.parent,
@@ -183,11 +181,11 @@ class MCTS():
 
     def single_iteration(self):
         if self.done:
-            return self.winning_move,0 if self.winning_move is None else 1,[]
+            return 0 if self.winning_move is None else 1
         path,leaf = self.select_most_promising()
         if leaf==self.root and isinstance(self.root,Node):
             assert self.done
-            return self.winning_move,0 if self.winning_move is None else 1,[]
+            return 0 if self.winning_move is None else 1
             
         leaf_makerturn = leaf.makerturn
         if leaf.done:
@@ -195,7 +193,7 @@ class MCTS():
         else:
             leaf,value = self.expand(leaf)
         self.backtrack(path,value,leaf_makerturn=leaf_makerturn)
-        return leaf,value,path
+        return value
 
 
     def run(self,iterations=None,max_time=None):
@@ -209,10 +207,12 @@ class MCTS():
         it = 0
         while 1:
             if self.done:
-                return self.winning_move
+                return
             if iterations is not None and it>=iterations:
+                print(time.perf_counter()-start,"seconds")
                 break
             if max_time is not None and time.perf_counter()-start>max_time:
+                print(it,"iterations")
                 break
             self.single_iteration()
             it+=1
@@ -227,9 +227,19 @@ class MCTS():
             The moves and move probabilities for the root position of the MCTS tree.
         """
         assert isinstance(self.root,Node)
+        if self.done:
+            if self.winning_move is None:
+                probs = np.ones(len(self.root.moves))/len(self.root.moves)
+            else:
+                probs = np.zeros(len(self.root.moves))
+                probs[self.winning_move] = 1
         if temperature == 0:
-            probs = get_one_hot(self.root.visits.length,np.argmax(self.root.visits))
+            probs = get_one_hot(len(self.root.visits),np.argmax(self.root.visits))
         else:
             powered = self.root.visits**(1/temperature)
-            probs = powered/np.sum(powered)
+            s = np.sum(powered)
+            if s==0:
+                probs = np.ones(len(self.root.moves))/len(self.root.moves)
+            else:
+                probs = powered/s
         return self.root.moves,probs

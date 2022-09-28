@@ -8,6 +8,13 @@ import scipy.linalg
 import sklearn.preprocessing
 from itertools import tee
 import time
+from dataclasses import dataclass
+
+@dataclass
+class Storage():
+    graph:Graph
+    f:np.ndarray
+
 
 class Node_switching_game(Abstract_graph_game):
     terminals:List[Vertex]
@@ -193,9 +200,13 @@ class Node_switching_game(Abstract_graph_game):
             return True
         return False
 
-    def copy(self):
-        if not hasattr(self,"board") or self.board is None:
-            g =  Node_switching_game.from_graph(graph=Graph(self.view))
+    def copy(self,withboard=True):
+        if not hasattr(self,"board") or self.board is None or not withboard:
+            g = Node_switching_game()
+            g.graph = Graph(self.graph)
+            g.graph.vp.f = g.graph.new_vertex_property("bool")
+            g.graph.vp.f.a = self.graph.vp.f.a.copy()
+            g.view = GraphView(g.graph,g.graph.vp.f)
         else:
             new_board = self.board.copy()
             g = Node_switching_game()
@@ -209,25 +220,21 @@ class Node_switching_game(Abstract_graph_game):
             g.board = new_board
             if self.board_callback is not None:
                 g.board_callback = new_board.graph_callback
-        g.response_set_breaker = self.response_set_breaker.copy()
-        g.response_set_maker = self.response_set_maker.copy()
-        g.callback_everything = self.callback_everything
+            g.response_set_breaker = self.response_set_breaker.copy()
+            g.response_set_maker = self.response_set_maker.copy()
+            g.callback_everything = self.callback_everything
 
         return g
 
-    def set_to_graph(self,graph:Graph):
+    def set_to_graph(self,graph:Graph): # Do not use graph view. Use the graph itself.
         self.graph = graph
         self.terminals = [self.graph.vertex(0),self.graph.vertex(1)]
-        self.graph.vp.f = self.graph.new_vertex_property("bool")
-        self.graph.vp.f.a = np.ones(self.graph.num_vertices()).astype(bool)
         self.view = GraphView(self.graph,vfilt=self.graph.vp.f)
-        self.view.vp.f = self.view.get_vertex_filter()[0]
         self.board = None
         self.name = "Shannon_node_switching_game"
 
-
     @staticmethod
-    def from_graph(graph:Graph):
+    def from_graph(graph:Graph): # Do not use graph view. Use the graph itself.
         g = Node_switching_game()
         g.set_to_graph(graph)
         return g

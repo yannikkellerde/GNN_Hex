@@ -108,12 +108,13 @@ def visualize_MCTS():
             elif command=="u":
                 mode = "ucb"
                 break
+            elif command=="r":
+                print(mcts.extract_result(0))
             elif command=="":
-                leaf,value,path = mcts.single_iteration()
-                print(f"got value {value} on path length {len(path)}")
+                value = mcts.single_iteration()
+                print(f"got value {value}")
                 if mcts.done:
                     print("MCTS is done")
-                    print(leaf)
                 break
             else:
                 node = number_to_node[int(command)]
