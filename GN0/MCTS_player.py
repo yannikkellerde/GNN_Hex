@@ -27,6 +27,25 @@ def get_mcts_player(model,policy_temperature,final_temperature,runtime):
         return move
     return choose_move
 
+def get_pre_defined_mcts_model(model_name="azure-snowball-157"):
+    version = None
+    path = get_highest_model_path("azure-snowball-157")
+    if version is not None:
+        path = os.path.join(os.path.dirname(path),f"checkpoint_{version}.pt")
+    stuff = torch.load(path,map_location=device)
+    args = stuff["args"]
+    model = get_pre_defined("two_headed",args).to(device)
+
+    model.load_state_dict(stuff["state_dict"])
+    if "cache" in stuff and stuff["cache"] is not None:
+        model.import_norm_cache(*stuff["cache"])
+    model.eval()
+
+    player = prepare_model_for_mcts(model,1)
+    return player
+
+
+
 def get_mcts_evaluater(model,policy_temperature,final_temperature,runtime):
     mcts_nn = prepare_model_for_mcts(model,policy_temperature)
     def evaluate(game):

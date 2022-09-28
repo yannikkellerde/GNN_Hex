@@ -3,6 +3,7 @@ from GN0.MCTS import MCTS,Node,Leafnode,upper_confidence_bound
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_game.graph_tools_games import get_graph_only_hex_game
 import numpy as np
+from GN0.MCTS_player import get_pre_defined_mcts_model
 from typing import Union
 import os
 import time
@@ -76,7 +77,9 @@ def graph_from_root(root:Union[Node,Leafnode],to_show="num_visits"):
 def visualize_MCTS():
     game = get_graph_only_hex_game(2)
     show_game = Node_switching_game.from_graph(Graph(game.view))
-    mcts = MCTS(game,dummy_nn)
+    nn = get_pre_defined_mcts_model()
+
+    mcts = MCTS(game,nn)
     mode = "num_visits"
     while 1:
         g,number_to_node = graph_from_root(mcts.root,to_show=mode)
