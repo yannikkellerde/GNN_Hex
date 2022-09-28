@@ -11,6 +11,14 @@ import time
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def mixed_player(player1,player2):
+    def mixed_play(game,respond_to=None):
+        if game.view.gp["m"]:
+            return player1(game,respond_to=respond_to)
+        else:
+            return player2(game,respond_to=respond_to)
+    return mixed_play
+
 def random_mover_model(game:Node_switching_game,respond_to=None):
     actions = game.get_actions()
     if len(actions) == 0:
@@ -136,6 +144,8 @@ c: toggle show dead and captured""", end="")
             action_history.append(None)
             if show_graph:
                 do_graph_show()
+        else:
+            print("Illegal move")
         return result
 
     def show_assoc():
@@ -239,10 +249,13 @@ c: toggle show dead and captured""", end="")
         to_place = np.argmin(distances)
         result = place_stone(to_place)
         if model_player is not None and not manual_mode and result!="illegal":
+            print(game.board)
             action = model_player(game,respond_to=action_history[-1])
+            print(game.board)
             place_stone(action)
 
     game = Hex_game(size)
+    print(game.board)
     game.board_callback = game.board.graph_callback
     fig = game.board.matplotlib_me()
     cid = fig.canvas.mpl_connect('button_press_event', onclick)

@@ -29,7 +29,7 @@ def play_in_gui():
 
     player = playerify_model(model)
     evaluater = model_to_evaluater(model)
-    interactive_hex_window(8,model_player=player,model_evaluater=evaluater)
+    interactive_hex_window(11,model_player=player,model_evaluater=evaluater)
 
 
 def play_vs_old():

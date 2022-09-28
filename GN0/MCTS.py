@@ -91,7 +91,7 @@ class MCTS():
             path.append(child_index)
         if node!=self.root and not node.done:
             self.game.set_to_graph(Graph(node.parent.storage))
-            self.game.make_move(node.move,remove_dead_and_captured=False)
+            self.game.make_move(node.move,remove_dead_and_captured=True)
             winner = self.game.who_won()
             node.done = winner is not None
             if winner is not None:
@@ -149,7 +149,7 @@ class MCTS():
                     visits=np.zeros(probs.shape,dtype=int),
                     total_value=np.zeros_like(probs),
                     moves=moves if leafnode==self.root else None,
-                    Q = np.ones_like(probs)) # Encourage first exploration
+                    Q = np.ones_like(probs)*0.5) # Encourage first exploration
         for child in children:
             child.parent = node
         if leafnode == self.root:
@@ -234,7 +234,7 @@ class MCTS():
                 probs = np.zeros(len(self.root.moves))
                 probs[self.winning_move] = 1
         if temperature == 0:
-            probs = get_one_hot(len(self.root.visits),np.argmax(self.root.visits))
+            probs = get_one_hot(len(self.root.visits),np.argmax(self.root.visits+self.root.priors))
         else:
             powered = self.root.visits**(1/temperature)
             s = np.sum(powered)

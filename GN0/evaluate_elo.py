@@ -36,14 +36,14 @@ class Elo_handler():
         self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"original_model":original_model}
 
     def load_into_empty_model(self,empty_model,checkpoint):
-        stuff = torch.load(checkpoint)
+        stuff = torch.load(checkpoint,map_location=self.device)
         empty_model.load_state_dict(stuff["state_dict"])
         if "cache" in stuff and stuff["cache"] is not None:
             empty_model.import_norm_cache(*stuff["cache"])
         else:
             print("Warning, no cache")
 
-    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=64):
+    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=64,progress=False):
         for player in players:
             self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
@@ -60,9 +60,9 @@ class Elo_handler():
                     self.players[player2["name"]]["model"] = self.empty_model2
                 if "checkpoint" in player2:
                     self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
-                statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True)
+                statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True,progress=progress)
                 all_stats.append(statistics)
-                statistics = self.play_some_games(player2["name"],player1["name"],num_games,0,random_first_move=True)
+                statistics = self.play_some_games(player2["name"],player1["name"],num_games,0,random_first_move=True,progress=progress)
                 all_stats.append(statistics)
 
         self.score_some_statistics(all_stats)
@@ -258,22 +258,15 @@ def multi_model_battle(model_names,size=5):
     print(elo.get_rating_table())
 
 def battle_it_out():
-    basepath = os.path.dirname(get_highest_model_path("hopeful-voice-108"))
-    cps = [6240000,
-          6080000,
-          5920000,
-          5760000,
-          5600000,
-          5440000,
-          5280000,
-          5120000,
-          4320000,
-          4960000]
+    basepath = os.path.dirname(get_highest_model_path("azure-snowball-157"))
+    cps = [59200000,
+           29760000,
+           29280000]
     players = [{"name":str(x),"checkpoint":os.path.join(basepath,f"checkpoint_{x}.pt")} for x in cps]
-    args = Namespace(**{"norm":True,"noisy_dqn":False,"noisy_sigma0":0.5,"hidden_channels":32,"num_layers":15})
-    create_func = lambda :get_pre_defined("two_headed",args).cpu()
+    stuff = torch.load(players[0]["checkpoint"],map_location="cpu")
+    create_func = lambda :get_pre_defined("two_headed",stuff["args"]).cpu()
     elo = Elo_handler(11,empty_model_func=create_func)
-    elo.run_tournament(players,add_to_elo_league=True)
+    elo.run_tournament(players,add_to_elo_league=True,progress=True)
     print(elo.get_rating_table())
     print([[x["name"],elo.get_rating(x["name"])] for x in players])
 
@@ -425,7 +418,5 @@ if __name__ == "__main__":
     # battle_it_out()
     # multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path=get_highest_model_path("azure-snowball-157"),new_model_name="two_headed")
-
-
-
+    battle_it_out()
+    old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")
