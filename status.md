@@ -44,7 +44,7 @@
 - Transfer between hex sizes works great. An agent trained on the 11x11 board playing on 8x8 is almost as good as an agent trained on 8x8. An agent trained on 8x8 playing on 11x11 is not too bad at all and shows clear signs of upward transfer.
 
 ## The state of computer hex right now
-- Best classical engine is MoHex 2.0 which uses MCTS.
+- Best classical engine is MoHex 2.0 which uses MCTS (Without full rollouts and no Neural Networks).
 - Best Hex AI of all time is probably [https://github.com/richemslie/galvanise\_zero](https://github.com/richemslie/galvanise_zero)
 	+ Alpha Zero style training.
 	+ Used 3 GTX 1080 for training ResNets with convolutional layers.
