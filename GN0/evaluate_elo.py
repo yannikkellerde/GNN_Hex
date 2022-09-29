@@ -14,6 +14,7 @@ from collections import defaultdict,deque
 from GN0.util import fix_size_defaultdict
 from collections import defaultdict
 from argparse import Namespace
+import json
 
 
 class Elo_handler():
@@ -43,27 +44,27 @@ class Elo_handler():
         else:
             print("Warning, no cache")
 
-    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=64,progress=False):
+    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=128,progress=False):
         for player in players:
             self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
         all_stats = []
-        for player1 in players:
-            if not "model" in player1:
-                self.players[player1["name"]]["model"] = self.empty_model1
-            if "checkpoint" in player1:
-                self.load_into_empty_model(self.players[player1["name"]]["model"],player1["checkpoint"])
-            for player2 in players:
-                if player1==player2:
-                    continue
-                if not "model" in player2:
-                    self.players[player2["name"]]["model"] = self.empty_model2
-                if "checkpoint" in player2:
-                    self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
-                statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True,progress=progress)
-                all_stats.append(statistics)
-                statistics = self.play_some_games(player2["name"],player1["name"],num_games,0,random_first_move=True,progress=progress)
-                all_stats.append(statistics)
+        with alive_bar(len(players)*(len(players)-1),disable=not progress) as bar:
+            for player1 in players:
+                if not "model" in player1:
+                    self.players[player1["name"]]["model"] = self.empty_model1
+                if "checkpoint" in player1:
+                    self.load_into_empty_model(self.players[player1["name"]]["model"],player1["checkpoint"])
+                for player2 in players:
+                    if player1==player2:
+                        continue
+                    if not "model" in player2:
+                        self.players[player2["name"]]["model"] = self.empty_model2
+                    if "checkpoint" in player2:
+                        self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
+                    statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True,progress=False)
+                    all_stats.append(statistics)
+                    bar()
 
         self.score_some_statistics(all_stats)
         if add_to_elo_league:
@@ -87,9 +88,9 @@ class Elo_handler():
             else:
                 self.load_into_empty_model(self.empty_model2,contestant["checkpoint"])
                 self.players[contestant["name"]]["model"] = self.empty_model2
-            statistics = self.play_some_games(name,contestant["name"],64,0,random_first_move=True)
+            statistics = self.play_some_games(name,contestant["name"],None,0,random_first_move=True)
             all_stats.append(statistics)
-            statistics = self.play_some_games(contestant["name"],name,64,0,random_first_move=True)
+            statistics = self.play_some_games(contestant["name"],name,None,0,random_first_move=True)
             all_stats.append(statistics)
         self.score_some_statistics(all_stats,firsto=name)
         self.elo_league_contestants.append({"name":name,"checkpoint":checkpoint,"model":model})
@@ -144,6 +145,11 @@ class Elo_handler():
         print("Playing games between",maker,"and",breaker)
         wins = {maker:0,breaker:0}
         game_lengths = []
+        starting_moves = None
+        if num_games is None:
+            some_game = Hex_game(self.size)
+            starting_moves = some_game.get_unique_starting_moves()
+            num_games = len(starting_moves)*2
         with alive_bar(num_games,disable=not progress) as bar:
             with torch.no_grad():
                 for i in range(2):
@@ -167,9 +173,9 @@ class Elo_handler():
                         datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True) for game in games]
                         batch = Batch.from_data_list(datas)
 
-                        if move_num == 0 and random_first_move:
-                            actions = [random.randint(2,after-before-1) for before,after in zip(batch.ptr,batch.ptr[1:])]
-                        else:
+                        if move_num == 0 and random_first_move and starting_moves is None:
+                            actions = [random.choice(g.get_actions()) for g in games]
+                        elif move_num>0 or starting_moves is None:
                             if self.players[current_player]["simple"]:
                                 actions = self.players[current_player]["model"](batch)
                             else:
@@ -197,8 +203,12 @@ class Elo_handler():
                                     sample = distrib.sample()
                                     action = sample+2
                                     actions.append(action.item())
+                            actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
+                        elif move_num==0 and starting_moves is not None:
+                            actions = starting_moves
+
+
                         to_del = []
-                        actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
                         # if actions[0]!=0:
                         #     print(games[0].board.vertex_to_board_index[games[0].view.vertex(actions[0])])
                         #     print(f"Red:{p1}, Blue:{p2}, onturn: {games[0].onturn}, action: {games[0].board.vertex_index_to_string_move(actions[0])}")
@@ -231,7 +241,6 @@ class Elo_handler():
             statistics = wins.copy()
             print("stats:",statistics)
             # to_score_games = []
-
             # while wins[maker]>0 or wins[breaker]>0:
             #     if wins[maker]>0:
             #         to_score_games.append({"winner":maker,"loser":breaker,"winnerHome":True})
@@ -257,15 +266,23 @@ def multi_model_battle(model_names,size=5):
     elo.run_tournament(players,add_to_elo_league=True,num_games=1024) 
     print(elo.get_rating_table())
 
-def battle_it_out():
+def battle_it_out(device="cpu"):
     basepath = os.path.dirname(get_highest_model_path("azure-snowball-157"))
-    cps = [59200000,
-           29760000,
-           29280000]
-    players = [{"name":str(x),"checkpoint":os.path.join(basepath,f"checkpoint_{x}.pt")} for x in cps]
-    stuff = torch.load(players[0]["checkpoint"],map_location="cpu")
-    create_func = lambda :get_pre_defined("two_headed",stuff["args"]).cpu()
-    elo = Elo_handler(11,empty_model_func=create_func)
+    # table_path = "/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/wandb/run-20220924_093459-23kjabmr/files/media/table/ev/rating_table_38100_87ac68f0e7970015c449.table.json"
+    # with open(table_path,"r") as f:
+    #     table = json.load(f)
+    # cps = [int(x[0].split("_")[0]) for x in table["data"][:10]]
+    players = []
+    cps = [71840000,53440000,15680000,13120000,11040000,10400000]
+    for cp in cps:
+        path=os.path.join(basepath,f"checkpoint_{cp}.pt")
+        stuff = torch.load(path,map_location=device)
+        args = stuff["args"]
+        model = get_pre_defined(args.model_name,args).to(device)
+        if "cache" in stuff and stuff["cache"] is not None:
+            model.import_norm_cache(*stuff["cache"])
+        players.append({"name":cp,"checkpoint":path,"model":model})
+    elo = Elo_handler(8,device=device)
     elo.run_tournament(players,add_to_elo_league=True,progress=True)
     print(elo.get_rating_table())
     print([[x["name"],elo.get_rating(x["name"])] for x in players])
@@ -418,5 +435,5 @@ if __name__ == "__main__":
     # battle_it_out()
     # multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    battle_it_out()
-    old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")
+    battle_it_out(device=device)
+    # old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")

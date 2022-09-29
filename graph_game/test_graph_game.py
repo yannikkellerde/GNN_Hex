@@ -14,6 +14,14 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from alive_progress import alive_bar,alive_it
 
+def test_unique_moves():
+    game = Hex_game(11)
+    moves = game.board.get_all_unique_starting_moves()
+    for move in moves:
+        game.board.position[move]="r"
+    print(game.board.draw_me())
+    
+
 def test_dead_and_captured_consistency():
     size = 11
     for i in alive_it(range(500)):
@@ -443,5 +451,6 @@ if __name__ == "__main__":
     # test_iterative_voltages()
     # test_voltages()
     # test_color_consistency()
-    test_dead_and_captured_consistency()
+    test_unique_moves()
+    # test_dead_and_captured_consistency()
     #test_graph_similarity()

@@ -55,6 +55,12 @@ class Hex_board(Abstract_board_game):
             if self.position[i]=="f" and not self.game.graph.vp.f[self.board_index_to_vertex[i]]:
                 self.position[i] = "b"
         
+    def get_all_unique_starting_moves(self):
+        unique_moves = []
+        for i in range(self.size):
+            unique_moves.extend(list(range(i+i*self.size,self.size+i*self.size)))
+        return unique_moves
+
 
     def get_actions(self):
         return [i for i in range(len(self.position)) if self.position[i]=="f"]
