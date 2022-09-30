@@ -70,6 +70,16 @@
 		* In the RL setting, it seemed to hurt performance more than it helped.
 		* I think the reason is similar to why BatchNorm is usually not used in RL. GraphNorm also uses Batch statistics and they tend to change over time in the RL setting.
 
+### Evaluation
+- How to do elo evaluation of new agents most efficiently.
+	+ Holding regular tournaments between all saved agents is too slow
+	+ Current implementation: Let new agent play against current top 10 agents.
+	+ Does not work great (see wandb plot)
+- https://github.com/ddugovic/BayesianElo looks interesting
+
+### Collecting Transitions
+- Alpha Zero keeps explicit policy agent that they only swap if a new agent wins 55% against old policy agent. Current Rainbow DQN uses online policy. Would only using best agent for DQN also make sense? Why should it be smart for MCTS but not for DQN?
+
 
 ## Where do we go from here?
 - I don't want to spend too much more time tuning Rainbow DQN hyperparameters, so I think it makes sense to move towards MCTS for training soon.
