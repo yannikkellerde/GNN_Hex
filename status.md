@@ -86,6 +86,7 @@
 		* There are a lot of Alpha-Zero implementations in C++ out there, which I could repurpose. (e.g. open_spiel)
 - Some alternative path would be to make [https://github.com/harbecke/HexHex](https://github.com/harbecke/HexHex) work with Graph Neural Networks to get a direct comparison between ResNet CNNs and Graph Neural networks for RL on Hex.
 - Or just try to do best implementing MCTS in python (with or without multiprocessing). Maybe try to make some existing implementations work for my use case [https://github.com/bhansconnect/fast-alphazero-general](https://github.com/bhansconnect/fast-alphazero-general). Exisiting python implementations seem a lot less promising than c++ implementations though.
+- There may be some middle path between C++ and python. At least others seem to have made it work [https://github.com/bhansconnect/alphazero-pybind11](https://github.com/bhansconnect/alphazero-pybind11), [https://github.com/richemslie/galvanise\_zero](https://github.com/richemslie/galvanise_zero). Defenitely worth looking into it.
 
 ## Misc
 - I tried enhancing my agent trained with DQN with alpha-zero style MCTS at test time. However this did not seem to increase strength. Either my implementation is wrong or treating the softmaxed advantages as the prior for MCTS is not a smart idea.
