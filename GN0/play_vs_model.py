@@ -53,5 +53,5 @@ def play_vs_old():
 if __name__ == "__main__":
     # play_vs_model()
     # interactive_hex_window(11)
-    # play_in_gui()
-    play_vs_old()
+    play_in_gui()
+    # play_vs_old()

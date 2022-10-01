@@ -356,6 +356,7 @@ def build_hex_grid(colors,labels=None,fig=None):
             ax.add_patch(hexagon)
     plt.autoscale(enable=True)
     plt.axis("off")
+    plt.tight_layout()
     return fig
 
 if __name__=="__main__":

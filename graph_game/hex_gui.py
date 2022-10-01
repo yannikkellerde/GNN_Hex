@@ -94,7 +94,7 @@ def maker_breaker_evaluater(maker,breaker):
 
 
 def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over
+    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size
     print(
 """
 Instructions:
@@ -113,16 +113,20 @@ c: toggle show dead and captured""", end="")
     show_dead_and_captured = True
     show_graph = False
     is_over = False
+    glob_size = size
 
     action_history = [None]
 
-    xstart = -(size//2)*1.5
-    ystart = -(size/2*np.sqrt(3/4))+0.5
-    coords = []
-    for i in range(size):
-        for j in range(size):
-            coords.append([xstart+0.5*j+i,ystart+np.sqrt(3/4)*j])
-    coords = np.array(coords)
+    def set_coords():
+        global coords
+        xstart = -(glob_size//2)*1.5
+        ystart = -(glob_size/2*np.sqrt(3/4))+0.5
+        coords = []
+        for i in range(glob_size):
+            for j in range(glob_size):
+                coords.append([xstart+0.5*j+i,ystart+np.sqrt(3/4)*j])
+        coords = np.array(coords)
+    set_coords()
 
     def place_stone(action):
         global is_over
@@ -161,6 +165,20 @@ c: toggle show dead and captured""", end="")
             game.board.matplotlib_me(fig=fig,vprop=vprop)
             plt.pause(0.001)
 
+    def restart():
+        global is_over,action_history,game
+        is_over=False
+        action_history = [None]
+        game = Hex_game(glob_size)
+        game.board_callback = game.board.graph_callback
+        game.callback_everything = show_dead_and_captured
+        plt.title("")
+        fig.axes[0].cla()
+        game.board.matplotlib_me(fig=fig)
+        plt.pause(0.001)
+        if show_graph:
+            do_graph_show()
+
     def do_graph_show():
         game.draw_me(fname="hex_gui_graph.pdf",vprop1=game.view.vertex_index)
         os.system("pkill mupdf")
@@ -169,7 +187,7 @@ c: toggle show dead and captured""", end="")
         os.system("bspc node -f west")
 
     def on_press(event):
-        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over
+        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size
         if event.key == "m":
             manual_mode = not manual_mode
         
@@ -219,17 +237,16 @@ c: toggle show dead and captured""", end="")
                 do_graph_show()
 
         elif event.key == "r":
-            is_over=False
-            action_history = [None]
-            game = Hex_game(size)
-            game.board_callback = game.board.graph_callback
-            game.callback_everything = show_dead_and_captured
-            plt.title("")
-            fig.axes[0].cla()
-            game.board.matplotlib_me(fig=fig)
-            plt.pause(0.001)
-            if show_graph:
-                do_graph_show()
+            restart()
+        elif event.key == '+':
+            glob_size+=1
+            set_coords()
+            restart()
+        elif event.key == "-":
+            glob_size-=1
+            set_coords()
+            restart()
+
         elif event.key == "e":
             show_eval()
         elif event.key == "s":
@@ -249,13 +266,10 @@ c: toggle show dead and captured""", end="")
         to_place = np.argmin(distances)
         result = place_stone(to_place)
         if model_player is not None and not manual_mode and result!="illegal":
-            print(game.board)
             action = model_player(game,respond_to=action_history[-1])
-            print(game.board)
             place_stone(action)
 
-    game = Hex_game(size)
-    print(game.board)
+    game = Hex_game(glob_size)
     game.board_callback = game.board.graph_callback
     fig = game.board.matplotlib_me()
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
