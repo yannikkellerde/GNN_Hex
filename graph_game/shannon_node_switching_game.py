@@ -1,6 +1,6 @@
 from graph_game.abstract_graph_game import Abstract_graph_game
 from graph_game.utils import is_fully_connected, double_loop_iterator
-from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency,boykov_kolmogorov_max_flow,min_st_cut
+from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency,boykov_kolmogorov_max_flow,min_st_cut,sfdp_layout
 from typing import Union, List, Iterator, Set, Callable, Tuple
 import numpy as np
 from graph_game.utils import to_directed_graph
@@ -368,7 +368,7 @@ class Node_switching_game(Abstract_graph_game):
 
 
 
-    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None,decimal_places=0):
+    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None,decimal_places=0,layout="grid"):
         """Draw the state of the graph and save it into a pdf file.
 
         Args:
@@ -412,4 +412,9 @@ class Node_switching_game(Abstract_graph_game):
                 fill_color[vertex] = (0,0,0,1)
                 size[vertex] = 15
         vprops = {"fill_color":fill_color,"shape":shape,"size":size}
-        graph_draw(self.view, vprops=vprops, vertex_text=vprop, output=fname)
+        if layout=="grid":
+            layout = self.board.get_grid_layout()
+        elif layout == "sfdp":
+            layout = sfdp_layout(self.view)
+
+        graph_draw(self.view, pos=layout, vprops=vprops, vertex_text=vprop, output=fname)

@@ -94,7 +94,7 @@ def maker_breaker_evaluater(maker,breaker):
 
 
 def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size
+    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout
     print(
 """
 Instructions:
@@ -114,6 +114,7 @@ c: toggle show dead and captured""", end="")
     show_graph = False
     is_over = False
     glob_size = size
+    layout = "grid"
 
     action_history = [None]
 
@@ -180,14 +181,14 @@ c: toggle show dead and captured""", end="")
             do_graph_show()
 
     def do_graph_show():
-        game.draw_me(fname="hex_gui_graph.pdf",vprop1=game.view.vertex_index)
+        game.draw_me(fname="hex_gui_graph.pdf",layout=layout,vprop1=game.view.vertex_index)
         os.system("pkill mupdf")
         os.system("nohup mupdf hex_gui_graph.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
         os.system("bspc node -f west")
 
     def on_press(event):
-        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size
+        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout
         if event.key == "m":
             manual_mode = not manual_mode
         
@@ -246,6 +247,9 @@ c: toggle show dead and captured""", end="")
             glob_size-=1
             set_coords()
             restart()
+        elif event.key == "l":
+            layout="grid" if layout == "sfdp" else "sfdp"
+            do_graph_show()
 
         elif event.key == "e":
             show_eval()

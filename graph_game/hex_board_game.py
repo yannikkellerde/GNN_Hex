@@ -325,6 +325,22 @@ class Hex_board(Abstract_board_game):
             else:
                 out_str+=" "
         return out_str
+    
+    def get_grid_layout(self) -> VertexPropertyMap:
+        vprop = self.game.view.new_vertex_property("vector<double>")
+        scale = 400/self.size
+        xstart = 0
+        ystart = 0
+        xend = xstart+1.5*(self.size-1)*scale
+        yend = ystart+np.sqrt(3/4)*(self.size-1)*scale
+        vprop[self.game.terminals[0]]=[xstart,yend/2]
+        vprop[self.game.terminals[1]]=[xend,yend/2]
+        for i in range(self.size):
+            for j in range(self.size):
+                coords = [xstart+(0.5*j+i)*scale,yend-(np.sqrt(3/4)*j)*scale]
+                vprop[self.board_index_to_vertex[i*self.size+j]] = coords
+        return vprop
+
 
 def build_hex_grid(colors,labels=None,fig=None):
     if labels is not None:
