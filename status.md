@@ -13,7 +13,7 @@
 - Collect transitions into replay buffer via self-play. E.g. one-step next state is state after agent and opponent made a move.
 ### Graph Net Architecture
 - [GraphSage](https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#torch_geometric.nn.conv.SAGEConv) which has some ResNet style properties.
-- One shared body of 15 SageConv layers with 60 hidden layers.
+- One shared body of 19 SageConv layers with 80 hidden layers.
 	+ One head for breaker and maker each with two SageConv layers and two final linear layers for value and advantage (Duelling DQN).
 ### Rainbow DQN Features
 - [x] Duelling DQN
@@ -23,12 +23,14 @@
 - [ ] Noisy Nets (Did not manage to make it work well)
 - [ ] Distributional RL (too complicated)
 ### Training
-- On my GTX 1070ti at home
+- On Nvidia Tesla T4 on Google cloud (Free trial credits)
 - Did some curriculum training -> start with small network and hex size 5\*5. Then grow network and hex-size simultaiously
 	+ Not sure if it helped, but didn't seem to hurt and I wanted to try it because I did Martin Mundt's continual ML course last semester.
 	+ Does make some sense because smaller hex size is subproblem of larger hex size and has higher reward density.
 - One Replay buffer for maker, one for breaker. Seperate training (but shared parameters in NN body).
-- Required a lot of training time. Kept improving after four days of training.
+- Required a lot of training time. Kept improving after six days of training.
+- Process randomly crashed after 6 days with SIGSEV address boundary error :(
+- https://wandb.ai/yannikkellerde/rainbow_hex/runs/3oq8fmwp?workspace=user-yannikkellerde
 
 ## Results and observations
 
@@ -39,7 +41,7 @@
 - Weaker than [https://cleeff.github.io/hex/](https://cleeff.github.io/hex/) which also does no search and moves amost instantly.
 
 ### Observations
-- Learning the breaker seems to be a significantly easier than learning the maker. Winrates averaged around 70% for breaker in all my runs (with random starting player and move). Exception is 5x5 where the agent fully solves all starting moves after a while.
+- Learning the breaker seems to be a significantly easier than learning the maker. Winrates averaged around 70% for breaker in all my runs (with random starting player and move). Skipped breaker training when winrates got out of hand to balance.
 - Losses stop sinking fairly early, while the agent strength keeps increasing.
 - Transfer between hex sizes works great. An agent trained on the 11x11 board playing on 8x8 is almost as good as an agent trained on 8x8. An agent trained on 8x8 playing on 11x11 is not terrible and shows clear signs of upward transfer.
 - Agent sometimes makes very simple tactical mistakes in the endgame.
