@@ -33,7 +33,7 @@
 ## Results and observations
 
 ### Agent performance
-- Slightly stronger than me thinking for ~10 seconds per move. (Agent takes only miliseconds, as it is not doing any search)
+- Around as strong as me thinking for ~10 seconds per move. (Agent takes only miliseconds, as it is not doing any search)
 - Stronger than the [android MoHex version](https://play.google.com/store/apps/details?id=com.game.hex&hl=en&gl=US) that thinks for ~3 seconds per move on my smartphone.
 - Weaker than MoHex 2.0 on my laptop thinking for ~10s per move.
 - Weaker than [https://cleeff.github.io/hex/](https://cleeff.github.io/hex/) which also does no search and moves amost instantly.
@@ -41,7 +41,9 @@
 ### Observations
 - Learning the breaker seems to be a significantly easier than learning the maker. Winrates averaged around 70% for breaker in all my runs (with random starting player and move). Exception is 5x5 where the agent fully solves all starting moves after a while.
 - Losses stop sinking fairly early, while the agent strength keeps increasing.
-- Transfer between hex sizes works great. An agent trained on the 11x11 board playing on 8x8 is almost as good as an agent trained on 8x8. An agent trained on 8x8 playing on 11x11 is not too bad at all and shows clear signs of upward transfer.
+- Transfer between hex sizes works great. An agent trained on the 11x11 board playing on 8x8 is almost as good as an agent trained on 8x8. An agent trained on 8x8 playing on 11x11 is not terrible and shows clear signs of upward transfer.
+- Agent sometimes makes very simple tactical mistakes in the endgame.
+- Give up syndrome. If the agent is sure that it is lost, it will start playing randomly instead of putting up the best defense. In some rare cases even if the agent is not lost but does not know how to defend.
 
 ## The state of computer hex right now
 - Best classical engine is MoHex 2.0 which uses MCTS (With full rollouts and no Neural Networks).
@@ -100,3 +102,4 @@
 
 ## Misc
 - I tried enhancing my agent trained with DQN with alpha-zero style MCTS at test time. However this did not seem to increase strength. Either my implementation is wrong or treating the softmaxed advantages as the prior for MCTS is not a smart idea.
+- I tried training a much larger model of 45 layers depth, but got a SIGSEGV (Address boundary Error) randomly after ~1 day of training. Oh well ^^.
