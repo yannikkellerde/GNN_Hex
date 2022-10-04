@@ -73,6 +73,7 @@
 		* In a preliminary experiment, where I just tried to learn Shannons electrical circuit for hex graphs (a supervised learning task), adding GraphNorm improved convergence quite a lot.
 		* In the RL setting, it seemed to hurt performance more than it helped.
 		* I think the reason is similar to why BatchNorm is usually not used in RL. GraphNorm also uses Batch statistics and they tend to change over time in the RL setting.
+- I'd like to find out a litte more about how my graph neural network decides on the best move. What are smart ways to visualize/explain GNN decisions?
 
 ### Evaluation
 - How to do elo evaluation of new agents most efficiently.
