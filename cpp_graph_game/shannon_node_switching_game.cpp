@@ -9,6 +9,24 @@
 using namespace std;
 using namespace boost;
 
+typedef adjacency_list<vecS, vecS, undirectedS> Graph;
+typedef pair<int, int> Edge;
+typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+
+struct Predicate { // both edge and vertex
+	bool operator()(Graph::edge_descriptor) const      { return true; } // all
+	bool operator()(Graph::vertex_descriptor vd) const { return suppressed_->count((*g)[vd].label) == 0; }
+
+	Graph* g;
+	labels* suppressed_;
+} predicate {&g, &suppressed};
+class Node_switching_game {
+	public:
+		Graph graph;
+
+};
+
+
 template <class Graph> struct exercise_vertex {
 	exercise_vertex(Graph& g_) : g(g_) {}
 	Graph& g;
