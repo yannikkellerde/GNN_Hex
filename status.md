@@ -54,6 +54,7 @@
 	+ Used 3 GTX 1080 for training ResNets with convolutional layers.
 	+ Combines Python and C++.
 	+ General game player that can tackle many games written in GDL.
+- [This](https://github.com/aravinho/hexit) repo implemented the often referenced expert iteration algorithm https://arxiv.org/pdf/1705.08439.pdf. However, the results reported in the github readme sound somewhat disappointing (e.g. 2 days of training to play 5x5 hex optimally)
 - [This](https://github.com/harbecke/HexHex) one is very interesting. It's online agent [https://cleeff.github.io/hex/](https://cleeff.github.io/hex/) seems very strong.
 	+ I am not 100% sure what their training Method is.
 	+ On their github README they claim to use a similar training method and network architectures as Alpha Zero, but no MCTS, because it is *prohibitively expensive*.
