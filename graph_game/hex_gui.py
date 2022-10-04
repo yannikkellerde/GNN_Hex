@@ -103,10 +103,12 @@ m: toggle ai moves      space: play ai move
 s: switch colors        e:     show evaluation
 a: toggle graph         g:     show graph
 n: show graph assoc     q:     quit
-k: hide graph
+k: hide graph           l:     switch layout
++: increase hex size    -:     decrease hex size
 c: toggle show dead and captured""", end="")
     
     os.system("pkill mupdf")
+    plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
     game_history = []
     manual_mode = True

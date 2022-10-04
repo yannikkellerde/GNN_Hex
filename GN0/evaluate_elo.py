@@ -44,12 +44,12 @@ class Elo_handler():
         else:
             print("Warning, no cache")
 
-    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,num_games=128,progress=False):
+    def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,progress=False):
         for player in players:
             self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
         all_stats = []
-        with alive_bar(len(players)*(len(players)-1),disable=not progress) as bar:
+        with alive_bar(len(players)*(len(players)-1),disable=True) as bar:
             for player1 in players:
                 if not "model" in player1:
                     self.players[player1["name"]]["model"] = self.empty_model1
@@ -62,7 +62,7 @@ class Elo_handler():
                         self.players[player2["name"]]["model"] = self.empty_model2
                     if "checkpoint" in player2:
                         self.load_into_empty_model(self.players[player2["name"]]["model"],player2["checkpoint"])
-                    statistics = self.play_some_games(player1["name"],player2["name"],num_games,0,random_first_move=True,progress=False)
+                    statistics = self.play_some_games(player1["name"],player2["name"],None,0,random_first_move=True,progress=progress)
                     all_stats.append(statistics)
                     bar()
 
@@ -179,7 +179,7 @@ class Elo_handler():
                             if self.players[current_player]["simple"]:
                                 actions = self.players[current_player]["model"](batch)
                             else:
-                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).cpu()
+                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(device)
                                 actions = []
                                 for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):  # This isn't great, but I didn't find any method for sampling in pytorch_scatter. Maybe need to implement myself at some point.
                                     action_part = action_values[start+2:fin]
@@ -253,17 +253,17 @@ class Elo_handler():
 def multi_model_battle(model_names,size=5):
     paths = [get_highest_model_path(m) for m in model_names]
     players = []
-    elo = Elo_handler(size,k=0.2)
+    elo = Elo_handler(size,device=device,k=1)
     for name,path in zip(model_names,paths):
-        stuff = torch.load(path)
+        stuff = torch.load(path,map_location=device)
         args = stuff["args"]
-        model = get_pre_defined(args.model_name,args)
+        model = get_pre_defined(args.model_name,args).to(device)
         if "cache" in stuff and stuff["cache"] is not None:
             model.import_norm_cache(*stuff["cache"])
         players.append({"name":name,"checkpoint":path,"model":model})
         print("Evaluating",name,"against random mover")
         evaluate_checkpoint_against_random_mover(elo,path,model)
-    elo.run_tournament(players,add_to_elo_league=True,num_games=1024) 
+    elo.run_tournament(players,add_to_elo_league=True,progress=True) 
     print(elo.get_rating_table())
 
 def battle_it_out(device="cpu"):
@@ -401,12 +401,12 @@ def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint
     model.load_state_dict(stuff["state_dict"])
     model.import_norm_cache(*stuff["cache"])
     model.eval()
-    model.cpu()
+    model.to(device)
     elo_handler.add_player("model",model)
     elo_handler.add_player("random",random_player,set_rating=1500,simple=True)
-    res = elo_handler.play_some_games("model","random",num_games=64,temperature=0)
+    res = elo_handler.play_some_games("model","random",num_games=64,temperature=0,progress=True)
     # res = elo_handler.play_some_games("model","model2",num_games=64,temperature=0.0001,random_first_move=False)
-    res = elo_handler.play_some_games("random","model",num_games=64,temperature=0)
+    res = elo_handler.play_some_games("random","model",num_games=64,temperature=0,progress=True)
     print(res)
     print(elo_handler.get_rating("model"))
     print(elo_handler.get_rating("random"))
@@ -433,7 +433,7 @@ if __name__ == "__main__":
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
     # test_elo_handler()
     # battle_it_out()
-    # multi_model_battle(model_names=["daily-totem-131","fallen-haze-132","true-deluge-142","unique-sponge-143","hearty-deluge-152"])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    battle_it_out(device=device)
+    multi_model_battle(model_names=["misty-firebrand-26/11","misty-firebrand-26/8","misty-firebrand-26/10","azure-snowball-157","wobbly-disco-167"],size=8)
+    # battle_it_out(device=device)
     # old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")
