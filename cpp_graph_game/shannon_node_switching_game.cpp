@@ -9,30 +9,51 @@
 using namespace std;
 using namespace boost;
 
-typedef adjacency_list<vecS, vecS, undirectedS> Graph;
+
+struct PropertyStruct{
+	bool filter;
+	int index;
+};
+
+typedef adjacency_list<vecS, vecS, undirectedS, PropertyStruct, no_property> Graph;
 typedef pair<int, int> Edge;
-typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+typedef typename Graph::vertex_descriptor Vertex;
+typedef set<string> labels ;
 
 struct Predicate { // both edge and vertex
 	bool operator()(Graph::edge_descriptor) const      { return true; } // all
-	bool operator()(Graph::vertex_descriptor vd) const { return suppressed_->count((*g)[vd].label) == 0; }
-
+	bool operator()(Vertex vd) const { return (*g)[vd].filter; }
 	Graph* g;
-	labels* suppressed_;
-} predicate {&g, &suppressed};
+};
+
+typedef filtered_graph<Graph, Predicate, Predicate> Filtered;
+
 class Node_switching_game {
-	public:
+	private:
 		Graph graph;
-
+		Predicate predicate{&graph};
+		Filtered view{graph,predicate,predicate};
 };
 
 
-template <class Graph> struct exercise_vertex {
-	exercise_vertex(Graph& g_) : g(g_) {}
-	Graph& g;
-};
 
 int main() {
+	Vertex v,vend;
+  Graph G;
+	Predicate predicate{&G};
+	int i;
+	for (i=0;i<8;++i){
+		add_vertex(PropertyStruct{true,i},G);
+	}
+	/* for (tie(v,vend)=vertices(G);v!=vend;v++){ */
+	/* 	G[v].filter = true; */
+	/* } */
+	G[*vertices(G).first].filter = false;
+	Filtered fg(G, predicate, predicate);
+	write_graphviz(cout, G, make_label_writer(get(&PropertyStruct::filter, G)));
+	cout << endl << endl;
+	write_graphviz(cout, fg, make_label_writer(get(&PropertyStruct::filter, fg)));
+	/*
 	typedef adjacency_list<vecS, vecS, undirectedS> Graph;
 
 	enum {A,B,C,D,E,N};
@@ -73,6 +94,6 @@ int main() {
 	for_each(vertices(g).first,vertices(g).second,exercise_vertex<Graph>(g));
 
 	ofstream graph_file("graph_file.txt");
-	write_graphviz(graph_file,g);
+	write_graphviz(graph_file,g);*/
 	return 0;
 } 
