@@ -48,13 +48,14 @@ class MCTS():
         exploration_constant: A temperature parameter that controls exploration.
         NN: A function that takes a graph and returns a tuple of (moves,probs,value)
     """
-    def __init__(self,game:Node_switching_game,NN:Callable):
+    def __init__(self,game:Node_switching_game,NN:Callable,remove_dead_captured=True):
         self.game = game
         self.root = Leafnode(move=-1,parent=None,done=False,makerturn=game.view.gp["m"])
         self.exploration_constant = 1
         self.NN = NN
         self.done = False
         self.winning_move = None
+        self.remove_dead_captured = remove_dead_captured
 
     def reset(self,storage:Graph):
         """Resets the MCTS tree to the given storage.
@@ -91,7 +92,7 @@ class MCTS():
             path.append(child_index)
         if node!=self.root and not node.done:
             self.game.set_to_graph(Graph(node.parent.storage))
-            self.game.make_move(node.move,remove_dead_and_captured=True)
+            self.game.make_move(node.move,remove_dead_and_captured=self.remove_dead_captured)
             winner = self.game.who_won()
             node.done = winner is not None
             if winner is not None:
@@ -141,6 +142,7 @@ class MCTS():
             The value estimate for the leaf node.
         """
         moves,probs,value = self.NN(self.game)
+        print("expanding",leafnode,"Currently on turn:",self.game.onturn,moves,value)
         children = [Leafnode(move=m,done=False,parent=None,makerturn=not self.game.view.gp["m"]) for m in moves]
         node = Node(parent=leafnode.parent,
                     storage=Graph(self.game.graph),

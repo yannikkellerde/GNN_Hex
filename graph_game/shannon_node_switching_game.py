@@ -412,9 +412,10 @@ class Node_switching_game(Abstract_graph_game):
                 fill_color[vertex] = (0,0,0,1)
                 size[vertex] = 15
         vprops = {"fill_color":fill_color,"shape":shape,"size":size}
-        if layout=="grid":
+        if layout=="grid" and hasattr(self,"board") and self.board is not None:
             layout = self.board.get_grid_layout()
-        elif layout == "sfdp":
+        else:
             layout = sfdp_layout(self.view)
 
+        print(type(vprop),type(vprops),type(layout),type(fname))
         graph_draw(self.view, pos=layout, vprops=vprops, vertex_text=vprop, output=fname)

@@ -16,6 +16,8 @@ def prepare_model_for_mcts(model,temperature):
         value,advantage = model(data.x,data.edge_index,seperate=True)
         policy = F.softmax(advantage[2:]/temperature,dim=0).detach().numpy()
         moves = [int(data.backmap[x]) for x in range(2,len(advantage))]
+        print("Got value",(float(value)+1)/2,"\nWas onturn:",game.onturn)
+        game.draw_me("what.pdf")
         return moves,policy,(float(value)+1)/2
     return eval_pos
 
@@ -35,7 +37,7 @@ def get_mcts_player(model,policy_temperature,final_temperature,runtime):
 
 def get_pre_defined_mcts_model(model_name="azure-snowball-157"):
     version = None
-    path = get_highest_model_path("azure-snowball-157")
+    path = get_highest_model_path(model_name)
     if version is not None:
         path = os.path.join(os.path.dirname(path),f"checkpoint_{version}.pt")
     stuff = torch.load(path,map_location=device)

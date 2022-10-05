@@ -94,7 +94,7 @@ def maker_breaker_evaluater(maker,breaker):
 
 
 def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout
+    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured
     print(
 """
 Instructions:
@@ -105,6 +105,7 @@ a: toggle graph         g:     show graph
 n: show graph assoc     q:     quit
 k: hide graph           l:     switch layout
 +: increase hex size    -:     decrease hex size
+p: toggle remove dead and captures (breaks things)
 c: toggle show dead and captured""", end="")
     
     os.system("pkill mupdf")
@@ -115,6 +116,7 @@ c: toggle show dead and captured""", end="")
     show_dead_and_captured = True
     show_graph = False
     is_over = False
+    remove_dead_and_captured = True
     glob_size = size
     layout = "grid"
 
@@ -134,7 +136,7 @@ c: toggle show dead and captured""", end="")
     def place_stone(action):
         global is_over
         game_history.append(game.copy())
-        result = game.board.make_move(action,remove_dead_and_captured=True)
+        result = game.board.make_move(action,remove_dead_and_captured=remove_dead_and_captured)
         fig.axes[0].cla()
         game.board.matplotlib_me(fig=fig)
         winner = game.who_won()
@@ -190,9 +192,12 @@ c: toggle show dead and captured""", end="")
         os.system("bspc node -f west")
 
     def on_press(event):
-        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout
+        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured
         if event.key == "m":
             manual_mode = not manual_mode
+
+        elif event.key == "p":
+            remove_dead_and_captured = not remove_dead_and_captured
         
         elif event.key == "n":
             show_assoc()

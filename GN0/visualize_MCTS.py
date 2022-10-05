@@ -1,7 +1,7 @@
 from graph_tool.all import Graph,Vertex,graph_draw,radial_tree_layout
 from GN0.MCTS import MCTS,Node,Leafnode,upper_confidence_bound
 from graph_game.shannon_node_switching_game import Node_switching_game
-from graph_game.graph_tools_games import get_graph_only_hex_game
+from graph_game.graph_tools_games import get_graph_only_hex_game,Hex_game
 import numpy as np
 from GN0.MCTS_player import get_pre_defined_mcts_model
 from typing import Union
@@ -28,11 +28,11 @@ def graph_from_root(root:Union[Node,Leafnode],to_show="num_visits"):
                 text[v] = f"{q:.2f}"[1:] if q<1 else "1"
             elif to_show == "value":
                 if isinstance(child,Node):
-                    text[v] = f"{tv:.1f}"
+                    text[v] = f"{tv:.2f}"
                 else:
                     text[v] = child.value
             elif to_show == "prior":
-                text[v] = f"{prior:.1f}"
+                text[v] = f"{prior:.2f}"
             elif to_show == "m":
                 if isinstance(child,Node):
                     text[v] = ""
@@ -41,7 +41,7 @@ def graph_from_root(root:Union[Node,Leafnode],to_show="num_visits"):
             elif to_show=="numbers":
                 text[v] = str(int(v))
             elif to_show=="ucb":
-                text[v] = f"{float(one_ucb):.1f}"
+                text[v] = f"{float(one_ucb):.2f}"
 
             number_to_node[int(v)] = child
             if isinstance(child,Node):
@@ -75,11 +75,20 @@ def graph_from_root(root:Union[Node,Leafnode],to_show="num_visits"):
 
 
 def visualize_MCTS():
-    game = get_graph_only_hex_game(2)
-    show_game = Node_switching_game.from_graph(Graph(game.view))
-    nn = get_pre_defined_mcts_model()
+    print("""
+Instructions:
+n: Node number          v: number of visits
+q: Q-values             t: Total Values
+m: moves                p: Priors
+u: ucb                  r: get result
+[number]: show graph for number.
+          """)
+    size = 2
+    game = get_graph_only_hex_game(size)
+    show_game = Hex_game(2)
+    nn = get_pre_defined_mcts_model("misty-firebrand-26/11")
 
-    mcts = MCTS(game,nn)
+    mcts = MCTS(game,nn,remove_dead_captured=False)
     mode = "num_visits"
     while 1:
         g,number_to_node = graph_from_root(mcts.root,to_show=mode)
@@ -120,7 +129,10 @@ def visualize_MCTS():
                     print("MCTS is done")
                 break
             else:
-                node = number_to_node[int(command)]
+                if int(command)==0:
+                    node = mcts.root
+                else:
+                    node = number_to_node[int(command)]
                 if isinstance(node,Node):
                     show_game.set_to_graph(node.storage)
                     show_game.draw_me(fname="uff.pdf")
