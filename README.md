@@ -13,7 +13,13 @@ HEX Monte Carlo Value Iteration: https://github.com/harbecke/HexHex
 General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero  
 Latex hex package: https://ctan.org/tex-archive/macros/latex/contrib/hexgame/  
 BayesElo: https://github.com/ddugovic/BayesianElo  
-Expert Iteration: https://arxiv.org/pdf/1705.08439.pdf  
+Expert Iteration: https://arxiv.org/pdf/1705.08439.pdf
+
+## A path through github repos
+A very inefficent, but simple to understand implementation of Alpha-Zero: https://github.com/suragnair/alpha-zero-general/  
+A more efficent implementation by some python multiprocessing wizard. This makes it much more difficult to modify for GNNs however: https://github.com/bhansconnect/fast-alphazero-general  
+A C++ plus Python implementation by the same guy: https://github.com/bhansconnect/alphazero-pybind11  
+But probably it is better to go with https://github.com/richemslie/galvanise_zero if I wan't to go for a C++ based implementation.  
 
 ## Some things to note
 Hex: There is an easy, fairly accurate position evaluation function using "voltage flow".
