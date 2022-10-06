@@ -217,40 +217,6 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             return x
     return CachifiedGNN
 
-class PolicyValueGNN(torch.nn.Module):
-    def __init__(self,GNN:Type[BasicGNN],policy_head:Type=SAGEConv,**gnn_kwargs):
-        super().__init__()
-        self.gnn = GNN(**gnn_kwargs)
-        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
-        possible_head_args = ("aggr","project")
-        head_kwargs = {key:value for key,value in gnn_kwargs.items() if key in possible_head_args}
-        self.policy_head = policy_head(gnn_kwargs["hidden_channels"],1,**head_kwargs)
-        self.value_head = Linear(gnn_kwargs["hidden_channels"],1)
-        self.value_activation = Sigmoid()
-
-    def export_norm_cache(self,*args,**kwargs):
-        return self.gnn.export_norm_cache(*args,**kwargs)
-    
-    def import_norm_cache(self,*args,**kwargs):
-        return self.gnn.import_norm_cache(*args,**kwargs)
-
-    def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,set_cache:bool=False) -> Tuple[Tensor,Tensor]:
-        if graph_indices is None:
-            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
-        if hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache:
-            embeds = self.gnn(x,edge_index,set_cache=set_cache)
-        else:
-            embeds = self.gnn(x,edge_index)
-
-        policy = self.policy_head(embeds,edge_index)
-        # policy = torch_geometric.utils.softmax(policy,graph_indices)
-
-        graph_parts = scatter(embeds,graph_indices,dim=0,reduce="sum")
-        value = self.value_head(graph_parts)
-        value = self.value_activation(value)
-        
-        return policy, value
-
 class ActionValue(torch.nn.Module):
     def __init__(self,GNN:Type[BasicGNN],**gnn_kwargs):
         super().__init__()
@@ -417,12 +383,15 @@ class DuellingTwoHeaded(torch.nn.Module):
         else:
             return self.forward(data.x,data.edge_index)
 
-class Duelling(PolicyValueGNN):
-    def __init__(self,*args,advantage_head=None,**kwargs):
+class Duelling():
+    def __init__(self,GNN,*args,advantage_head=None,**kwargs):
+        super().__init__()
         if advantage_head is not None:
             kwargs["policy_head"] = advantage_head
-        super().__init__(*args,**kwargs)
-        self.advantage_head = self.policy_head
+        self.gnn = GNN(**kwargs)
+        self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
+        self.advantage_head = kwargs["policy_head"](kwargs["hidden_channels"],1,)
+        self.value_head = Linear(kwargs["hidden_channels"],1)
         self.value_activation = Tanh()
         self.advantage_activation = Tanh()
         self.final_activation = Tanh()
@@ -626,6 +595,90 @@ class GCN_with_glob(torch.nn.Module):
         x, glob_attr = self.conve(x, edge_index, glob_attr, binary_matrix, graph_indices)
         return torch.sigmoid(x)
 
+
+class PolicyValue(torch.nn.Module):
+    supports_cache = False
+    def __init__(self,GNN,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
+        super().__init__()
+        self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
+
+        self.maker_modules = torch.nn.ModuleDict()
+        self.breaker_modules = torch.nn.ModuleDict()
+
+        self.maker_modules["value_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
+        self.breaker_modules["value_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
+        self.maker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers)
+        self.breaker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers)
+        self.maker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
+        self.breaker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
+
+        self.value_activation = torch.nn.Sigmoid()
+
+    def grow(self,extra_body_layers=0,extra_width=0,extra_value_head_layers=0,extra_policy_head_layers=0):
+        if extra_width>0:
+            new_width = self.gnn.hidden_channels+extra_width
+            self.gnn.grow_width(new_width=new_width)
+            self.maker_modules["value_head"].grow_width(
+                    new_width=new_width,
+                    new_in_channels=new_width
+            )
+            self.maker_modules["policy_head"].grow_width(
+                    new_width=new_width,
+                    new_in_channels=new_width
+            )
+            old_linear = self.maker_modules["linear"]
+            self.maker_modules["linear"] = torch.nn.Linear(
+                    new_width,
+                    1
+            ).to(old_linear.weight.device)
+            self.maker_modules["linear"].weight.data.fill_(0)
+            self.maker_modules["linear"].weight.data[:,:self.hidden_channels] = old_linear.weight.data
+            self.maker_modules["linear"].bias.data[:] = old_linear.bias.data[:]
+            
+
+            old_linear = self.breaker_modules["linear"]
+            self.breaker_modules["linear"] = torch.nn.Linear(new_width,1).to(old_linear.weight.device)
+            self.breaker_modules["linear"].weight.data.fill_(0)
+            self.breaker_modules["linear"].weight.data[:,:self.hidden_channels] = old_linear.weight.data
+            self.breaker_modules["linear"].bias.data[:] = old_linear.bias.data[:]
+        if extra_body_layers>0:
+            self.gnn.grow_depth(extra_body_layers)
+        if extra_policy_head_layers>0:
+            self.maker_modules["policy_head"].grow_depth(extra_policy_head_layers)
+            self.breaker_modules["policy_head"].grow_depth(extra_policy_head_layers)
+        if extra_value_head_layers>0:
+            self.maker_modules["value_head"].grow_depth(extra_policy_head_layers)
+            self.breaker_modules["value_head"].grow_depth(extra_policy_head_layers)
+
+
+
+    def forward(self,data):
+        x = data.x
+        assert torch.all(x[:,2] == x[0,2])
+        if x[0,2]==1:
+            modules = self.maker_modules
+        else:
+            modules = self.breaker_modules
+        x = x[:,2]
+
+        if hasattr(data,"batch") and data.batch is not None:
+            graph_indices = data.batch
+        else:
+            graph_indices = x.new_zeros(x.size(0), dtype=torch.long)    
+
+        embeds = self.gnn(x,data.edge_index)
+
+        pi = modules["policy"](embeds,data.edge_index)
+        value_embeds = modules["value"](embeds,data.edge_index)
+
+        pi = torch.log(torch_geometric.utils.softmax(pi,index=graph_indices))
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
+
+        value = modules["linear"](graph_parts)
+        value = self.value_activation(value)
+        return pi,value
+
+
 def get_pre_defined(name,args=None) -> torch.nn.Module:
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
@@ -651,6 +704,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
+    elif name == "policy_value_small":
+        model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=25,hidden_layers=8,policy_layers=2,value_layers=2,norm=None,act="relu")
     else:
         print(name)
         raise NotImplementedError
