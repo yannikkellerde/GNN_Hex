@@ -9,6 +9,7 @@ import sklearn.preprocessing
 from itertools import tee
 import time
 from dataclasses import dataclass
+from graph_game.graph_tools_hashing import wl_hash
 
 @dataclass
 class Storage():
@@ -42,6 +43,13 @@ class Node_switching_game(Abstract_graph_game):
 
     def get_actions(self):
         return self.view.vertex_index.copy().fa[2:] # We assume terminals in vertex index 0 and 1 for efficiency here
+
+    def hashme(self):
+        some_prop = self.view.new_vertex_property("bool")
+        some_prop.a = 0
+        some_prop[self.view.vertex(0)] = 1
+        some_prop[self.view.vertex(1)] = 1
+        return wl_hash(self.view,some_prop,self.view.gp["m"])
 
     def _fix_teminal_connections(self,terminal):
         change_set = set()
