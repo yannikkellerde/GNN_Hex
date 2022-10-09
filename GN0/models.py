@@ -676,7 +676,7 @@ class PolicyValue(torch.nn.Module):
 
         value = modules["linear"](graph_parts)
         value = self.value_activation(value)
-        return pi,value
+        return pi.squeeze(),value.squeeze()
 
 
 def get_pre_defined(name,args=None) -> torch.nn.Module:

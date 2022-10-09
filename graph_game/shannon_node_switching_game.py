@@ -11,12 +11,6 @@ import time
 from dataclasses import dataclass
 from graph_game.graph_tools_hashing import wl_hash
 
-@dataclass
-class Storage():
-    graph:Graph
-    f:np.ndarray
-
-
 class Node_switching_game(Abstract_graph_game):
     terminals:List[Vertex]
     board_callback:Union[None,Callable]

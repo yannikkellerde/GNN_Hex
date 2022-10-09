@@ -4,8 +4,10 @@ import numpy as np
 from typing import NamedTuple,Union,Callable,List
 from graph_tool.all import Graph
 from graph_game.shannon_node_switching_game import Node_switching_game
+from GN0.convert_graph import convert_node_switching_game
 from dataclasses import dataclass
 from GN0.util import get_one_hot
+import torch
 
 @dataclass
 class Node:
@@ -39,6 +41,16 @@ def upper_confidence_bound(node:Node,exploration_constant:float):
     """
     return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)+1))/(1+node.visits))
 
+def format_nn(nn:torch.nn.Module):
+    def fnn(game:Node_switching_game):
+        data = convert_node_switching_game(game.view,global_input_properties=int(game.view.gp["m"]),need_backmap=True)
+        policy,value = nn(data)
+        moves = [int(data.backmap[x]) for x in range(2,len(policy))]
+        return moves,policy,value
+    return fnn
+
+
+
 class MCTS():
     """Implements MCTS for Graph games with a neural network for initial node probabilities
     
@@ -66,6 +78,8 @@ class MCTS():
             storage: The storage to reset the tree to.
         """
         self.game.set_to_graph(storage)
+        self.done = False
+        self.winning_move = None
         self.root = Leafnode(move=-1,parent=None,done=False,makerturn=self.game.view.gp["m"])
 
     def choose_child(self,node:Node):
@@ -235,7 +249,9 @@ class MCTS():
             else:
                 probs = np.zeros(len(self.root.moves))
                 probs[self.winning_move] = 1
-        if temperature == 0:
+        if temperature == np.inf:
+            return np.ones(len(self.root.visits))/len(self.root.visits)
+        elif temperature == 0:
             probs = get_one_hot(len(self.root.visits),np.argmax(self.root.visits+self.root.priors))
         else:
             powered = self.root.visits**(1/temperature)
