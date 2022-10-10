@@ -2,7 +2,7 @@ import os
 import numpy as np
 import random
 from graph_game.graph_tools_games import Hex_game
-from GN0.convert_graph import convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
 from torch_geometric.data import Batch
 import torch
 import torch.nn.functional as F
@@ -11,7 +11,6 @@ from torch.distributions.categorical import Categorical
 from alive_progress import alive_bar
 from GN0.models import get_pre_defined
 from collections import defaultdict,deque
-from GN0.util import fix_size_defaultdict
 from collections import defaultdict
 from argparse import Namespace
 import json
@@ -46,7 +45,8 @@ class Elo_handler():
 
     def run_tournament(self,players,add_to_elo_league=False,set_rating=1500,progress=False):
         for player in players:
-            self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
+            if player["name"] not in self.players:
+                self.add_player(player["name"],player["model"] if "model" in player else self.empty_model1,set_rating=set_rating,original_model="model" in player)
         
         all_stats = []
         with alive_bar(len(players)*(len(players)-1),disable=True) as bar:
@@ -70,7 +70,7 @@ class Elo_handler():
         if add_to_elo_league:
             for player in players:
                 self.elo_league_contestants.append(player.copy())
-                self.elo_league_contestants.sort(key=lambda x:-self.get_rating(x["name"]))
+            self.elo_league_contestants.sort(key=lambda x:-self.get_rating(x["name"]))
 
 
     def add_elo_league_contestant(self,name,checkpoint,model=None,simple=False):

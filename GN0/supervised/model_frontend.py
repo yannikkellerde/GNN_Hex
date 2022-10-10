@@ -1,4 +1,4 @@
-from GN0.convert_graph import convert_winpattern_game, convert_node_switching_game
+from GN0.util.convert_graph import convert_winpattern_game, convert_node_switching_game
 from graph_game.winpattern_game import Winpattern_game
 import torch
 from graph_tool.all import Graph, VertexPropertyMap

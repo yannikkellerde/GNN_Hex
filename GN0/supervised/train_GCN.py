@@ -1,9 +1,9 @@
 from GN0.models import GCN_with_glob, perfs
 import numpy as np
 import os
-from GN0.graph_dataset import SupervisedDataset,winpattern_pre_transform,hex_pre_transform
-from GN0.generate_training_data import generate_hex_graphs, generate_winpattern_game_graphs
-from GN0.convert_graph import convert_node_switching_game, convert_winpattern_game
+from GN0.supervised.graph_dataset import SupervisedDataset,winpattern_pre_transform,hex_pre_transform
+from GN0.supervised.generate_training_data import generate_hex_graphs, generate_winpattern_game_graphs
+from GN0.util.convert_graph import convert_node_switching_game, convert_winpattern_game
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import random_split
@@ -14,7 +14,7 @@ from torch_geometric.nn import GCNConv
 from tqdm import trange,tqdm
 from typing import Callable
 from torch.nn import BCELoss,CrossEntropyLoss, MSELoss
-from GN0.util import graph_cross_entropy
+from GN0.util.util import graph_cross_entropy
 import torch_geometric.utils
 from collections import defaultdict
 

@@ -1,9 +1,8 @@
 from graph_tool.all import Graph,Vertex,graph_draw,radial_tree_layout
-from GN0.MCTS import MCTS,Node,Leafnode,upper_confidence_bound
+from GN0.alpha_zero.MCTS import MCTS,Node,Leafnode,upper_confidence_bound
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_game.graph_tools_games import get_graph_only_hex_game,Hex_game
 import numpy as np
-from GN0.MCTS_player import get_pre_defined_mcts_model
 from typing import Union
 import os
 import time

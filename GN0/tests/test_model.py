@@ -1,6 +1,6 @@
 from graph_game.graph_tools_games import Qango6x6
 from graph_game.winpattern_game import Graph_Store, Winpattern_game
-from GN0.convert_graph import convert_graph
+from GN0.util.convert_graph import convert_graph
 import random
 import time
 import torch

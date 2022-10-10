@@ -2,7 +2,6 @@ import torch
 from torch_geometric.data import Data
 import numpy as np
 from graph_tool.all import Graph,VertexPropertyMap
-from graph_game.winpattern_game import Winpattern_game
 from typing import Tuple, Optional, Union
 
 

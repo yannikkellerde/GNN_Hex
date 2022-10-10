@@ -1,4 +1,4 @@
-from GN0.util import graph_cross_entropy
+from GN0.util.util import graph_cross_entropy
 import torch_geometric.utils
 import torch
 from torch import nn

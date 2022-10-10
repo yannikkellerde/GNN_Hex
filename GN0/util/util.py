@@ -10,6 +10,24 @@ from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_scatter import gather_csr, scatter, segment_csr
 from collections import defaultdict
 
+class AverageMeter(object):
+    """From https://github.com/pytorch/examples/blob/master/imagenet/main.py"""
+
+    def __init__(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def __repr__(self):
+        return f'{self.avg:.2e}'
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
 class fix_size_defaultdict(defaultdict):
     def __init__(self, *args, max=0, **kwargs):
         self._max = max

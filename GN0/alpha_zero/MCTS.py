@@ -4,9 +4,9 @@ import numpy as np
 from typing import NamedTuple,Union,Callable,List
 from graph_tool.all import Graph
 from graph_game.shannon_node_switching_game import Node_switching_game
-from GN0.convert_graph import convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
 from dataclasses import dataclass
-from GN0.util import get_one_hot
+from GN0.util.util import get_one_hot
 import torch
 
 @dataclass
@@ -15,7 +15,7 @@ class Node:
     parent:Union[Node,None]
     storage:Graph
     children:list
-    moves:Union[None,np.ndarray]
+    moves:np.ndarray
     priors:np.ndarray
     visits:np.ndarray
     total_value:np.ndarray
@@ -40,16 +40,6 @@ def upper_confidence_bound(node:Node,exploration_constant:float):
         The upper confidence bound for the node.
     """
     return node.Q+exploration_constant*((node.priors*np.sqrt(np.sum(node.visits)+1))/(1+node.visits))
-
-def format_nn(nn:torch.nn.Module):
-    def fnn(game:Node_switching_game):
-        data = convert_node_switching_game(game.view,global_input_properties=int(game.view.gp["m"]),need_backmap=True)
-        policy,value = nn(data)
-        moves = [int(data.backmap[x]) for x in range(2,len(policy))]
-        return moves,policy,value
-    return fnn
-
-
 
 class MCTS():
     """Implements MCTS for Graph games with a neural network for initial node probabilities
@@ -81,6 +71,15 @@ class MCTS():
         self.done = False
         self.winning_move = None
         self.root = Leafnode(move=-1,parent=None,done=False,makerturn=self.game.view.gp["m"])
+
+    def next_iter_with_child(self,action,storage):
+        assert isinstance(self.root,Node)
+        index = np.where(self.root.moves==action)[0][0]
+        self.root = self.root.children[index]
+        self.root.parent = None
+        self.done = False
+        self.winning_move = None
+        self.game.set_to_graph(storage)
 
     def choose_child(self,node:Node):
         """Chooses a child of a node according to the upper confidence bound.
@@ -164,7 +163,7 @@ class MCTS():
                     priors=probs,
                     visits=np.zeros(probs.shape,dtype=int),
                     total_value=np.zeros_like(probs),
-                    moves=moves if leafnode==self.root else None,
+                    moves=moves,
                     Q = np.ones_like(probs)*0.5) # Encourage first exploration
         for child in children:
             child.parent = node

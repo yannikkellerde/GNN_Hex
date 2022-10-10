@@ -1,5 +1,5 @@
-from GN0.generate_training_data import generate_graphs
-from GN0.convert_graph import convert_graph,convert_graph_back
+from GN0.supervised.generate_training_data import generate_graphs
+from GN0.util.convert_graph import convert_graph,convert_graph_back
 from graph_game.winpattern_game import Winpattern_game
 from utils.unite_pdfs import unite_pdfs
 import os

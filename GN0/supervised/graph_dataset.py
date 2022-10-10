@@ -2,7 +2,7 @@
 import torch
 from torch_geometric.data import InMemoryDataset, download_url
 import pickle
-from GN0.generate_training_data import generate_graphs_multiprocess, generate_hex_graphs, generate_winpattern_game_graphs
+from GN0.supervised.generate_training_data import generate_graphs_multiprocess, generate_hex_graphs, generate_winpattern_game_graphs
 import numpy as np
 import os
 

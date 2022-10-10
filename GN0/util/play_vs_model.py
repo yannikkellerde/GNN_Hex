@@ -1,5 +1,5 @@
 from GN0.models import get_pre_defined
-from GN0.convert_graph import convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
 from graph_game.graph_tools_games import Hex_game
 import os
 import torch

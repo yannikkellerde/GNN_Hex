@@ -1,8 +1,8 @@
-from GN0.generate_training_data import generate_graphs
-from GN0.model_frontend import evaluate_game_state
-from GN0.GCN import GCN
+from GN0.supervised.generate_training_data import generate_graphs
+from GN0.supervised.model_frontend import evaluate_game_state
+from GN0.models import GCN
 from graph_game.graph_tools_games import Qango6x6
-from GN0.convert_graph import convert_graph
+from GN0.util.convert_graph import convert_graph
 import random
 import torch
 

@@ -4,7 +4,7 @@ win/loss as a function of the board position."""
 from scipy.special import softmax
 from graph_game.graph_tools_games import Qango6x6, Hex_game
 from graph_game.winpattern_game import Graph_Store, Winpattern_game
-from GN0.convert_graph import graph_to_arrays, convert_winpattern_game, convert_node_switching_game
+from GN0.util.convert_graph import graph_to_arrays, convert_winpattern_game, convert_node_switching_game
 from graph_game.graph_tools_hashing import wl_hash
 import random
 import time

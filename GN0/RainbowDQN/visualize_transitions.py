@@ -1,4 +1,4 @@
-from GN0.convert_graph import convert_node_switching_game_back
+from GN0.util.convert_graph import convert_node_switching_game_back
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_tool.all import Graph
 import os

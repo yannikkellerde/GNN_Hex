@@ -1,8 +1,8 @@
-from GN0.convert_graph import convert_graph,convert_graph_back
+from GN0.util.convert_graph import convert_graph,convert_graph_back
 from graph_game.graph_tools_games import Qango6x6
 from graph_game.winpattern_game import Winpattern_game
 from torch_geometric.utils import to_networkx
-from GN0.util import visualize_graph
+from GN0.util.util import visualize_graph
 
 def test_convert_graph():
     """Checks convert_graph, convert_graph_back cycle consistency."""

@@ -1,20 +1,19 @@
-from GN0.model_frontend import evaluate_graph,evaluate_node_switching_game_state, evaluate_winpattern_game_state
+from GN0.supervised.model_frontend import evaluate_graph,evaluate_node_switching_game_state, evaluate_winpattern_game_state
 from argparse import Namespace
-import scipy.special
 import torch_geometric.utils
-from GN0.convert_graph import convert_node_switching_game_back, convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game_back, convert_node_switching_game
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.nn.models import GCN, GraphSAGE
 from torch_geometric.nn.conv import SAGEConv
 import os
 import time
-from GN0.generate_training_data import generate_winpattern_game_graphs, generate_hex_graphs
+from GN0.supervised.generate_training_data import generate_winpattern_game_graphs, generate_hex_graphs
 from GN0.models import GCN_with_glob, CachedGraphNorm, cachify_gnn, PolicyValueGNN, get_pre_defined
 import torch
 from graph_game.winpattern_game import Winpattern_game,Graph_Store
 from graph_game.graph_tools_games import Qango6x6,Hex_game
 from graph_game.shannon_node_switching_game import Node_switching_game
-from GN0.graph_dataset import SupervisedDataset, hex_pre_transform
+from GN0.supervised.graph_dataset import SupervisedDataset, hex_pre_transform
 from tqdm import tqdm, trange
 import random
 import torch.nn.functional as F

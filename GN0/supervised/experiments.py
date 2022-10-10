@@ -3,7 +3,7 @@ from datetime import datetime
 from torch_geometric.nn.norm import GraphNorm
 import torch
 import torch.nn.functional as F
-from GN0.util import SummaryWriter
+from GN0.util.util import SummaryWriter
 from GN0.graph_dataset import SupervisedDataset,winpattern_pre_transform,hex_pre_transform
 from GN0.train_GCN import train_gcn
 from GN0.models import cachify_gnn,PolicyValueGNN,CachedGraphNorm
