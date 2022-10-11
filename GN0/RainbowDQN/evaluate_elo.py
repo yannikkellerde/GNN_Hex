@@ -6,7 +6,6 @@ from GN0.util.convert_graph import convert_node_switching_game
 from torch_geometric.data import Batch
 import torch
 import torch.nn.functional as F
-from torch_scatter import scatter_max
 from torch.distributions.categorical import Categorical
 from alive_progress import alive_bar
 from GN0.models import get_pre_defined
