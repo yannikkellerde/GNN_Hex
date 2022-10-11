@@ -704,8 +704,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
-    elif name == "policy_value_small":
-        model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=25,hidden_layers=8,policy_layers=2,value_layers=2,norm=None,act="relu")
+    elif name == "policy_value":
+        model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=args.hidden_channels,hidden_layers=args.num_layers,policy_layers=args.head_layers,value_layers=args.head_layers,norm=None,act="relu")
     else:
         print(name)
         raise NotImplementedError
