@@ -2,35 +2,55 @@ from GN0.alpha_zero.NN_interface import NNetWrapper
 from graph_game.graph_tools_games import Hex_game,get_graph_only_hex_game
 from alive_progress import alive_bar
 import torch
-
+from typing import List
+from graph_game.shannon_node_switching_game import Node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
+from torch_geometric import Batch
+import numpy as np
 
 class Elo():
     def __init__(self,nnet_creation_function,device="cpu",k=3):
-        self.players = list()
+        self.players = dict()
         self.device = device
         self.K = k
         self.empty_net1:NNetWrapper = nnet_creation_function()
         self.empty_net2:NNetWrapper = nnet_creation_function()
         self.empty_net1.nnet.eval()
         self.empty_net2.nnet.eval()
-        self.baselines = list()
+        self.baselines = dict()
 
     def add_baseline(self,choose_move_func,name,rating):
-        self.baselines.append({"func":choose_move_func,"name":name,"rating":rating})
+        self.baselines[name] = {"func":choose_move_func,"rating":rating,"name":name}
 
     def add_player(self,checkpoint,name,initial_rating=500):
-        self.players.append(dict(checkpoint=checkpoint,name=name,rating=initial_rating,func=None))
+        self.players[name] = dict(name=name,checkpoint=checkpoint,rating=initial_rating,func=None)
+
+    def eval_against_baselines(self,name,hex_size=11):
+        all_stats = []
+        for baseline in self.baselines:
+            stats = self.play_all_starting_positions(name,baseline,hex_size=hex_size,progress=True)
+            all_stats.append(stats)
+        return all_stats
 
     def get_rating_table(self):
         columns = ["name","rating"]
         data = []
-        for contestant in self.players:
-            data.append([contestant["name"],contestant["rating"]])
+        for name,contestant in self.players.items():
+            data.append([name,contestant["rating"]])
         data.sort(key=lambda x:-x[1])
         return columns,data
 
-    def play_all_starting_positions(self,p1,p2,progress=False,hex_size=11):
-        wins = {p1["name"]:0,p2["name"]:0}
+    def play_all_starting_positions(self,p1_name,p2_name,progress=False,hex_size=11):
+        print(f"Playing games between {p1_name} and {p2_name}")
+        if p1_name in self.players:
+            p1 = self.players[p1_name]
+        else:
+            p1 = self.baselines[p1_name]
+        if p2_name in self.players:
+            p2 = self.players[p2_name]
+        else:
+            p2 = self.baselines[p2_name]
+        wins = {p1_name:0,p2_name:0}
         if "checkpoint" in p1:
             self.empty_net1.load_checkpoint(p1["checkpoint"])
             p1["func"] = self.empty_net1.choose_moves
@@ -77,3 +97,22 @@ class Elo():
                         current_player = p1 if current_player==p2 else p2
                         move_num += 1
         return wins
+
+def baseline_from_advantage_network(nnet,device):
+    def choose_moves(games:List[Node_switching_game]):
+        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]]) for game in games]
+        batch = Batch.from_data_list(datas)
+        action_values = nnet.simple_forward(batch.to(device)).to(device)
+        actions = []
+        for (start,fin) in zip(batch.ptr,batch.ptr[1:]):
+            action_part = action_values[start+2:fin]
+            if len(action_part) == 1:
+                action = 2
+            else:
+                action = torch.argmax(action_part)+2
+            actions.append(action)
+        actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
+        return actions
+
+def random_baseline(games:List[Node_switching_game]):
+    return [np.random.choice(game.get_actions()) for game in games]
