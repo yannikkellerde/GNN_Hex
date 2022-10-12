@@ -4,7 +4,7 @@ from graph_game.hex_board_game import build_hex_grid
 import numpy as np
 from graph_game.graph_tools_games import Hex_game
 from graph_game.shannon_node_switching_game import Node_switching_game
-from GN0.convert_graph import convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
 import torch
 import random
 import time

@@ -10,6 +10,7 @@ def read_args():
     parser.add_argument("--online_wandb",type=parse_bool,default=True)
     parser.add_argument("--baseline_network_path",type=str,default="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/RainbowDQN/Rainbow/checkpoints/misty-firebrand-26/5/checkpoint_3200000.pt")
     parser.add_argument("--num_iterations",type=int,default=10)
+    parser.add_argument("--num_episodes",type=int,default=10)
     parser.add_argument("--training_temp",type=int,default=1)
     parser.add_argument("--temp_threshold",type=int,default=2)
     parser.add_argument("--num_epochs",type=int,default=1000)
@@ -18,6 +19,8 @@ def read_args():
     parser.add_argument("--hidden_channels",type=int,default=25)
     parser.add_argument("--num_layers",type=int,default=8)
     parser.add_argument("--head_layers",type=int,default=2)
+    parser.add_argument("--num_training_epochs",type=str,default=3)
+    parser.add_argument("--lr",type=int,default=0.00025)
 
     args = parser.parse_args()
     if not os.path.exists(args.checkpoint):

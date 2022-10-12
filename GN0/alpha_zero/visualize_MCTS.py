@@ -1,11 +1,14 @@
 from graph_tool.all import Graph,Vertex,graph_draw,radial_tree_layout
 from GN0.alpha_zero.MCTS import MCTS,Node,Leafnode,upper_confidence_bound
+from GN0.alpha_zero.NN_interface import NNetWrapper
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_game.graph_tools_games import get_graph_only_hex_game,Hex_game
 import numpy as np
 from typing import Union
 import os
 import time
+from GN0.models import get_pre_defined
+from argparse import Namespace
 
 def dummy_nn(game:Node_switching_game):
     moves = game.get_actions()
@@ -82,12 +85,14 @@ m: moves                p: Priors
 u: ucb                  r: get result
 [number]: show graph for number.
           """)
-    size = 2
+    size = 3
     game = get_graph_only_hex_game(size)
-    show_game = Hex_game(2)
-    nn = get_pre_defined_mcts_model("misty-firebrand-26/11")
+    show_game = Hex_game(size)
+    # nn = get_pre_defined_mcts_model("misty-firebrand-26/11")
+    nnet = get_pre_defined("policy_value",args=Namespace(**{"hidden_channels":25,"num_layers":8,"head_layers":2}))
+    nn = NNetWrapper(nnet=nnet)
 
-    mcts = MCTS(game,nn,remove_dead_captured=False)
+    mcts = MCTS(game,nn.predict_for_mcts,remove_dead_captured=True)
     mode = "num_visits"
     while 1:
         g,number_to_node = graph_from_root(mcts.root,to_show=mode)
@@ -125,6 +130,7 @@ u: ucb                  r: get result
                 value = mcts.single_iteration()
                 print(f"got value {value}")
                 if mcts.done:
+                    print(mcts.extract_result(0))
                     print("MCTS is done")
                 break
             else:

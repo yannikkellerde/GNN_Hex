@@ -5,7 +5,7 @@ import os
 import torch
 from graph_game.hex_gui import playerify_model,interactive_hex_window, playerify_maker_breaker, maker_breaker_evaluater,model_to_evaluater
 from argparse import Namespace
-from Rainbow.common.utils import get_highest_model_path
+from GN0.RainbowDQN.Rainbow.common.utils import get_highest_model_path
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

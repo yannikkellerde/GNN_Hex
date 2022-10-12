@@ -380,7 +380,9 @@ class Node_switching_game(Abstract_graph_game):
         if vprop1 is None:
             vprop = self.view.vertex_index
         elif vprop2 is None:
-            vprop = vprop1
+            vprop = self.view.new_vertex_property("string")
+            for vertex in self.view.vertices():
+                vprop[vertex] = str(vprop1[vertex])[:decimal_places+2]
         else:
             vprop = self.view.new_vertex_property("string")
             lower1 = vprop1.a.max()<1 and vprop2.a.max()<1

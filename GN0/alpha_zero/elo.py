@@ -5,7 +5,7 @@ import torch
 from typing import List
 from graph_game.shannon_node_switching_game import Node_switching_game
 from GN0.util.convert_graph import convert_node_switching_game
-from torch_geometric import Batch
+from torch_geometric.data import Batch
 import numpy as np
 
 class Elo():
@@ -64,7 +64,7 @@ class Elo():
         with alive_bar(len(starting_moves)*4,disable=not progress) as bar:
             with torch.no_grad():
                 for i in range(4):
-                    games = [get_graph_only_hex_game(hex_size) for _ in range(len(starting_moves))]
+                    games = [Hex_game(hex_size) for _ in range(len(starting_moves))]
                     if i>=2:
                         for game in games:
                             game.view.gp["m"] = False
@@ -90,7 +90,7 @@ class Elo():
                                 if winner == games[i].not_onturn:
                                     wins[current_player["name"]]+=1
                                 else:
-                                    wins[p1 if current_player==p2 else p1] += 1
+                                    wins[p1["name"] if current_player==p2 else p2["name"]] += 1
                                 to_del.append(i)
                         for i in reversed(to_del):
                             del games[i]
@@ -100,7 +100,7 @@ class Elo():
 
 def baseline_from_advantage_network(nnet,device):
     def choose_moves(games:List[Node_switching_game]):
-        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]]) for game in games]
+        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]],need_backmap=True) for game in games]
         batch = Batch.from_data_list(datas)
         action_values = nnet.simple_forward(batch.to(device)).to(device)
         actions = []
@@ -113,6 +113,7 @@ def baseline_from_advantage_network(nnet,device):
             actions.append(action)
         actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
         return actions
+    return choose_moves
 
 def random_baseline(games:List[Node_switching_game]):
     return [np.random.choice(game.get_actions()) for game in games]

@@ -21,6 +21,8 @@ Elo/
 model/
 .ssh/
 .secrets/
+checkpoints/
+wandb/
 
 gctest.py
 *.pyc

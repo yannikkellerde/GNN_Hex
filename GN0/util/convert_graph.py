@@ -50,7 +50,7 @@ def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     
     return node_features,edge_index,targets
 
-def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[],need_backmap=False):
+def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[],need_backmap=False) -> Data:
     """Convert a graph-tool graph for a shannon node switching game into torch_geometric data
 
     The torch_geometric data stores the follwing features from the input graphs:
@@ -119,6 +119,8 @@ def convert_node_switching_game_back(data:Data) -> Union[Tuple[Graph,VertexPrope
     edge_list = data.edge_index.cpu().numpy().T
     edge_list = np.array([list(x) for x in set([frozenset(x) for x in edge_list.tolist()])])
     graph.add_edge_list(edge_list)
+    graph.vp.f = graph.new_vertex_property("bool")
+    graph.vp.f.a = True
     if hasattr(data,"y") and data.y is not None:
         tprop = graph.new_vertex_property("double")
         tprop.a = data.y.cpu().numpy()[:,0]

@@ -76,6 +76,9 @@ class MCTS():
         assert isinstance(self.root,Node)
         index = np.where(self.root.moves==action)[0][0]
         self.root = self.root.children[index]
+        if isinstance(self.root,Leafnode) and self.root.done:
+            self.reset(storage)
+            return
         self.root.parent = None
         self.done = False
         self.winning_move = None
@@ -127,6 +130,7 @@ class MCTS():
             if node.parent == self.root:
                 self.done = True
                 self.winning_move = self.root.children.index(node)
+                # print("Found winning move",self.winning_move,self.root.moves[self.winning_move],node.move if isinstance(node,Leafnode) else node.storage.vertex_index.a)
                 return 1,self.root
             new_parent = Leafnode(move=None,parent=node.parent.parent,done=True,makerturn=node.parent.storage.gp["m"],value=1)
             node.parent.parent.children[node.parent.parent.children.index(node.parent)] = new_parent
@@ -155,7 +159,8 @@ class MCTS():
             The value estimate for the leaf node.
         """
         moves,probs,value = self.NN(self.game)
-        print("expanding",leafnode,"Currently on turn:",self.game.onturn,moves,value)
+        probs = probs.cpu().numpy()
+        value = value.cpu().numpy()
         children = [Leafnode(move=m,done=False,parent=None,makerturn=not self.game.view.gp["m"]) for m in moves]
         node = Node(parent=leafnode.parent,
                     storage=Graph(self.game.graph),
@@ -224,10 +229,10 @@ class MCTS():
             if self.done:
                 return
             if iterations is not None and it>=iterations:
-                print(time.perf_counter()-start,"seconds")
+                # print(time.perf_counter()-start,"seconds")
                 break
             if max_time is not None and time.perf_counter()-start>max_time:
-                print(it,"iterations")
+                # print(it,"iterations")
                 break
             self.single_iteration()
             it+=1
@@ -248,8 +253,8 @@ class MCTS():
             else:
                 probs = np.zeros(len(self.root.moves))
                 probs[self.winning_move] = 1
-        if temperature == np.inf:
-            return np.ones(len(self.root.visits))/len(self.root.visits)
+        elif temperature == np.inf:
+            probs = np.ones(len(self.root.visits))/len(self.root.visits)
         elif temperature == 0:
             probs = get_one_hot(len(self.root.visits),np.argmax(self.root.visits+self.root.priors))
         else:

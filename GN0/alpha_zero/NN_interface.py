@@ -10,10 +10,10 @@ from typing import List
 from torch_geometric.data import Batch
 
 class NNetWrapper():
-    def __init__(self,nnet,device="cpu"):
+    def __init__(self,nnet,device="cpu",lr=0.0001):
         self.nnet:torch.nn.Module = nnet
         self.device = device
-        self.optimizer = torch.optim.Adam(self.nnet.parameters())
+        self.optimizer = torch.optim.Adam(self.nnet.parameters(),lr=lr)
         self.batch_size = 128
 
     def train(self,maker_buffer:ReplayBuffer,breaker_buffer:ReplayBuffer,num_epochs):
@@ -41,7 +41,7 @@ class NNetWrapper():
 
     def predict(self,data):
         with torch.no_grad():
-            pi,v = self.nnet(data)
+            pi,v = self.nnet(data.to(self.device))
             pi = torch.exp(pi)  # Log-softmax to probability distribution
 
             # Now care about not picking the terminal nodes
@@ -62,11 +62,11 @@ class NNetWrapper():
         return F.mse_loss(targets,outputs)
 
     def predict_game(self,game):
-        data = convert_node_switching_game(game.view,global_input_properties=int(game.view.gp["m"])).to(self.device)
+        data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])]).to(self.device)
         return self.predict(data)
 
     def predict_for_mcts(self,game:Node_switching_game):
-        data = convert_node_switching_game(game.view,global_input_properties=int(game.view.gp["m"]),need_backmap=True).to(self.device)
+        data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
         policy,value = self.predict(data)
         moves = [int(data.backmap[x]) for x in range(2,len(policy))]
         return moves,policy[2:],value
@@ -81,8 +81,8 @@ class NNetWrapper():
             return moves[int(dist.sample().item())]
 
     def choose_moves(self,games:List[Node_switching_game],temperature=0):
-        datas = [convert_node_switching_game(game.view,global_input_properties=int(game.view.gp["m"]),need_backmap=True).to(self.device) for game in games]
-        batch = Batch(datas)
+        datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device) for game in games]
+        batch = Batch.from_data_list(datas)
         policy,value = self.predict(batch)
         actions = []
         for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):
@@ -96,13 +96,15 @@ class NNetWrapper():
                     raise ValueError
                 sample = distrib.sample()
                 action = sample
-            actions.append(action)
+            actions.append(action.item())
+        actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
         return actions
 
 
-    def save_checkpoint(self, path:str):
+    def save_checkpoint(self, path:str, args=None):
         torch.save({"state_dict": self.nnet.state_dict(),
-                    "optim_dict": self.optimizer.state_dict()},path)
+                    "optim_dict": self.optimizer.state_dict(),
+                    "args": args},path)
 
     def load_checkpoint(self, path:str):
         checkpoint = torch.load(path,map_location=self.device)

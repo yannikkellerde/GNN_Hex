@@ -598,7 +598,7 @@ class GCN_with_glob(torch.nn.Module):
 
 class PolicyValue(torch.nn.Module):
     supports_cache = False
-    def __init__(self,GNN,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
+    def __init__(self,GNN,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=2,**gnn_kwargs):
         super().__init__()
         self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
 
@@ -607,8 +607,8 @@ class PolicyValue(torch.nn.Module):
 
         self.maker_modules["value_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
         self.breaker_modules["value_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
-        self.maker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers)
-        self.breaker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers)
+        self.maker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
+        self.breaker_modules["policy_head"] = GNN(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
         self.maker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
         self.breaker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
 
@@ -659,7 +659,7 @@ class PolicyValue(torch.nn.Module):
             modules = self.maker_modules
         else:
             modules = self.breaker_modules
-        x = x[:,2]
+        x = x[:,:2]
 
         if hasattr(data,"batch") and data.batch is not None:
             graph_indices = data.batch
@@ -668,8 +668,8 @@ class PolicyValue(torch.nn.Module):
 
         embeds = self.gnn(x,data.edge_index)
 
-        pi = modules["policy"](embeds,data.edge_index)
-        value_embeds = modules["value"](embeds,data.edge_index)
+        pi = modules["policy_head"](embeds,data.edge_index)
+        value_embeds = modules["value_head"](embeds,data.edge_index)
 
         pi = torch.log(torch_geometric.utils.softmax(pi,index=graph_indices))
         graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
