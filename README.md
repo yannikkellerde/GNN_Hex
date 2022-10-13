@@ -13,7 +13,8 @@ HEX Monte Carlo Value Iteration: https://github.com/harbecke/HexHex
 General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero  
 Latex hex package: https://ctan.org/tex-archive/macros/latex/contrib/hexgame/  
 BayesElo: https://github.com/ddugovic/BayesianElo  
-Expert Iteration: https://arxiv.org/pdf/1705.08439.pdf
+Expert Iteration: https://arxiv.org/pdf/1705.08439.pdf  
+RL + GNN: https://arxiv.org/abs/2104.11434  
 
 ## A path through github repos
 A very inefficent, but simple to understand implementation of Alpha-Zero: https://github.com/suragnair/alpha-zero-general/  
