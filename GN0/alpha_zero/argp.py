@@ -21,6 +21,8 @@ def read_args():
     parser.add_argument("--head_layers",type=int,default=2)
     parser.add_argument("--num_training_epochs",type=str,default=3)
     parser.add_argument("--lr",type=int,default=0.00025)
+    parser.add_argument("--training_batch_size",type=int,default=128)
+    parser.add_argument("--mcts_batch_size",type=int,default=128)
 
     args = parser.parse_args()
     if not os.path.exists(args.checkpoint):

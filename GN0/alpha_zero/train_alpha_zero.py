@@ -1,4 +1,4 @@
-from GN0.alpha_zero.MCTS import MCTS
+from GN0.alpha_zero.MCTS import MCTS, run_many_mcts
 import os
 from graph_game.graph_tools_games import get_graph_only_hex_game, Hex_game
 from graph_tool.all import Graph
@@ -20,6 +20,7 @@ from rich import print
 class Trainer():
     def __init__(self, nnet_creation_func:Callable, args, device):
         self.nnet:NNetWrapper = nnet_creation_func()
+        self.nnet.batch_size = args.training_batch_size
         self.best_net:NNetWrapper = nnet_creation_func()
         self.best_net.nnet.load_state_dict(self.nnet.nnet.state_dict())
         self.best_net_player = None
@@ -41,11 +42,60 @@ class Trainer():
         func = baseline_from_advantage_network(nnet,self.device)
         self.elo.add_baseline(func,"old_model",3000)
 
-    def execute_episode(self):
+    def batch_execute_episodes(self,num_episodes):
+        # game = get_graph_only_hex_game(self.args.hex_size)
+        self.best_net.nnet.eval()
+        episodes_left = num_episodes
+        games = [Hex_game(self.args.hex_size) for _ in range(min(self.args.mcts_batch_size,num_episodes))]
+        episodes_left-=len(games)
+        multi_mcts = [MCTS(game) for game in games]
+        maker_train_examples = [[] for _ in range(len(games))]
+        breaker_train_examples = [[] for _ in range(len(games))]
+
+        step = 0
+        while True:
+            step += 1
+            run_many_mcts(multi_mcts,self.best_net.predict_many_for_mcts,self.args.num_iterations)
+
+            # This might be different from alpha-zero, but to me it does not make
+            # any sense to include varying temperatures in the training examples.
+            training_temp = self.args.training_temp
+            action_temp = np.inf if step==1 else int(step < self.args.temp_threshold)
+
+            # These do not include terminal nodes
+            moves,training_pi = self.mcts.extract_result(training_temp)
+            moves,action_pi = self.mcts.extract_result(action_temp)
+            
+            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])])
+            # Account for terminal nodes:
+            data_pi = np.zeros(len(training_pi)+2)
+            data_pi[2:] = training_pi
+            if game.view.gp["m"]:
+                maker_train_examples.append([data,data_pi,None])
+            else:
+                breaker_train_examples.append([data,data_pi,None])
+
+            action = np.random.choice(moves,p=action_pi)
+            game.make_move(action,remove_dead_and_captured=True)
+            win = game.who_won()
+            if win is not None:
+                for e in maker_train_examples:
+                    e[2] = int(win=="m")
+                    self.maker_buffer.put(*e)
+                for e in breaker_train_examples:
+                    e[2] = int(win=="b")
+                    self.breaker_buffer.put(*e)
+                return win
+            else:
+                self.mcts.next_iter_with_child(action,Graph(game.graph))
+
+    def execute_episode(self,starting_player="m"):
         """One episode of self play"""
         # game = get_graph_only_hex_game(self.args.hex_size)
-        self.nnet.nnet.eval()
+        self.best_net.nnet.eval()
         game = Hex_game(self.args.hex_size)
+        if starting_player=="b":
+            game.view.gp["m"] = False
         maker_train_examples = []
         breaker_train_examples = []
 
@@ -92,16 +142,16 @@ class Trainer():
         for epoch in range(1, self.args.num_epochs + 1):
             maker_wins = 0
             breaker_wins = 0
-            for _ in trange(self.args.num_episodes):
-                winner = self.execute_episode()
+            for i in trange(self.args.num_episodes):
+                winner = self.execute_episode(starting_player="m" if i%2==0 else "b")
                 if winner=="m":
                     maker_wins+=1
                 else:
                     breaker_wins+=1
             # visualize_data(self.maker_buffer)
-            log["maker_winrate"] = maker_wins/(maker_wins+breaker_wins)
+            log["winrate/maker"] = maker_wins/(maker_wins+breaker_wins)
 
-            self.nnet.train(self.maker_buffer,self.breaker_buffer,num_epochs=self.args.num_training_epochs)
+            log["loss/pi"],log["loss/v"],log["loss/total"] = self.nnet.train(self.maker_buffer,self.breaker_buffer,num_epochs=self.args.num_training_epochs)
             
             if "best_player" not in self.elo.players:
                 prev_version_beaten = True
@@ -112,7 +162,7 @@ class Trainer():
                 stats = self.elo.play_all_starting_positions("tmp_player","best_player",progress=True,hex_size=self.args.hex_size)
                 winrate = stats["tmp_player"]/sum(stats.values())
                 prev_version_beaten = winrate>self.args.required_beat_old_model_winrate
-                log["winrate_vs_prev_best"] = winrate
+                log["winrate/prev_best"] = winrate
 
             if prev_version_beaten:
                 print("New best model")
@@ -124,7 +174,7 @@ class Trainer():
                 for stats in baseline_stats:
                     other_player = [x for x in stats.keys() if x!="best_player"][0]
                     winrate = stats["best_player"]/sum(stats.values())
-                    log[f"winrate_{other_player}"] = winrate
+                    log[f"winrate/{other_player}"] = winrate
             else:
                 print(f"failed to beat best version, winrate {winrate:.4f}")
 

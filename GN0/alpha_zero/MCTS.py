@@ -8,6 +8,7 @@ from GN0.util.convert_graph import convert_node_switching_game
 from dataclasses import dataclass
 from GN0.util.util import get_one_hot
 import torch
+from torch_geometric.data import Batch
 
 @dataclass
 class Node:
@@ -50,7 +51,7 @@ class MCTS():
         exploration_constant: A temperature parameter that controls exploration.
         NN: A function that takes a graph and returns a tuple of (moves,probs,value)
     """
-    def __init__(self,game:Node_switching_game,NN:Callable,remove_dead_captured=True):
+    def __init__(self,game:Node_switching_game,NN:Callable=None,remove_dead_captured=True):
         self.game = game
         self.root = Leafnode(move=-1,parent=None,done=False,makerturn=game.view.gp["m"])
         self.exploration_constant = 1
@@ -74,7 +75,7 @@ class MCTS():
 
     def next_iter_with_child(self,action,storage):
         assert isinstance(self.root,Node)
-        index = np.where(self.root.moves==action)[0][0]
+        index = np.where(np.array(self.root.moves)==action)[0][0]
         self.root = self.root.children[index]
         if isinstance(self.root,Leafnode) and self.root.done:
             self.reset(storage)
@@ -150,7 +151,7 @@ class MCTS():
         return depth,pnode
         
 
-    def expand(self,leafnode:Leafnode): # Assumes that self.game is in correct state
+    def expand(self,leafnode:Leafnode,nn_output=None): # Assumes that self.game is in correct state
         """Expands a leaf node in the MCTS tree.
         
         Args:
@@ -158,7 +159,10 @@ class MCTS():
         Returns:
             The value estimate for the leaf node.
         """
-        moves,probs,value = self.NN(self.game)
+        if nn_output is None:
+            moves,probs,value = self.NN(self.game)
+        else:
+            moves,probs,value = nn_output
         probs = probs.cpu().numpy()
         value = value.cpu().numpy()
         children = [Leafnode(move=m,done=False,parent=None,makerturn=not self.game.view.gp["m"]) for m in moves]
@@ -199,13 +203,34 @@ class MCTS():
             else:
                 assert node.done
 
-    def single_iteration(self):
+    def batched_iteration_start(self):
         if self.done:
-            return 0 if self.winning_move is None else 1
+            return None
         path,leaf = self.select_most_promising()
         if leaf==self.root and isinstance(self.root,Node):
             assert self.done
-            return 0 if self.winning_move is None else 1
+            return None
+        if leaf.done:
+            value = leaf.value
+            self.backtrack(path,value,leaf_makerturn=leaf.makerturn)
+            return self.batched_iteration_start()
+        return path,leaf,self.game
+
+    def batched_iteration_next(self,path,leaf,nn_output):
+        assert not self.done
+        leaf_makerturn = leaf.makerturn
+        leaf,value = self.expand(leaf,nn_output=nn_output)
+        self.backtrack(path,value,leaf_makerturn=leaf_makerturn)
+        return leaf,value
+
+
+    def single_iteration(self):
+        if self.done:
+            return (None,0) if self.winning_move is None else (None,1)
+        path,leaf = self.select_most_promising()
+        if leaf==self.root and isinstance(self.root,Node):
+            assert self.done
+            return (None,0) if self.winning_move is None else (None,1)
             
         leaf_makerturn = leaf.makerturn
         if leaf.done:
@@ -213,7 +238,7 @@ class MCTS():
         else:
             leaf,value = self.expand(leaf)
         self.backtrack(path,value,leaf_makerturn=leaf_makerturn)
-        return value
+        return leaf,value
 
 
     def run(self,iterations=None,max_time=None):
@@ -265,3 +290,27 @@ class MCTS():
             else:
                 probs = powered/s
         return self.root.moves,probs
+
+def run_many_mcts(many_mcts:List[MCTS],nn:Callable,num_iterations:int):
+    still_alive = [True for _ in many_mcts]
+    for i in range(num_iterations):
+        data_list = []
+        paths = []
+        leafs = []
+        for i,mcts in enumerate(many_mcts):
+            if still_alive[i]:
+                res = mcts.batched_iteration_start()
+                if res is None:
+                    still_alive[i] = False
+                else:
+                    path,leaf,game = res
+                    leafs.append(leaf)
+                    paths.append(path)
+                    data_list.append(convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])]))
+        batch = Batch.from_data_list(data_list)
+        nn_outputs = nn(batch)
+        i = 0
+        for path,leaf,nn_out in zip(paths,leafs,nn_outputs):
+            if still_alive[i]:
+                many_mcts[i].batched_iteration_next(path,leaf,nn_outputs)
+                i+=1

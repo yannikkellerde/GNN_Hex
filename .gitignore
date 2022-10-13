@@ -39,3 +39,4 @@ hole_game.json
 hole_tic_tac_toe.json
 proofsets/
 *.egg-info
+nohup.out

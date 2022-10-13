@@ -34,10 +34,17 @@ class NNetWrapper():
                     l_pi = self.loss_pi(pi,batch.pi)
                     l_v = self.loss_v(v,batch.v)
                     total_loss = l_pi + l_v
+                    pi_losses.update(l_pi)
+                    v_losses.update(l_v)
+                    t_losses.update(total_loss)
 
                     total_loss.backward()
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+                all_pi_losses.update(pi_losses)
+                all_v_losses.update(v_losses)
+                total_losses.update(t_losses)
+        return all_pi_losses.avg,all_v_losses.avg,total_losses.avg
 
     def predict(self,data):
         with torch.no_grad():
@@ -70,6 +77,15 @@ class NNetWrapper():
         policy,value = self.predict(data)
         moves = [int(data.backmap[x]) for x in range(2,len(policy))]
         return moves,policy[2:],value
+
+    def predict_many_for_mcts(self,games:Node_switching_game):
+        datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device) for game in games]
+        batch = Batch.from_data_list(datas)
+        policy,value = self.predict(batch)
+        moves = [[int(data.backmap[x]) for x in range(2,len(policy))] for data in datas]
+        value = value.cpu().numpy()
+        policies = [policy[start:finish] for start,finish in zip(batch.ptr,batch.ptr[1:])]
+        return zip(moves,policies,value)
 
     def choose_move(self,game:Node_switching_game,temperature=0):
         moves,policy,_ = self.predict_for_mcts(game)
