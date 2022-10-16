@@ -50,7 +50,7 @@ def graph_to_arrays(graph:Graph) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     
     return node_features,edge_index,targets
 
-def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[],need_backmap=False) -> Data:
+def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap]=None,global_input_properties=[],global_output_properties=[],need_backmap=False,old_style=False) -> Data:
     """Convert a graph-tool graph for a shannon node switching game into torch_geometric data
 
     The torch_geometric data stores the follwing features from the input graphs:
@@ -68,19 +68,39 @@ def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap
         A torch_geometric Data object representing the graph
     """
     n = graph.num_vertices()
-    node_features = torch.zeros((n,2+len(global_input_properties)))
-    degprop = graph.degree_property_map("total")
-    node_features[:,0] = torch.tensor(degprop.fa).float()
-    node_features[0,1] = 1
-    node_features[1,1] = 1
-    for i,p in enumerate(global_input_properties):
-        node_features[:,2+i] = p
+    if old_style:
+        node_features = torch.zeros((n,2+len(global_input_properties)))
+        degprop = graph.degree_property_map("total")
+        node_features[:,0] = torch.tensor(degprop.fa).float()
+        node_features[0,1] = 1
+        node_features[1,1] = 1
+        for i,p in enumerate(global_input_properties):
+            node_features[:,2+i] = p
+    else:
+        node_features = torch.zeros((n-2,2+len(global_input_properties)))
+        neighprop1 = graph.new_vertex_property("int")
+        neighprop2 = graph.new_vertex_property("int")
+        for neigh in graph.iter_all_neighbors(0):
+            neighprop1[neigh] = 1
+        for neigh in graph.iter_all_neighbors(1):
+            neighprop2[neigh] = 1
+        node_features[:,0] = torch.tensor(neighprop1.fa[2:]).float()
+        node_features[:,1] = torch.tensor(neighprop2.fa[2:]).float()
+        for i,p in enumerate(global_input_properties):
+            node_features[:,2+i] = p
+
     verts = graph.get_vertices()
+    assert verts[0] == 0 and verts[1] == 1 # Sanity, first two nodes should be the terminals
 
     # This is all not super efficient, but as long as I use graph-tool
     # there does not seem to be a better way...
-    vmap = dict(zip(verts,range(0,len(verts))))
+    if old_style:
+        vmap = dict(zip(verts,range(0,len(verts))))
+    else:
+        vmap = dict(zip(verts[2:],range(0,len(verts)-2)))
     edges = graph.get_edges()
+    if not old_style:
+        edges = [x for x in edges if 0 not in x and 1 not in x]
     if len(edges) == 0:
         edge_index = torch.tensor([[],[]]).long()
     else:
@@ -89,7 +109,10 @@ def convert_node_switching_game(graph:Graph,target_vp:Optional[VertexPropertyMap
 
     graph_data = Data(x=node_features,edge_index=edge_index)
     if need_backmap:
-        setattr(graph_data,"backmap",torch.tensor(verts).long())
+        if old_style:
+            setattr(graph_data,"backmap",torch.tensor(verts).long())
+        else:
+            setattr(graph_data,"backmap",torch.tensor(verts[2:]).long())
     if target_vp is not None:
         targray = target_vp.fa
         targets = torch.tensor(targray).unsqueeze(1)

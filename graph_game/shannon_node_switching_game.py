@@ -213,6 +213,7 @@ class Node_switching_game(Abstract_graph_game):
             g.graph.vp.f = g.graph.new_vertex_property("bool")
             g.graph.vp.f.a = self.graph.vp.f.a.copy()
             g.view = GraphView(g.graph,g.graph.vp.f)
+            g.terminals = [g.view.vertex(0),g.view.vertex(1)]
         else:
             new_board = self.board.copy()
             g = Node_switching_game()
@@ -229,6 +230,7 @@ class Node_switching_game(Abstract_graph_game):
             g.response_set_breaker = self.response_set_breaker.copy()
             g.response_set_maker = self.response_set_maker.copy()
             g.callback_everything = self.callback_everything
+            g.terminals = [g.view.vertex(0),g.view.vertex(1)]
 
         return g
 
@@ -421,5 +423,4 @@ class Node_switching_game(Abstract_graph_game):
         else:
             layout = sfdp_layout(self.view)
 
-        print(type(vprop),type(vprops),type(layout),type(fname))
         graph_draw(self.view, pos=layout, vprops=vprops, vertex_text=vprop, output=fname)

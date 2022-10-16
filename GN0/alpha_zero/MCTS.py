@@ -203,7 +203,7 @@ class MCTS():
             else:
                 assert node.done
 
-    def batched_iteration_start(self):
+    def batched_iteration_start(self,allow_redo=10):
         if self.done:
             return None
         path,leaf = self.select_most_promising()
@@ -213,7 +213,10 @@ class MCTS():
         if leaf.done:
             value = leaf.value
             self.backtrack(path,value,leaf_makerturn=leaf.makerturn)
-            return self.batched_iteration_start()
+            if allow_redo:
+                return self.batched_iteration_start(allow_redo=allow_redo-1)
+            else:
+                return None
         return path,leaf,self.game
 
     def batched_iteration_next(self,path,leaf,nn_output):
@@ -294,9 +297,8 @@ class MCTS():
 def run_many_mcts(many_mcts:List[MCTS],nn:Callable,num_iterations:int):
     still_alive = [True for _ in many_mcts]
     for i in range(num_iterations):
-        data_list = []
-        paths = []
-        leafs = []
+        stuff_maker = {"games":[],"paths":[],"leafs":[],"mcts":[]}
+        stuff_breaker = {"games":[],"paths":[],"leafs":[],"mcts":[]}
         for i,mcts in enumerate(many_mcts):
             if still_alive[i]:
                 res = mcts.batched_iteration_start()
@@ -304,13 +306,13 @@ def run_many_mcts(many_mcts:List[MCTS],nn:Callable,num_iterations:int):
                     still_alive[i] = False
                 else:
                     path,leaf,game = res
-                    leafs.append(leaf)
-                    paths.append(path)
-                    data_list.append(convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])]))
-        batch = Batch.from_data_list(data_list)
-        nn_outputs = nn(batch)
-        i = 0
-        for path,leaf,nn_out in zip(paths,leafs,nn_outputs):
-            if still_alive[i]:
-                many_mcts[i].batched_iteration_next(path,leaf,nn_outputs)
-                i+=1
+                    stuff = stuff_maker if game.view.gp["m"] else stuff_breaker
+                    stuff["games"].append(game)
+                    stuff["paths"].append(path)
+                    stuff["leafs"].append(leaf)
+                    stuff["mcts"].append(mcts)
+        for stuff in (stuff_maker,stuff_breaker):
+            if len(stuff["games"])>0:
+                nn_outputs = nn(stuff["games"])
+                for path,leaf,mcts,nn_out in zip(stuff["paths"],stuff["leafs"],stuff["mcts"],nn_outputs):
+                    mcts.batched_iteration_next(path,leaf,nn_out)

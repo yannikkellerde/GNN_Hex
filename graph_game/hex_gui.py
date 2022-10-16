@@ -31,14 +31,14 @@ def random_evaluater(game,respond_to=None):
     vprop.fa = np.random.random(len(vprop.fa))
     return vprop
 
-def playerify_model(model):
+def playerify_advantage_model(model):
     def model_player(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
         if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
             if respond_to is not None:
                 plt.title("Last move was dead")
-            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(device)
+            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
             res = model(data.x,data.edge_index).squeeze()
             raw_move = torch.argmax(res[2:]).item()+2
             move = data.backmap[raw_move].item()
@@ -60,14 +60,14 @@ def playerify_maker_breaker(maker,breaker):
             return player_breaker(game)
     return maker_breaker_player
 
-def model_to_evaluater(model):
+def advantage_model_to_evaluater(model):
     def evaluater(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
         if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
             if respond_to is not None:
                 plt.title("Last move was dead")
-            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(device)
+            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
             res = model(data.x,data.edge_index).squeeze()
             vinds = {data.backmap[int(i)]:value for i,value in enumerate(res) if int(i)>1}
             vprop = game.view.new_vertex_property("float")

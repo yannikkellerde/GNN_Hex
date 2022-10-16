@@ -22,7 +22,9 @@ def read_args():
     parser.add_argument("--num_training_epochs",type=str,default=3)
     parser.add_argument("--lr",type=int,default=0.00025)
     parser.add_argument("--training_batch_size",type=int,default=128)
-    parser.add_argument("--mcts_batch_size",type=int,default=128)
+    parser.add_argument("--mcts_batch_size",type=int,default=256) # Actual batch size about half, because split between maker and breaker
+    parser.add_argument("--batched_mcts",type=parse_bool,default=True)
+    parser.add_argument("--weight_decay",type=float,default=1e-5)
 
     args = parser.parse_args()
     if not os.path.exists(args.checkpoint):

@@ -100,7 +100,7 @@ class Elo():
 
 def baseline_from_advantage_network(nnet,device):
     def choose_moves(games:List[Node_switching_game]):
-        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]],need_backmap=True) for game in games]
+        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]],need_backmap=True,old_style=True) for game in games]
         batch = Batch.from_data_list(datas)
         action_values = nnet.simple_forward(batch.to(device)).to(device)
         actions = []

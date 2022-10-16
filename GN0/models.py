@@ -654,7 +654,6 @@ class PolicyValue(torch.nn.Module):
 
     def forward(self,data):
         x = data.x
-        assert torch.all(x[:,2] == x[0,2])
         if x[0,2]==1:
             modules = self.maker_modules
         else:
@@ -671,7 +670,7 @@ class PolicyValue(torch.nn.Module):
         pi = modules["policy_head"](embeds,data.edge_index)
         value_embeds = modules["value_head"](embeds,data.edge_index)
 
-        pi = torch.log(torch_geometric.utils.softmax(pi,index=graph_indices))
+        pi = torch.log(torch_geometric.utils.softmax(pi,index=graph_indices)) # NEEDFIX, numerically unstable!
         graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
 
         value = modules["linear"](graph_parts)

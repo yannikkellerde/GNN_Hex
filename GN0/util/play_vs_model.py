@@ -3,7 +3,7 @@ from GN0.util.convert_graph import convert_node_switching_game
 from graph_game.graph_tools_games import Hex_game
 import os
 import torch
-from graph_game.hex_gui import playerify_model,interactive_hex_window, playerify_maker_breaker, maker_breaker_evaluater,model_to_evaluater
+from graph_game.hex_gui import playerify_advantage_model,interactive_hex_window, playerify_maker_breaker, maker_breaker_evaluater,advantage_model_to_evaluater
 from argparse import Namespace
 from GN0.RainbowDQN.Rainbow.common.utils import get_highest_model_path
 
@@ -28,8 +28,8 @@ def play_in_gui():
         model.import_norm_cache(*stuff["cache"])
     model.eval()
 
-    player = playerify_model(model)
-    evaluater = model_to_evaluater(model)
+    player = playerify_advantage_model(model)
+    evaluater = advantage_model_to_evaluater(model)
     interactive_hex_window(11,model_player=player,model_evaluater=evaluater)
 
 

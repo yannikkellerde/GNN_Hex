@@ -8,13 +8,16 @@ from GN0.util.util import AverageMeter
 from torch.distributions import Categorical
 from typing import List
 from torch_geometric.data import Batch
+from collections import defaultdict
+from time import perf_counter
 
 class NNetWrapper():
-    def __init__(self,nnet,device="cpu",lr=0.0001):
+    def __init__(self,nnet,device="cpu",lr=0.0001,weight_decay=1e-5):
         self.nnet:torch.nn.Module = nnet
         self.device = device
-        self.optimizer = torch.optim.Adam(self.nnet.parameters(),lr=lr)
+        self.optimizer = torch.optim.Adam(self.nnet.parameters(),lr=lr,weight_decay=weight_decay)
         self.batch_size = 128
+        self.timers = defaultdict(list)
 
     def train(self,maker_buffer:ReplayBuffer,breaker_buffer:ReplayBuffer,num_epochs):
         self.nnet.train()
@@ -41,24 +44,15 @@ class NNetWrapper():
                     total_loss.backward()
                     self.optimizer.step()
                     self.optimizer.zero_grad()
-                all_pi_losses.update(pi_losses)
-                all_v_losses.update(v_losses)
-                total_losses.update(t_losses)
+                all_pi_losses.update(pi_losses.avg)
+                all_v_losses.update(v_losses.avg)
+                total_losses.update(t_losses.avg)
         return all_pi_losses.avg,all_v_losses.avg,total_losses.avg
 
     def predict(self,data):
         with torch.no_grad():
             pi,v = self.nnet(data.to(self.device))
             pi = torch.exp(pi)  # Log-softmax to probability distribution
-
-            # Now care about not picking the terminal nodes
-            if isinstance(data,Batch):
-                for (start,fin) in zip(data.ptr,data.ptr[1:]):
-                    pi[start:start+2] = 0
-                    pi[start+2:fin]/=torch.sum(pi[start+2:fin])
-            else:
-                pi[0:2] = 0
-                pi[2:]/=torch.sum(pi[2:])
         return pi,v
 
 
@@ -75,21 +69,28 @@ class NNetWrapper():
     def predict_for_mcts(self,game:Node_switching_game):
         data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
         policy,value = self.predict(data)
-        moves = [int(data.backmap[x]) for x in range(2,len(policy))]
-        return moves,policy[2:],value
+        return policy,value
 
-    def predict_many_for_mcts(self,games:Node_switching_game):
+    def predict_many_for_mcts(self,games:List[Node_switching_game]):
+        start = perf_counter()
         datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device) for game in games]
         batch = Batch.from_data_list(datas)
+        self.timers["convert graph"].append(perf_counter()-start)
+        start = perf_counter()
         policy,value = self.predict(batch)
-        moves = [[int(data.backmap[x]) for x in range(2,len(policy))] for data in datas]
-        value = value.cpu().numpy()
+        self.timers["nn_prediction"].append(perf_counter()-start)
+        start = perf_counter()
         policies = [policy[start:finish] for start,finish in zip(batch.ptr,batch.ptr[1:])]
-        return zip(moves,policies,value)
+        self.timers["select_policy"].append(perf_counter()-start)
+        if len(batch.ptr)==2:
+            return [[policies[0],value]]
+        else:
+            return zip(policies,value)
 
     def choose_move(self,game:Node_switching_game,temperature=0):
-        moves,policy,_ = self.predict_for_mcts(game)
-
+        data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
+        policy,value = self.predict(data)
+        moves = [int(data.backmap[x]) for x in range(len(policy))]
         if temperature == 0:
             return moves[torch.argmax(policy)]
         else:
