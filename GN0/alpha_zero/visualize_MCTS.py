@@ -1,6 +1,6 @@
 from graph_tool.all import Graph,Vertex,graph_draw,radial_tree_layout
-from GN0.alpha_zero.MCTS import MCTS as MCTS_old,Node,Leafnode,upper_confidence_bound
-from GN0.alpha_zero.MCTS_new import MCTS
+from GN0.alpha_zero.MCTS_cached import MCTS as MCTS_old,Node,Leafnode,upper_confidence_bound
+from GN0.alpha_zero.MCTS import MCTS
 from GN0.alpha_zero.NN_interface import NNetWrapper
 from graph_game.shannon_node_switching_game import Node_switching_game
 from graph_game.graph_tools_games import get_graph_only_hex_game,Hex_game

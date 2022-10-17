@@ -11,7 +11,7 @@ from matplotlib.patches import RegularPolygon
 from graph_game.shannon_node_switching_game import Node_switching_game
 
 class Hex_board(Abstract_board_game):
-    game:Union["Node_switching_game"]
+    game:"Node_switching_game"
     position:List[str]
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]

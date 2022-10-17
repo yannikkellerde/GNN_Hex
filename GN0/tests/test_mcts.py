@@ -1,6 +1,6 @@
-from GN0.alpha_zero.MCTS import MCTS
-from GN0.alpha_zero.MCTS_new import MCTS as MCTS_new
-from GN0.alpha_zero.MCTS_new import run_many_mcts
+from GN0.alpha_zero.MCTS_cached import MCTS as MCTS_cached
+from GN0.alpha_zero.MCTS import MCTS as MCTS
+from GN0.alpha_zero.MCTS import run_many_mcts
 from graph_game.graph_tools_games import Hex_game
 from GN0.models import get_pre_defined
 from argparse import Namespace
@@ -27,7 +27,7 @@ def test_batched_speed():
     nnet = get_pre_defined("policy_value",args=Namespace(**{"hidden_channels":50,"num_layers":18,"head_layers":2})).to(device)
     args = Namespace(cpuct=1)
     nn = NNetWrapper(nnet=nnet,device=device)
-    mcts = [MCTS_new(game.copy(),nn=None,args=args,remove_dead_and_captured=True) for _ in range(128)]
+    mcts = [MCTS(game.copy(),nn=None,args=args,remove_dead_and_captured=True) for _ in range(128)]
     run_many_mcts(mcts,nn=nn.predict_many_for_mcts,num_iterations=200,progress=True)
     for key in mcts[0].timers:
         print(key,sum(sum(m.timers[key]) for m in mcts))
@@ -40,11 +40,11 @@ def test_batched_correctness():
     nnet = get_pre_defined("policy_value",args=Namespace(**{"hidden_channels":25,"num_layers":8,"head_layers":2}))
     args = Namespace(cpuct=1)
     nn = NNetWrapper(nnet=nnet)
-    mcts = MCTS_new(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
+    mcts = MCTS(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
     mcts.run(graph=Graph(game.graph),num_iterations=200)
     moves1,probs1 = mcts.extract_result(Graph(game.graph),1)
 
-    mcts2 = MCTS_new(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
+    mcts2 = MCTS(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
     for i in range(200):
         need_nn = mcts2.find_leaf(set_to_graph=Graph(game.graph))
         if need_nn:
@@ -54,7 +54,7 @@ def test_batched_correctness():
             mcts2.process_results()
     moves2,probs2 = mcts2.extract_result(Graph(game.graph),1)
 
-    mcts3 = MCTS_new(game.copy(),nn=None,args=args,remove_dead_and_captured=True)
+    mcts3 = MCTS(game.copy(),nn=None,args=args,remove_dead_and_captured=True)
     run_many_mcts([mcts3],nn.predict_many_for_mcts,num_iterations=200)
     moves3,probs3 = mcts3.extract_result(Graph(game.graph),1)
 
@@ -70,21 +70,21 @@ def test_mcts():
     nnet = get_pre_defined("policy_value",args=Namespace(**{"hidden_channels":25,"num_layers":8,"head_layers":2}))
     args = Namespace(cpuct=1)
     nn = NNetWrapper(nnet=nnet)
-    mcts = MCTS(game.copy(),NN=nn.predict_for_mcts)
-    mcts_new = MCTS_new(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
+    mcts_cached = MCTS_cached(game.copy(),NN=nn.predict_for_mcts)
+    mcts = MCTS(game.copy(),nn=nn.predict_for_mcts,args=args,remove_dead_and_captured=True)
 
     start = perf_counter()
-    mcts.run(iterations=200)
-    moves1,probs1 = mcts.extract_result(1)
+    mcts_cached.run(iterations=200)
+    moves1,probs1 = mcts_cached.extract_result(1)
     standard_time = perf_counter()-start
     start = perf_counter()
-    mcts_new.run(graph=Graph(game.graph),num_iterations=200)
-    moves2,probs2 = mcts_new.extract_result(Graph(game.graph),1)
+    mcts.run(graph=Graph(game.graph),num_iterations=200)
+    moves2,probs2 = mcts.extract_result(Graph(game.graph),1)
     new_time = perf_counter()-start
 
     print("old time",standard_time)
     print("new time",new_time)
-    for key,value in mcts_new.timers.items():
+    for key,value in mcts.timers.items():
         print(key,sum(value))
 
     
@@ -93,7 +93,7 @@ def test_mcts():
     # prob_eq = probs1==probs2
     # print(probs1[~prob_eq],probs2[~prob_eq])
     # print(mcts.root.visits)
-    # print(mcts_new.Nsa[get_unique_hash(game.graph)])
+    # print(mcts.Nsa[get_unique_hash(game.graph)])
 
 if __name__=="__main__":
     # test_mcts()

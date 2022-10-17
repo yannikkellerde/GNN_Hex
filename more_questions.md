@@ -9,9 +9,16 @@
 	- Q for upper confidence bound for unexplored nodes? I used 0.5
 	- What is the range of v from the neural network? In the paper it says that it is the probability of the current player winner (0-1), but at some other places and in reference impl. it seems like it is -1 for lost games. I know it is only impl. detail, but it is relevant for UCB.
 	- Node that just got expanded have 0 or 1 visits? I think 1 makes more sense, but reference impl uses 0
+	- There are two ways to implement MCTS:
+		1. My first attempt: Build up tree of nodes that each cache the graphs and store visits, priors, q etc.
+			* pro: Using caching, the same make_move never has to be executed twice in the MCTS
+			* con: We need to copy the graph to restore the game state each time when we want expand the game state. Maybe faster alternative would be a reversible make_move function.
+		2. Adapted from reference implementations: store visits, priors, q etc. in dictionary based on unique hash of position.
+			* pro: No graph copying required. Fewer lines and less convoluted code. No need to store potentially many graphs in memory.
+			* con: Need to remake the move each time when traversing the graph. Need to create unique hash of each position. Isomorphism detection via hashing sounds great, but does not work easy because otherwise order of actions (vertex indices) is not well defined. Thus, we hash avoiding isomorphisms.
+	- Currently the first attempt is only faster for very deep MCTS trees. Otherwise second is faster.
 
 + GNN:
-	- torch uses cuda libaries to compute numerically stable and fast LogSoftmax (needed for crossEntropy). This obviously does not work for batched graphs, based on the way batching works. There is no logSoftmax in pytorch-geometric. Using pytorch geometrics softmax, then torch.log, seems to NaN my gradients some times. I probably need to implement log-softmax in pytorch-geometric in a numerically stable way myself? Any tipps?
 	- My input features to the GNN: Currently, 3D, one dim for *is neighbor of termial node 1*, one dim for *is neighbor of terminal node 2* and one dim for *Is it makers turn*. Should I add more? E.g. degree? Is it sensible to add is\_makers\_turn as an additional feature dimension to all nodes or is there a smarter way?
 
 
@@ -37,7 +44,12 @@ nn predictions 2.938752555011888
   - Can be cut to ~ 1/4 if no dead and captured analysis, but that increases game lengths and average graph sizes by a lot.
 	- Hard to optimize staying with python + Graph-Tool.
 	- Dead and captured anaylsis could be sped up by un-generalizing (e.g. only look for cases that are actually possible in hex-graphs and not for general shannon-node-switching games.
-+ Convert graph: Converting from graph-tool representation of my game to representation that my pytorch-geometric model can process takes far too long. Unfortunately, hard to optimize in current framework.
++ Convert graph: Converting from graph-tool representation of my game to representation that my pytorch-geometric model can process takes far too long. The reason for this is that because I currently use graph-filtering, the vertex indices in graph-tool have the wrong format and I have to reindex all edge indices. I could and probably should delete vertices instead of filtering out. However this makes some other things more difficult such as tracking the correspondence between vertices and board states for visualization.
 + NN prediction: In total these are 200 GNN predictions, with batches of 128 graphs each. Comparably very fast. We should aim to make this the bottleneck.
 
 https://github.com/bhansconnect/fast-alphazero-general show how alpha-zero can be done with multiprocessing in python. However, it will be more tricky with GNNs, based on the way batching works in pytorch-geometric. Also, even with 8 or 16 cpu threads, running the env will still be the major bottleneck.
+
++ We can reduce the amount of required make\_moves in MCTS significantly by caching the graphs at each node. However this requires us to copy a lot of graphs, which is also expensive.
++ Graph-tool includes a information on how to extend it's c++ backend https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html. It may be possible to write the make\_move and remove\_dead\_and\_captured function in c++ while keeping the rest of the code in python.
+
+There is a lot to optimize before we can run any meaningful experiments. Also, I think there is no way around cpu multiprocessing in the end. There are a few things I can think of optimizing in the current python implementation, but it might also make sense to implement some parts in C++.

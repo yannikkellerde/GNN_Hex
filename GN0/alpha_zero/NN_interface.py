@@ -57,7 +57,8 @@ class NNetWrapper():
 
 
     def loss_pi(self, targets, outputs):
-        return -torch.sum(targets * outputs) / targets.size()[0]
+        # return F.nll_loss(outputs,targets)  # This doesn't work for float targets
+        return -torch.sum(targets * outputs) / targets.size()[0] # This should be equivalent
 
     def loss_v(self, targets, outputs):
         return F.mse_loss(targets,outputs)
@@ -72,16 +73,16 @@ class NNetWrapper():
         return policy,value
 
     def predict_many_for_mcts(self,games:List[Node_switching_game]):
-        start = perf_counter()
+        # start = perf_counter()
         datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device) for game in games]
         batch = Batch.from_data_list(datas)
-        self.timers["convert graph"].append(perf_counter()-start)
-        start = perf_counter()
+        # self.timers["convert graph"].append(perf_counter()-start)
+        # start = perf_counter()
         policy,value = self.predict(batch)
-        self.timers["nn_prediction"].append(perf_counter()-start)
-        start = perf_counter()
+        # self.timers["nn_prediction"].append(perf_counter()-start)
+        # start = perf_counter()
         policies = [policy[start:finish] for start,finish in zip(batch.ptr,batch.ptr[1:])]
-        self.timers["select_policy"].append(perf_counter()-start)
+        # self.timers["select_policy"].append(perf_counter()-start)
         if len(batch.ptr)==2:
             return [[policies[0],value]]
         else:

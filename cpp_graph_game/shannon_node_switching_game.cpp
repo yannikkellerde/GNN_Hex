@@ -6,94 +6,87 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphviz.hpp>
+#include "hex_board_game.cpp"
 using namespace std;
 using namespace boost;
+
 
 
 struct PropertyStruct{
 	bool filter;
 	int index;
 };
-
 typedef adjacency_list<vecS, vecS, undirectedS, PropertyStruct, no_property> Graph;
 typedef pair<int, int> Edge;
+typedef property_map<Graph, vertex_index_t>::type IndexMap;
 typedef typename Graph::vertex_descriptor Vertex;
 typedef set<string> labels ;
-
-struct Predicate { // both edge and vertex
-	bool operator()(Graph::edge_descriptor) const      { return true; } // all
-	bool operator()(Vertex vd) const { return (*g)[vd].filter; }
-	Graph* g;
-};
-
-typedef filtered_graph<Graph, Predicate, Predicate> Filtered;
+enum Onturn {maker,breaker};
+enum Teminals {terminal1, terminal2};
 
 class Node_switching_game {
 	private:
 		Graph graph;
-		Predicate predicate{&graph};
-		Filtered view{graph,predicate,predicate};
+		IndexMap vi_map;
+		Onturn onturn=maker;
+
+	public:
+		Node_switching_game (){
+			vi_map = get(vertex_index, graph);
+		};
+		Node_switching_game (Graph g){
+			graph = g;
+		};
+		template<int S>
+		Node_switching_game (Hex_board<S> board){
+			graph = Graph(board.num_squares+2);
+			for (int i=0;i<board.num_squares;i++){
+				if (i<board.size){
+					add_edge(i+2,terminal1,graph);
+				}
+				if (floor(i/board.size)==board.size-1){
+					add_edge(i+2,terminal2,graph);
+				}
+				if (i%board.size>0 && board.size<=i<=board.num_squares-1){
+					add_edge(i+2,i+1,graph);
+				}
+				if (i>=board.size){
+					add_edge(i+2,i+2-board.size,graph);
+					if (i%board.size!=board.size-1){
+						add_edge(i+2,i+3-board.size,graph);
+					}
+				}
+			}
+			vi_map=get(vertex_index, graph);
+		};
+		void switch_onturn(){
+			onturn = onturn==maker?breaker:maker;
+		}
+
+		void make_move(int vertex, bool do_force_color=false, Onturn force_color=maker){
+			Onturn player = do_force_color?force_color:onturn;
+			if (!do_force_color){
+				switch_onturn();
+			}
+			if (player==maker){
+				int have_to_fix = -1;
+				auto neighbors = adjacent_vertices(vertex,graph);
+				for (auto neigh = adjacent_vertices(vertex,graph);neigh.first!=neigh.second;++neigh.first){
+					for (auto it2 = neigh.first+1;it2!=neigh.second;++it2){
+						Vertex v1 = *neigh.first;
+						Vertex v2 = *it2;
+						if (vi_map[v1] == terminal1 || vi_map[v1] == terminal2){
+							have_to_fix = vi_map[v1];
+						}
+
+					}
+				}
+			}
+		}
+
+		void graphviz_me (ostream &out){
+			write_graphviz(out,graph);
+		};
 };
 
 
-
-int main() {
-	Vertex v,vend;
-  Graph G;
-	Predicate predicate{&G};
-	int i;
-	for (i=0;i<8;++i){
-		add_vertex(PropertyStruct{true,i},G);
-	}
-	/* for (tie(v,vend)=vertices(G);v!=vend;v++){ */
-	/* 	G[v].filter = true; */
-	/* } */
-	G[*vertices(G).first].filter = false;
-	Filtered fg(G, predicate, predicate);
-	write_graphviz(cout, G, make_label_writer(get(&PropertyStruct::filter, G)));
-	cout << endl << endl;
-	write_graphviz(cout, fg, make_label_writer(get(&PropertyStruct::filter, fg)));
-	/*
-	typedef adjacency_list<vecS, vecS, undirectedS> Graph;
-
-	enum {A,B,C,D,E,N};
-	const int num_vertices = N;
-	const char* name = "ABCDE";
-
-	typedef pair<int, int> Edge;
-	Edge edge_array[] = {Edge(A,B),Edge(A,D),Edge(C,A),Edge(D,C),Edge(C,E)};
-	const int num_edges = sizeof(edge_array)/sizeof(edge_array[0]);
-
-	Graph g(num_vertices);
-
-	for (int i=0;i<num_edges;++i)
-		add_edge(edge_array[i].first,edge_array[i].second,g);
-	
-
-	typedef property_map<Graph,vertex_index_t>::type IndexMap;
-	IndexMap index = get(vertex_index,g);
-
-	cout << vertex_index;
-	cout << "\n";
-	cout << N;
-	cout << "\nvertices(g) = ";
-
-	typedef graph_traits<Graph>::vertex_iterator vertex_iter;
-	pair<vertex_iter, vertex_iter> vp;
-	for (vp = vertices(g);vp.first!=vp.second;++vp.first)
-		cout << index[*vp.first] << " ";
-	cout << endl;
-
-	cout << "edges(g) = ";
-	graph_traits<Graph>::edge_iterator ei,ei_end;
-	for (tie(ei, ei_end) = edges(g); ei!=ei_end; ++ei)
-		cout << "(" << index[source(*ei, g)]
-				 << "," << index[target(*ei, g)] << ") ";
-	cout << endl;
-
-	for_each(vertices(g).first,vertices(g).second,exercise_vertex<Graph>(g));
-
-	ofstream graph_file("graph_file.txt");
-	write_graphviz(graph_file,g);*/
-	return 0;
-} 

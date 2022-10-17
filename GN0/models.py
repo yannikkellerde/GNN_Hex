@@ -20,6 +20,7 @@ from torch.nn import Linear,ModuleList
 import copy
 from math import sqrt
 from argparse import Namespace
+from GN0.util.util import log_softmax
 
 perfs = defaultdict(list)
 
@@ -660,6 +661,7 @@ class PolicyValue(torch.nn.Module):
             modules = self.breaker_modules
         x = x[:,:2]
 
+
         if hasattr(data,"batch") and data.batch is not None:
             graph_indices = data.batch
         else:
@@ -667,15 +669,18 @@ class PolicyValue(torch.nn.Module):
 
         embeds = self.gnn(x,data.edge_index)
 
+
         pi = modules["policy_head"](embeds,data.edge_index)
         value_embeds = modules["value_head"](embeds,data.edge_index)
 
-        pi = torch.log(torch_geometric.utils.softmax(pi,index=graph_indices)) # NEEDFIX, numerically unstable!
+
+        pi = log_softmax(pi,index=graph_indices)
+
         graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
 
         value = modules["linear"](graph_parts)
         value = self.value_activation(value)
-        return pi.squeeze(),value.squeeze()
+        return pi.reshape(pi.size(0)),value.reshape(value.size(0))
 
 
 def get_pre_defined(name,args=None) -> torch.nn.Module:

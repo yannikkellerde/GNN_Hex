@@ -26,7 +26,7 @@ class Trainer():
         self.best_net.nnet.load_state_dict(self.nnet.nnet.state_dict())
         self.best_net_player = None
         self.args = args
-        self.mcts = MCTS(Hex_game(self.args.hex_size), self.best_net.predict_for_mcts,remove_dead_captured=True)
+        self.mcts = MCTS(Hex_game(self.args.hex_size), nn=self.best_net.predict_for_mcts,args=self.args)
         self.maker_buffer = ReplayBuffer(burnin=0,capacity=self.args.capacity,device=device)
         self.breaker_buffer = ReplayBuffer(burnin=0,capacity=self.args.capacity,device=device)
         self.device = device
@@ -52,7 +52,7 @@ class Trainer():
         for game in games[:int(len(games)//2)]:
             game.view.gp["m"] = False
         episodes_left-=len(games)
-        multi_mcts = [MCTS(game.copy(withboard=False)) for game in games]
+        multi_mcts = [MCTS(game.copy(withboard=False),nn=None,args=self.args) for game in games]
         maker_train_examples = [[] for _ in range(len(games))]
         breaker_train_examples = [[] for _ in range(len(games))]
 
@@ -65,8 +65,8 @@ class Trainer():
 
                 # These do not include terminal nodes
                 action_temp = np.inf if step==1 else int(step < self.args.temp_threshold)
-                moves,training_pi = zip(*[mcts.extract_result(self.args.training_temp) for mcts in multi_mcts])
-                moves,action_pi = zip(*[mcts.extract_result(action_temp) for mcts in multi_mcts])
+                moves,training_pi = zip(*[mcts.extract_result(mcts.rootgraph,self.args.training_temp) for mcts in multi_mcts])
+                moves,action_pi = zip(*[mcts.extract_result(mcts.rootgraph,action_temp) for mcts in multi_mcts])
                 
                 datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])]) for game in games]
                 del_ids = []
@@ -92,15 +92,14 @@ class Trainer():
                         if episodes_left>0:
                             episodes_left-=1
                             games[i] = Hex_game(self.args.hex_size)
-                            multi_mcts[i].reset(Graph(games[i].graph))
+                            multi_mcts[i].rootgraph = Graph(games[i].graph)
                             if episodes_left%2==0:
                                 games[i].view.gp["m"] = False
                         else:
                             del_ids.append(i)
 
                     else:
-                        # multi_mcts[i].next_iter_with_child(action,Graph(games[i].graph))
-                        multi_mcts[i].reset(Graph(games[i].graph))
+                        multi_mcts[i].rootgraph = Graph(games[i].graph)
 
                 for i in reversed(del_ids):
                     del games[i]
@@ -120,10 +119,10 @@ class Trainer():
         breaker_train_examples = []
 
         step = 0
-        self.mcts.reset(storage=Graph(game.graph))
+        self.mcts.rootgraph = Graph(game.graph)
         while True:
             step += 1
-            self.mcts.run(self.args.num_iterations)
+            self.mcts.run(self.mcts.rootgraph,self.args.num_iterations)
 
             # This might be different from alpha-zero, but to me it does not make
             # any sense to include varying temperatures in the training examples.
@@ -153,7 +152,7 @@ class Trainer():
                     self.breaker_buffer.put(*e)
                 return win
             else:
-                self.mcts.next_iter_with_child(action,Graph(game.graph))
+                self.mcts.rootgraph = Graph(game.graph)
 
     def learn(self):
         log = dict()
