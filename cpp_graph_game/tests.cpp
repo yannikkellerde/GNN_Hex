@@ -33,22 +33,21 @@ typedef filtered_graph<Graph, Predicate, Predicate> Filtered;
 int main() {
   Graph G;
 	write_graphviz(cout,G);
-	/* Vertex v,vend; */
-  /* Graph G; */
-	/* Predicate predicate{&G}; */
-	/* int i; */
-	/* for (i=0;i<8;++i){ */
-	/* 	add_vertex(PropertyStruct{true,i},G); */
-	/* } */
-	/* /1* for (tie(v,vend)=vertices(G);v!=vend;v++){ *1/ */
-	/* /1* 	G[v].filter = true; *1/ */
-	/* /1* } *1/ */
-	/* G[*vertices(G).first].filter = false; */
-	/* Filtered fg(G, predicate, predicate); */
-	/* write_graphviz(cout, G, make_label_writer(get(&PropertyStruct::filter, G))); */
-	/* cout << endl << endl; */
-	/* write_graphviz(cout, fg, make_label_writer(get(&PropertyStruct::filter, fg))); */
-	/*
+	Vertex v,vend;
+  Graph G;
+	Predicate predicate{&G};
+	int i;
+	for (i=0;i<8;++i){
+		add_vertex(PropertyStruct{true,i},G);
+	}
+	for (tie(v,vend)=vertices(G);v!=vend;v++){
+		G[v].filter = true;
+	}
+	G[*vertices(G).first].filter = false;
+	Filtered fg(G, predicate, predicate);
+	write_graphviz(cout, G, make_label_writer(get(&PropertyStruct::filter, G)));
+	cout << endl << endl;
+	write_graphviz(cout, fg, make_label_writer(get(&PropertyStruct::filter, fg)));
 	typedef adjacency_list<vecS, vecS, undirectedS> Graph;
 
 	enum {A,B,C,D,E,N};
@@ -89,6 +88,6 @@ int main() {
 	for_each(vertices(g).first,vertices(g).second,exercise_vertex<Graph>(g));
 
 	ofstream graph_file("graph_file.txt");
-	write_graphviz(graph_file,g);*/
+	write_graphviz(graph_file,g);
 	return 0;
 } 
