@@ -188,7 +188,7 @@ class Trainer():
             if prev_version_beaten:
                 print("New best model")
                 save_path = os.path.join(self.args.checkpoint,f"{epoch}.pt")
-                self.nnet.save_checkpoint(save_path)
+                self.nnet.save_checkpoint(save_path,args=self.args)
                 self.best_net.load_checkpoint(save_path)
                 self.elo.add_player(save_path,"best_player")
                 baseline_stats = self.elo.eval_against_baselines("best_player",hex_size=self.args.hex_size)

@@ -31,6 +31,36 @@ def random_evaluater(game,respond_to=None):
     vprop.fa = np.random.random(len(vprop.fa))
     return vprop
 
+def make_board_chooser(choose_move_func):
+    def board_chooser(game,respond_to=None):
+        if respond_to is not None and game.graph.vp.f[respond_to]:
+            respond_to = None
+        if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
+            graph_move = choose_move_func(game)
+            board_move = game.board.vertex_index_to_board_index[graph_move]
+        else:
+            response = game.get_response(respond_to,game.view.gp["m"])
+            plt.title("Last move was captured")
+            board_move = response
+        return board_move
+    return board_chooser
+        
+def make_responding_evaluater(eval_func):
+    def evaluater(game:Node_switching_game,respond_to=None):
+        if respond_to is not None and game.graph.vp.f[respond_to]:
+            respond_to = None
+        if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
+            if respond_to is not None:
+                plt.title("Last move was dead")
+            vprop = eval_func
+        else:
+            response = game.get_response(respond_to,game.view.gp["m"])
+            vprop = game.view.new_vertex_property("float")
+            plt.title("last move was captured")
+            vprop[game.board.board_index_to_vertex[response]] = 1
+        return vprop
+    return evaluater
+
 def playerify_advantage_model(model):
     def model_player(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:

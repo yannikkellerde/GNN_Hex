@@ -3,6 +3,9 @@
 int main(){
 	Hex_board<5> board;
 	Node_switching_game game(board);
+	for (int i=0;i<1;i++){
+		game.make_move(3);
+	}
 	game.graphviz_me(cout);
 	ofstream my_file;
 	my_file.open("my_graph.txt");

@@ -92,11 +92,22 @@ class NNetWrapper():
         data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
         policy,value = self.predict(data)
         moves = [int(data.backmap[x]) for x in range(len(policy))]
+        print(moves,game.get_actions())
         if temperature == 0:
             return moves[torch.argmax(policy)]
         else:
             dist = Categorical(policy)
             return moves[int(dist.sample().item())]
+
+    def be_evaluater(self,game:Node_switching_game,temperature=1):
+        data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
+        policy,value = self.predict(data)
+        moves = [int(data.backmap[x]) for x in range(len(policy))]
+        vprop = game.view.new_vertex_property("double")
+        for m,p in zip(moves,policy):
+            vprop[m] = p
+        print("Value:",value)
+        return vprop
 
     def choose_moves(self,games:List[Node_switching_game],temperature=0):
         datas = [convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device) for game in games]

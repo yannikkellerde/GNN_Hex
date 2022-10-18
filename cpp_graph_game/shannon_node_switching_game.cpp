@@ -78,10 +78,16 @@ class Node_switching_game {
 						if (vi_map[v1] == terminal1 || vi_map[v1] == terminal2){
 							have_to_fix = vi_map[v1];
 						}
-
+						if (!((edge(v1,terminal1,graph).second&&edge(v2,terminal1,graph).second)||
+									(edge(v1,terminal2,graph).second&&edge(v2,terminal2,graph).second)||
+									edge(v1,v2,graph).second)){
+							add_edge(v1,v2,graph);
+						}
 					}
 				}
 			}
+			clear_vertex(vertex,graph);
+			remove_vertex(vertex,graph);
 		}
 
 		void graphviz_me (ostream &out){
