@@ -13,12 +13,12 @@ using namespace boost;
 
 struct PropertyStruct{
 	int board_location;
-	string color;
-	string position;
 };
+
 typedef adjacency_list<vecS, vecS, undirectedS, PropertyStruct, no_property> Graph;
 typedef pair<int, int> Edge;
 typedef property_map<Graph, vertex_index_t>::type IndexMap;
+typedef iterator_property_map<string*,IndexMap> StringPropMap;
 typedef typename Graph::vertex_descriptor Vertex;
 typedef set<string> labels ;
 enum Onturn {maker,breaker};
@@ -41,18 +41,15 @@ class Node_switching_game {
 		Node_switching_game (Hex_board<S> board){
 			board_size = S;
 			graph = Graph(board.num_squares+2);
-			graph[terminal1].color = "blue";
-			graph[terminal2].color = "blue";
 			for (int i=0;i<board.num_squares;i++){
 				graph[i+2].board_location = i;
-				graph[i+2].color = "red";
 				if (i<board.size){
 					add_edge(i+2,terminal1,graph);
 				}
 				if (floor(i/board.size)==board.size-1){
 					add_edge(i+2,terminal2,graph);
 				}
-				if (i%board.size>0 && board.size<=i<=board.num_squares-1){
+				if (i%board.size>0 && board.size<=i && i<=board.num_squares-board.size){
 					add_edge(i+2,i+1,graph);
 				}
 				if (i>=board.size){
@@ -66,6 +63,19 @@ class Node_switching_game {
 		};
 		void switch_onturn(){
 			onturn = onturn==maker?breaker:maker;
+		}
+
+		void fix_terminal_connections(int terminal){
+			auto neighbors = adjacent_vertices(terminal,graph);
+			for (auto neigh = adjacent_vertices(terminal,graph);neigh.first!=neigh.second;++neigh.first){
+				for (auto it2 = neigh.first+1;it2!=neigh.second;++it2){
+					Vertex v1 = *neigh.first;
+					Vertex v2 = *it2;
+					if (edge(v1,v2,graph).second){
+						remove_edge(v1,v2,graph);
+					}
+				}
+			}
 		}
 
 		void make_move(int vertex, bool do_force_color=false, Onturn force_color=maker){
@@ -90,45 +100,54 @@ class Node_switching_game {
 						}
 					}
 				}
+				if (have_to_fix!=-1){
+					fix_terminal_connections(have_to_fix);
+				}
 			}
 			clear_vertex(vertex,graph);
 			remove_vertex(vertex,graph);
 		}
 
-		void get_grid_layout(){
+		StringPropMap get_grid_layout(){
 			double scale;
-			/* vector<double>* position_array; */
-			/* position_array = new vector<double>[num_vertices(graph)]; */
+			string* position_array;
+			position_array = new string[num_vertices(graph)];
 			scale = 5./board_size;
 			const double xstart = 0;
 			const double ystart = 0;
 			const double xend = xstart+1.5*(board_size-1)*scale;
 			const double yend = ystart+sqrt(3./4.)*(board_size-1)*scale;
-			/* position_array[terminal1][0] = xstart; */
-			/* position_array[terminal1][1] = yend/2; */
-			/* position_array[terminal2][0] = xend; */
-			/* position_array[terminal2][1] = yend/2; */
-			graph[terminal1].position = to_string(xstart)+","+to_string((yend/2))+"!";
-			graph[terminal2].position = to_string(xend)+","+to_string((yend/2))+"!";
+			position_array[terminal1] = to_string(xstart)+","+to_string((yend/2))+"!";
+			position_array[terminal2] = to_string(xend)+","+to_string((yend/2))+"!";
 			for (int i=2;i<num_vertices(graph);i++){
 				int bi = graph[i].board_location;
 				int row = floor(bi/board_size);
 				int col = bi%board_size;
-				graph[i].position = to_string((xstart+(0.5*col+row)*scale))+","+to_string((yend - (sqrt(3./4.)*col)*scale))+"!";
-				/* graph[i].position[1] = yend - (sqrt(3./4.)*col)*scale; */
-				/* graph[i].position[0] = xstart+(0.5*col+row)*scale; */
-				/* position_array[i][0] = xstart+(0.5*col+row)*scale; */
-				/* position_array[i][1] = yend - (sqrt(3./4.)*col)*scale; */
+				position_array[i] = to_string((xstart+(0.5*col+row)*scale))+","+to_string((yend - (sqrt(3./4.)*col)*scale))+"!";
 			}
-			/* return position_array; */
+			StringPropMap pos_map = make_iterator_property_map(position_array,vi_map);
+			return pos_map;
+		}
+
+		StringPropMap get_colors(){
+			string* color_array;
+			color_array = new string[num_vertices(graph)];
+			for (int i=2;i<num_vertices(graph);i++){
+				color_array[i] = "black";
+			}
+			color_array[terminal1] = "red";
+			color_array[terminal2] = "red";
+			StringPropMap pos_map = make_iterator_property_map(color_array,vi_map);
+			return pos_map;
 		}
 
 		void graphviz_me (ostream &out){
 			get_grid_layout();
-			/* vector<double> *pos_array = get_grid_layout(); */
+			StringPropMap pos_map = get_grid_layout();
+			StringPropMap color_map = get_colors();
 			dynamic_properties dp;
-			dp.property("color", get(&PropertyStruct::color, graph));
-			dp.property("pos",get(&PropertyStruct::position, graph));
+			dp.property("color", color_map);
+			dp.property("pos",pos_map);
 			dp.property("node_id", get(vertex_index, graph));
 			write_graphviz_dp(out,graph,dp);
 		};
