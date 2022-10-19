@@ -1,30 +1,5 @@
-# More open questions
-+ Alpha-zero starts with a temperature 1 in the beginning of the game and then drops to zero after n moves. This makes sense, because exploration is more valuable in the beginning. However, from the paper and some reference implementations it seems like the temperature is also variied for the training targets. E.g. for the first n moves, the network is supposed to predict a distribution and for later moves is is supposed to predict 100% for the best move. This sounds like it would make training unstable. Why not use some fixed temperature for computing the training targets and only switch up the temperature for self-play?
-+ The paper is a little unclear about which transitions should be used for training (And when should old transitions be thrown out). Is it smart to go with replay buffers similarly to DQN, or should I aim to only use transitions of the most recent agent?
-+ My MCTS implementation is probably suboptimal. The implementation from https://github.com/suragnair/alpha-zero-general seems so much simpler and more efficient. However I am not sure if this is applicable for my case. Problems:
-	- To get a canonical representation of a game state, I think the only way is to hash the graph with WL hashing. Doing this at every node in the mcts traversal is probably slow.
-	- Transpositions (Graph isomorphisms), although rare, are actually more of a problem than any good in my case, as the "same" move in different isomorph graphs will have different names (different vertex indices). Even worse is that the "onturn" order may get messed up in some cases.
-	- Solution: Do non-isomorph hashing -> Quick and no transpositions!
-+ MCTS:
-	- Q for upper confidence bound for unexplored nodes? I used 0.5
-	- What is the range of v from the neural network? In the paper it says that it is the probability of the current player winner (0-1), but at some other places and in reference impl. it seems like it is -1 for lost games. I know it is only impl. detail, but it is relevant for UCB.
-	- Node that just got expanded have 0 or 1 visits? I think 1 makes more sense, but reference impl uses 0
-	- There are two ways to implement MCTS:
-		1. My first attempt: Build up tree of nodes that each cache the graphs and store visits, priors, q etc.
-			* pro: Using caching, the same make_move never has to be executed twice in the MCTS
-			* con: We need to copy the graph to restore the game state each time when we want expand the game state. Maybe faster alternative would be a reversible make_move function.
-		2. Adapted from reference implementations: store visits, priors, q etc. in dictionary based on unique hash of position.
-			* pro: No graph copying required. Fewer lines and less convoluted code. No need to store potentially many graphs in memory.
-			* con: Need to remake the move each time when traversing the graph. Need to create unique hash of each position. Isomorphism detection via hashing sounds great, but does not work easy because otherwise order of actions (vertex indices) is not well defined. Thus, we hash avoiding isomorphisms.
-	- Currently the first attempt is only faster for very deep MCTS trees. Otherwise second is faster.
-
-+ GNN:
-	- My input features to the GNN: Currently, 3D, one dim for *is neighbor of termial node 1*, one dim for *is neighbor of terminal node 2* and one dim for *Is it makers turn*. Should I add more? E.g. degree? Is it sensible to add is\_makers\_turn as an additional feature dimension to all nodes or is there a smarter way?
-
-
 # Status
-I do have a somewhat working version of alpha zero. Problems are nan's after a while (probably because of log-softmax and probably fairly easily fixable).
-Much bigger problem is that my env is to slow.
+My current env is too slow to run any MCTS on interesting problems. Although this is a research project and not production code, I don't think I can get around spending a lot of time optimizing.
 
 ## Things are slow!
 Experiment:
@@ -43,8 +18,9 @@ nn predictions 2.938752555011888
 + Time to make moves in env is too slow.
   - Can be cut to ~ 1/4 if no dead and captured analysis, but that increases game lengths and average graph sizes by a lot.
 	- Hard to optimize staying with python + Graph-Tool.
-	- Dead and captured anaylsis could be sped up by un-generalizing (e.g. only look for cases that are actually possible in hex-graphs and not for general shannon-node-switching games.
-+ Convert graph: Converting from graph-tool representation of my game to representation that my pytorch-geometric model can process takes far too long. The reason for this is that because I currently use graph-filtering, the vertex indices in graph-tool have the wrong format and I have to reindex all edge indices. I could and probably should delete vertices instead of filtering out. However this makes some other things more difficult such as tracking the correspondence between vertices and board states for visualization.
+	- Dead and captured anaylsis could be sped up by un-generalizing. Only look for cases that are actually possible in hex-graphs and not for general shannon-node-switching games. Maybe even do template matching instead, although that's pretty sad for my graph representation.
+	- Maybe my graph filtering approach is also at fault here. I need to really think about the underlying Boost Graphing Library structure and how to use it optimally. Maybe removing vertices will be faster than filtering out.
++ Convert graph: Converting from graph-tool representation of my game to representation that my pytorch-geometric model can process takes far too long. The reason for this is that because I currently use graph-filtering, the vertex indices in graph-tool are not continuous and I have to reindex all edge indices. I could and probably should delete vertices instead of filtering out. However this makes some other things more difficult such as tracking the correspondence between vertices and board states for visualization.
 + NN prediction: In total these are 200 GNN predictions, with batches of 128 graphs each. Comparably very fast. We should aim to make this the bottleneck.
 
 https://github.com/bhansconnect/fast-alphazero-general show how alpha-zero can be done with multiprocessing in python. However, it will be more tricky with GNNs, based on the way batching works in pytorch-geometric. Also, even with 8 or 16 cpu threads, running the env will still be the major bottleneck.
@@ -53,3 +29,22 @@ https://github.com/bhansconnect/fast-alphazero-general show how alpha-zero can b
 + Graph-tool includes a information on how to extend it's c++ backend https://graph-tool.skewed.de/static/doc/demos/cppextensions/cppextensions.html. It may be possible to write the make\_move and remove\_dead\_and\_captured function in c++ while keeping the rest of the code in python.
 
 There is a lot to optimize before we can run any meaningful experiments. Also, I think there is no way around cpu multiprocessing in the end. There are a few things I can think of optimizing in the current python implementation, but it might also make sense to implement some parts in C++.
+
+
+# Mostly solved questions
++ Alpha-zero starts with a temperature 1 in the beginning of the game and then drops to zero after n moves. This makes sense, because exploration is more valuable in the beginning. However, from the paper and some reference implementations it seems like the temperature is also variied for the training targets. E.g. for the first n moves, the network is supposed to predict a distribution and for later moves is is supposed to predict 100% for the best move. This sounds like it would make training unstable. Why not use some fixed temperature for computing the training targets and only switch up the temperature for self-play?
++ The paper is a little unclear about which transitions should be used for training (And when should old transitions be thrown out). Just coninuously collect transitions and throw oldest ones out when some capacity is reached? Or aim to only train on data from newest agent?
++ MCTS:
+	- There are two ways to implement MCTS:
+		1. My first attempt: Build up tree of nodes that each cache the graphs and store visits, priors, q etc.
+			* pro: Using caching, the same make_move never has to be executed twice in the MCTS
+			* con: We need to copy the graph to restore the game state each time when we want expand the game state. Maybe faster alternative would be a reversible make_move function.
+		2. Adapted from reference implementations: store visits, priors, q etc. in dictionary based on unique hash of position.
+			* pro: No graph copying required. Fewer lines and less convoluted code. No need to store potentially many graphs in memory.
+			* con: Need to remake the move each time when traversing the graph. Need to create unique hash of each position. Isomorphism detection via hashing sounds great, but does not work easy because otherwise order of actions (vertex indices) is not well defined. Thus, we hash avoiding isomorphisms.
+	- Currently the first attempt is only faster for very deep MCTS trees. Otherwise second is faster.
+	- What is the range of v from the neural network? In the paper it says that it is the probability of the current player winner (0-1), but at some other places and in reference impl. it seems like it is -1 for lost games.
+	- Node that just got expanded have 0 or 1 visits? I think 1 makes more sense, but reference impl uses 0
+
++ GNN:
+	- My input features to the GNN: Currently, 3D, one dim for *is neighbor of termial node 1*, one dim for *is neighbor of terminal node 2* and one dim for *Is it makers turn*. Should I add more? E.g. degree? Is it sensible to add is\_makers\_turn as an additional feature dimension to all nodes or is there a smarter way?
