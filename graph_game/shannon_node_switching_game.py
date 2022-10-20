@@ -155,6 +155,7 @@ class Node_switching_game(Abstract_graph_game):
                     self.make_move(neighbor,force_color="b")
                     change_set = self.make_move(node,force_color="m")
                     if iterate:
+                        # big_set.update(without_him) # Should this be included?
                         big_set.update(without_me)
                         big_set.update(change_set)
                     made_move=True

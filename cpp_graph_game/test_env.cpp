@@ -5,7 +5,7 @@
 int main(){
 	int move;
 	Hex_board<5> board;
-	Node_switching_game game(board);
+	Node_switching_game<5> game(board);
 	while (true){
 		/* game.graphviz_me(cout); */
 		ofstream my_file;
@@ -17,8 +17,17 @@ int main(){
 		system("mupdf my_graph.pdf &");
 		usleep(100000U);
 		system("bspc node -f west");
+		cout << game.graph[12].board_location;
 		cin >> move;
-		game.make_move(move);
+		game.make_move(move,false,maker,true);
+		Onturn winner = game.who_won();
+		if (winner==maker){
+			cout << "maker won" << endl;
+		}
+		if (winner==breaker){
+			cout << "breaker won" << endl;
+		}
+
 	}
 	
 	return 0;

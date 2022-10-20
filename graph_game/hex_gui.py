@@ -138,7 +138,7 @@ k: hide graph           l:     switch layout
 p: toggle remove dead and captures (breaks things)
 c: toggle show dead and captured""", end="")
     
-    os.system("pkill mupdf")
+    os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
     plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
     game_history = []
@@ -216,7 +216,7 @@ c: toggle show dead and captured""", end="")
 
     def do_graph_show():
         game.draw_me(fname="hex_gui_graph.pdf",layout=layout,vprop1=game.view.vertex_index)
-        os.system("pkill mupdf")
+        os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
         os.system("nohup mupdf hex_gui_graph.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
         os.system("bspc node -f west")
@@ -237,17 +237,17 @@ c: toggle show dead and captured""", end="")
             if show_graph:
                 do_graph_show()
             else:
-                os.system("pkill mupdf")
+                os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
 
         elif event.key == "q":
-            os.system("pkill mupdf")
+            os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
             exit()
 
         elif event.key == "g":
             do_graph_show()
 
         elif event.key == "k":
-            os.system("pkill mupdf")
+            os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
 
         elif event.key == "c":
             show_dead_and_captured = not show_dead_and_captured

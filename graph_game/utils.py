@@ -2,7 +2,7 @@ from graph_tool.all import Graph, Vertex, GraphView
 import torch
 from torch_scatter import scatter_max, scatter_add
 from torch_geometric.utils.num_nodes import maybe_num_nodes
-from typing import List,Iterator,Union
+from typing import List,Iterator,Union,Callable
 import numpy as np
 import math
 
@@ -82,7 +82,7 @@ class take_step():
         y[selections] = np.random.choice(self.possible_values,size=int(self.stepsize)+1,replace=True)
         return y
 
-def greedy_search(eval_func:callable,init_x:np.ndarray,take_step_func:callable,stopping_cost=0):
+def greedy_search(eval_func:Callable,init_x:np.ndarray,take_step_func:Callable,stopping_cost=0):
     x = init_x.copy()
     cost = eval_func(x)
     while cost>stopping_cost:
