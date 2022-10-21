@@ -1,4 +1,8 @@
 # Status
+<!-- **Bitter Truth: Alpha zero requires a very fast environment to collect enough training data through MCTS. With an efficient board representation, making a move comes down to a single bitwise xor. It is impossible to match that speed with a graph representation, no matter how well I optimize.** -->
+<!-- + Question to Gopika: Do you need to manipulate graphs when training you GNNs? How do you represent them, what frameworks do you use? -->
+<!-- + Even without dead and captured removal, we need to remove a vertex and connect all it's neighbors when the maker makes a move. -->
+<!-- + Checking if the breaker has won requires a depth-first-search through the whole graph which is slow. We could fix that by keeping maker and breaker representation, but this would also double the move time. -->
 My current env is too slow to run any MCTS on interesting problems. Although this is a research project and not production code, I don't think I can get around spending a lot of time optimizing.
 
 ## Things are slow!
@@ -30,6 +34,10 @@ https://github.com/bhansconnect/fast-alphazero-general show how alpha-zero can b
 
 There is a lot to optimize before we can run any meaningful experiments. Also, I think there is no way around cpu multiprocessing in the end. There are a few things I can think of optimizing in the current python implementation, but it might also make sense to implement some parts in C++.
 
+## C++ to the rescue
+I reimplemented my env in C++. Speed to run ten 11x11 games to completion with remove dead and captured, checking if game is won each move, takes 0.05 seconds in C++ and 0.35 seconds in python. Without remove dead and captured it is 0.025 seconds in C++ and 0.19 seconds in python.
+
+Additionally, because I remove vertices instead of filtering them out in my C++ implementation, the graphs are already in a format that can be processed by pytorch\_geometric.
 
 # Mostly solved questions
 + Alpha-zero starts with a temperature 1 in the beginning of the game and then drops to zero after n moves. This makes sense, because exploration is more valuable in the beginning. However, from the paper and some reference implementations it seems like the temperature is also variied for the training targets. E.g. for the first n moves, the network is supposed to predict a distribution and for later moves is is supposed to predict 100% for the best move. This sounds like it would make training unstable. Why not use some fixed temperature for computing the training targets and only switch up the temperature for self-play?
@@ -48,3 +56,6 @@ There is a lot to optimize before we can run any meaningful experiments. Also, I
 
 + GNN:
 	- My input features to the GNN: Currently, 3D, one dim for *is neighbor of termial node 1*, one dim for *is neighbor of terminal node 2* and one dim for *Is it makers turn*. Should I add more? E.g. degree? Is it sensible to add is\_makers\_turn as an additional feature dimension to all nodes or is there a smarter way?
+
+## Additional Notes:
++ I fixed a bug that resulted in the dead and captured algorithm not finding some captured cells for maker, while it found them for breaker. This does not change the theoretical value of the game in any position, but can make it easier to play for breaker and this might explain why we found a better breaker winrate in the DQN experiment.

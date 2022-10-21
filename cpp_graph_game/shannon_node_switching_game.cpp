@@ -2,8 +2,11 @@
 #include <fstream>
 #include <iterator>
 #include <utility>
+#include <numeric>
 #include <algorithm>
+#include <chrono>
 #include <boost/graph/graph_traits.hpp>
+#include <boost/graph/copy.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/adjacency_iterator.hpp>
 #include <boost/graph/graphviz.hpp>
@@ -30,18 +33,18 @@ typedef pair<typename Graph::adjacency_iterator,typename Graph::adjacency_iterat
 enum Onturn {noplayer,maker,breaker};
 enum Teminals {terminal1, terminal2};
 
-bool path_exists(Graph g, int src, int dest) {
+bool path_exists(Graph& g, Vertex src, Vertex dest) {
   bool visited[num_vertices(g)];
 	fill(visited,visited+num_vertices(g),false);
   visited[src] = true;
-  std::stack<int> next;
+  std::stack<Vertex> next;
   next.push(src);
 
   while(!next.empty()) {
-    int cv = next.top();
+    Vertex cv = next.top();
     next.pop();
 		for (Neighbors neigh = adjacent_vertices(cv,g);neigh.first!=neigh.second;++neigh.first){
-			int nv = *neigh.first;
+			Vertex nv = *neigh.first;
 			if (!visited[nv]){
 				if (nv==dest){
 					return true;
@@ -54,29 +57,30 @@ bool path_exists(Graph g, int src, int dest) {
   return false;
 }
 
-bool check_if_same(Graph g, Neighbors neigh1, Neighbors neigh2, int ignore1, int ignore2){
-	set<int> store;
-	for (;neigh1.first!=neigh1.second;++neigh1.first){
-		int v = *neigh1.first;
-		if (v != ignore1){
-			store.insert(v);
-		}
+bool check_if_same(Graph& g, Neighbors& neigh1, Neighbors& neigh2, int ignore1, int ignore2){
+	if (neigh1.second-neigh1.first!=neigh2.second-neigh2.first){
+		return false;
 	}
-	for (;neigh2.first!=neigh2.second;++neigh2.first){
-		int v = *neigh2.first;
-		if (v != ignore2){
-			if (store.find(v)!=store.end()){
-				store.erase(v);
+	for (;neigh1.first!=neigh1.second;++neigh1.first){
+		int v1 = *neigh1.first;
+		if (v1 != ignore1){
+			auto pi = neigh2.first;
+			bool found = false;
+			for (;pi!=neigh2.second;++pi){
+				if (*pi==v1){
+					found = true;
+					break;
+				}
 			}
-			else{
+			if (!found){
 				return false;
 			}
 		}
 	}
-	return store.empty();
+	return true;
 }
 
-bool is_fully_connected(Graph g,Neighbors neigh, int ignore){
+bool is_fully_connected(Graph& g,Neighbors& neigh, int ignore){
 	for (;neigh.first!=neigh.second;++neigh.first){
 		int v1 = *neigh.first;
 		if (v1!=ignore){
@@ -91,7 +95,7 @@ bool is_fully_connected(Graph g,Neighbors neigh, int ignore){
 	return true;
 }
 
-bool is_fully_connected(Graph g,Neighbors neigh){
+bool is_fully_connected(Graph& g,Neighbors& neigh){
 	for (;neigh.first!=neigh.second;++neigh.first){
 		for (Graph::adjacency_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
 			if (!edge(*neigh.first,*it2,g).second){
@@ -111,14 +115,21 @@ class Node_switching_game {
 		int board_size = S;
 		Hex_board<S> board;
 		int speed_cut = 10;
+		long time_spend_removing = 0;
+		long time_spend_maker = 0;
+		long time_spend_who_won = 0;
+		long time_spend_breaker = 0;
+		long time_spend_dc = 0;
+		long considered_vertices = 0;
 
 		Node_switching_game (){
 			vi_map = get(vertex_index, graph);
 		};
-		Node_switching_game (Graph g){
+		Node_switching_game (Graph& g){
 			graph = g;
+			vi_map=get(vertex_index, graph);
 		};
-		Node_switching_game (Hex_board<S> from_board){
+		Node_switching_game (Hex_board<S>& from_board){
 			board = from_board;
 			graph = Graph(board.num_squares+2);
 			graph[terminal1].removed = false;
@@ -144,6 +155,13 @@ class Node_switching_game {
 			}
 			vi_map=get(vertex_index, graph);
 		};
+
+		Node_switching_game copy(){
+			Graph new_graph;
+			copy_graph(graph,new_graph);
+			return Node_switching_game<S>(new_graph);
+		}
+
 		void switch_onturn(){
 			onturn = onturn==maker?breaker:maker;
 		}
@@ -165,18 +183,31 @@ class Node_switching_game {
 		}
 
 		void remove_marked_nodes(){
+			auto start = chrono::high_resolution_clock::now();
 			for (int i=num_vertices(graph)-1;i>=0;--i){
 				if (graph[i].removed){
 					remove_vertex(i,graph);
-					cout << "removing " << i << endl;
+					/* cout << "removing " << i << endl; */
 				}
 			}
+			auto stop = chrono::high_resolution_clock::now();
+			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+			time_spend_removing+=duration.count();
+			/* cout << time_spend_removing << endl; */
 		}
 
-		void remove_dead_and_captured(set<int> consider_set){
+		vector<int> get_actions(){
+			vector <int> res(num_vertices(graph)-2);
+			iota(res.begin(),res.end(),2);
+			return res;
+		}
+
+		void remove_dead_and_captured(set<int> &consider_set){
+			auto start_outer = chrono::high_resolution_clock::now();
 			bool can_continue,is_dead;
+			int v1;
 			set<int> big_set, change_set;
-			Neighbors neigh_neigh,tmp_neigh;
+			Neighbors neigh_neigh,tmp_neigh,neighbors,neigh_neigh_neigh;
 			for (int vertex : consider_set){
 				/* cout << vertex << endl; */
 				is_dead = true;
@@ -184,22 +215,29 @@ class Node_switching_game {
 				if (graph[vertex].removed || vertex<2){
 					continue;
 				}
-				Neighbors neighbors = adjacent_vertices(vertex,graph);
+				considered_vertices += 1;
+				neighbors = adjacent_vertices(vertex,graph);
+
 				
-				if (neighbors.second-neighbors.first<speed_cut){
+				if (neighbors.first!=neighbors.second && neighbors.second-neighbors.first<speed_cut){
 					neigh_neigh = adjacent_vertices(*neighbors.first,graph);
-					for (;neigh_neigh.first!=neigh_neigh.second;++neigh_neigh.first){
-						int v1 = *neigh_neigh.first;
+					for (;neigh_neigh.first<=neigh_neigh.second;++neigh_neigh.first){
+						if (neigh_neigh.first==neigh_neigh.second){
+							v1 = *neighbors.first;
+						}
+						else{
+							v1 = *neigh_neigh.first;
+						}
 						if (v1<2 || v1==vertex){
 							continue;
 						}
-						Neighbors neigh_neigh_neigh = adjacent_vertices(v1,graph);
+						neigh_neigh_neigh = adjacent_vertices(v1,graph);
 						neighbors = adjacent_vertices(vertex,graph);
 						if (neigh_neigh_neigh.second-neigh_neigh_neigh.first < speed_cut){
 							if (check_if_same(graph,neighbors,neigh_neigh_neigh,v1,vertex)){
 									/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
 									/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
-								cout << "maker captured " << v1 << vertex << endl;
+								/* cout << "maker captured " << v1 << vertex << endl; */
 								neigh_neigh_neigh = adjacent_vertices(v1,graph);
 								big_set.insert(neigh_neigh_neigh.first,neigh_neigh_neigh.second);
 								graph[v1].removed = true;
@@ -215,8 +253,9 @@ class Node_switching_game {
 				if (can_continue){
 					continue;
 				}
+				auto start = chrono::high_resolution_clock::now();
 				for (neighbors = adjacent_vertices(vertex,graph);neighbors.first!=neighbors.second;++neighbors.first){
-					int v1 = *neighbors.first;
+					v1 = *neighbors.first;
 					for (Graph::adjacency_iterator it2 = neighbors.first+1;it2!=neighbors.second;++it2){
 						if (!edge(*neighbors.first,*it2,graph).second){
 							is_dead = false;
@@ -229,7 +268,7 @@ class Node_switching_game {
 					neigh_neigh = adjacent_vertices(v1,graph);
 					if (tmp_neigh.second-tmp_neigh.first < speed_cut || neigh_neigh.second-neigh_neigh.first < speed_cut){
 						if (is_fully_connected(graph,tmp_neigh,v1) && is_fully_connected(graph,neigh_neigh,vertex)){
-							cout << "breaker captured " << v1 << " " << vertex << endl;
+							/* cout << "breaker captured " << v1 << " " << vertex << endl; */
 							tmp_neigh = adjacent_vertices(vertex,graph);
 							neigh_neigh = adjacent_vertices(v1,graph);
 							big_set.insert(tmp_neigh.first,tmp_neigh.second);
@@ -244,20 +283,26 @@ class Node_switching_game {
 					}
 				}
 				if (is_dead && !can_continue){
-					cout << "node is dead" << endl;
+					/* cout << "node is dead" << endl; */
 					neighbors = adjacent_vertices(vertex,graph);
 					big_set.insert(neighbors.first,neighbors.second);
 					graph[vertex].removed = true; // node is dead
 					clear_vertex(vertex,graph);
 					continue;
 				}
+				auto stop = chrono::high_resolution_clock::now();
+				auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+				time_spend_breaker+=duration.count();
 			}
+			auto stop = chrono::high_resolution_clock::now();
+			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start_outer);
+			time_spend_dc+=duration.count();
 			if (!big_set.empty()){
 				remove_dead_and_captured(big_set);
 			}
 		}
 
-		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=maker,bool do_remove_dead_and_captured=false,bool only_mark_removed=false){
+		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false){
 			set<int> change_set;
 			Onturn player = do_force_color?force_color:onturn;
 			if (!do_force_color){
@@ -302,12 +347,16 @@ class Node_switching_game {
 		}
 
 		Onturn who_won(){
+			auto start = chrono::high_resolution_clock::now();
 			if (edge(terminal1,terminal2,graph).second){
 				return maker;
 			}
 			if (!path_exists(graph,terminal1,terminal2)){
 				return breaker;
 			}
+			auto stop = chrono::high_resolution_clock::now();
+			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+			time_spend_who_won+=duration.count();
 			return noplayer;
 		}
 
@@ -315,7 +364,7 @@ class Node_switching_game {
 			double scale;
 			string* position_array;
 			position_array = new string[num_vertices(graph)];
-			scale = 5./board_size;
+			scale = 1.;
 			const double xstart = 0;
 			const double ystart = 0;
 			const double xend = xstart+1.5*(board_size-1)*scale;
@@ -348,7 +397,7 @@ class Node_switching_game {
 			get_grid_layout();
 			StringPropMap pos_map = get_grid_layout();
 			StringPropMap color_map = get_colors();
-			cout << "here " << num_vertices(graph) << endl;
+			/* cout << "here " << num_vertices(graph) << endl; */
 			dynamic_properties dp;
 			dp.property("color", color_map);
 			dp.property("pos",pos_map);

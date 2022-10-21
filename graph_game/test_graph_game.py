@@ -4,7 +4,7 @@ from graph_game.hex_board_game import Hex_board
 from graph_game.shannon_node_switching_game import Node_switching_game
 import time
 from functools import reduce
-from GN0.convert_graph import convert_node_switching_game,convert_node_switching_game_back
+from GN0.util.convert_graph import convert_node_switching_game,convert_node_switching_game_back
 from graph_game.graph_tools_hashing import wl_hash
 import pickle
 import numpy as np
@@ -13,6 +13,20 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from alive_progress import alive_bar,alive_it
+from time import perf_counter
+
+def test_speed():
+    games = [Hex_game(11) for i in range(10)]
+    move_time = 0
+    start = perf_counter()
+    for game in games:
+        while game.who_won() is None:
+            start_inner = perf_counter()
+            game.make_move(random.choice(game.get_actions()),remove_dead_and_captured=False)
+            move_time += perf_counter()-start_inner
+    print(perf_counter()-start)
+    print(move_time)
+
 
 def test_unique_moves():
     game = Hex_game(11)
@@ -451,6 +465,7 @@ if __name__ == "__main__":
     # test_iterative_voltages()
     # test_voltages()
     # test_color_consistency()
-    test_unique_moves()
+    # test_unique_moves()
+    test_speed()
     # test_dead_and_captured_consistency()
     #test_graph_similarity()

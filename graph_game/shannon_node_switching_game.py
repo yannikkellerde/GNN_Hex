@@ -6,7 +6,7 @@ import numpy as np
 from graph_game.utils import to_directed_graph
 import scipy.linalg
 import sklearn.preprocessing
-from itertools import tee
+from itertools import tee,chain
 import time
 from dataclasses import dataclass
 from graph_game.graph_tools_hashing import wl_hash
@@ -90,6 +90,8 @@ class Node_switching_game(Abstract_graph_game):
             for vertex1,vertex2 in double_loop_iterator(self.view.iter_all_neighbors(square_node)):
                 if vertex1 in (0,1):
                     have_to_fix = vertex1
+                elif vertex2 in (0,1):
+                    have_to_fix = vertex2
                 if not ((self.view.edge(vertex1,self.terminals[0]) and self.view.edge(vertex2,self.terminals[0])) or 
                         (self.view.edge(vertex1,self.terminals[1]) and self.view.edge(vertex2,self.terminals[1]))):
                     self.view.edge(vertex1,vertex2,add_missing=True)
@@ -141,7 +143,9 @@ class Node_switching_game(Abstract_graph_game):
                 self.make_move(node,force_color="b")
                 # print(f"{node} is dead")
                 continue
-            one_neighbors_neighbors = self.view.iter_all_neighbors(next(iter(neighset)))
+            one_neighbor = next(iter(neighset))
+            one_neighbors_neighbors = self.view.iter_all_neighbors(one_neighbor)
+            one_neighbors_neighbors = chain([one_neighbor],one_neighbors_neighbors) # This is a new fix that might break old model.
             made_move = False
             for neighbor in one_neighbors_neighbors:
                 if neighbor in (0,1) or neighbor==node:

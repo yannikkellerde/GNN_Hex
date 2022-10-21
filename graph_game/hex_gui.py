@@ -124,7 +124,7 @@ def maker_breaker_evaluater(maker,breaker):
 
 
 def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured
+    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured, do_bspc
     print(
 """
 Instructions:
@@ -134,6 +134,7 @@ s: switch colors        e:     show evaluation
 a: toggle graph         g:     show graph
 n: show graph assoc     q:     quit
 k: hide graph           l:     switch layout
+b: toggle bspc action
 +: increase hex size    -:     decrease hex size
 p: toggle remove dead and captures (breaks things)
 c: toggle show dead and captured""", end="")
@@ -142,6 +143,7 @@ c: toggle show dead and captured""", end="")
     plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
     game_history = []
+    do_bspc = False
     manual_mode = True
     show_dead_and_captured = True
     show_graph = False
@@ -219,12 +221,16 @@ c: toggle show dead and captured""", end="")
         os.system("pkill -f 'mupdf hex_gui_graph.pdf'")
         os.system("nohup mupdf hex_gui_graph.pdf > /dev/null 2>&1 &")
         time.sleep(0.1)
-        os.system("bspc node -f west")
+        if do_bspc:
+            os.system("bspc node -f west")
 
     def on_press(event):
-        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured
+        global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured,do_bspc
         if event.key == "m":
             manual_mode = not manual_mode
+
+        elif event.key == "b":
+            do_bspc = not do_bspc
 
         elif event.key == "p":
             remove_dead_and_captured = not remove_dead_and_captured
