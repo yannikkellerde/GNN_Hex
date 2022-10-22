@@ -40,6 +40,7 @@ I reimplemented my env in C++. Speed to run ten 11x11 games to completion with r
 Additionally, because I remove vertices instead of filtering them out in my C++ implementation, the graphs are already in a format that can be processed by pytorch\_geometric.
 
 # Mostly solved questions
++ Why do multithreading on single MCTS with virtual loss? Why not run n-threads MCTS in parallel instead and let each thread handle only one MCTS?
 + Alpha-zero starts with a temperature 1 in the beginning of the game and then drops to zero after n moves. This makes sense, because exploration is more valuable in the beginning. However, from the paper and some reference implementations it seems like the temperature is also variied for the training targets. E.g. for the first n moves, the network is supposed to predict a distribution and for later moves is is supposed to predict 100% for the best move. This sounds like it would make training unstable. Why not use some fixed temperature for computing the training targets and only switch up the temperature for self-play?
 + The paper is a little unclear about which transitions should be used for training (And when should old transitions be thrown out). Just coninuously collect transitions and throw oldest ones out when some capacity is reached? Or aim to only train on data from newest agent?
 + MCTS:
