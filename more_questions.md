@@ -11,7 +11,7 @@ Experiment:
 + Batched processing 128 game states at a time on GNN running on GPU
 + 50 hidden channels, 20 layers
 
-copy graph 2.4307218852572987
+copy graph 2.4307218852572987  
 hash 12.76779791075387  
 process results 2.0024678500485606  
 make move 25.61043147117016  
