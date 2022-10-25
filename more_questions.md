@@ -40,7 +40,18 @@ I reimplemented my env in C++. Speed to run ten 11x11 games to completion with r
 
 Additionally, because I remove vertices instead of filtering them out in my C++ implementation, the graphs are already in a format that can be processed by pytorch\_geometric.
 
-Thus, we cut the make-move time by a factor of, the convert graph time should drop to zero. With a more sensible MCTS implementation we won't need hashing. Only the required graph copying might be an issue.
+Thus, we cut the make-move time by a factor of 7 and the convert graph time should drop to zero. With a more sensible MCTS implementation we won't need hashing.
+
+## Path forward and CrazyAra
++ I spend last days looking at CrazyAra code for better understanding of multi-thread MCTS in C++.
++ I could use that as an orientation to build my own multithread MCTS.
+	- Then I could either implement GNN in C++, or use pybind and handle GNN stuff in python and pytorch-geometric.
++ However, maybe there is a better path making use of CrazyAra code: Fork CrazyAra, implement a state interface for my HexGraphs env. Then modify CrazyAra NN-Api to support GNNs and HexGraphs.
+	- This seems like the most promising way to have a chance of beating top Hex AI.
+	- I could use Graph Isomorphisms to make use of Monte-Carlo graph search. However, Weisfeiler-Lehman hashing to detect Isomorphisms might be too slow.
+	- GNN framework to use? Pytorch-geometric is python-only. According to author, it should be possible to reimplement GNNs in C++ using torch-scatter c++ api. Or maybe use TorchScript. Or a completely different framework?
+		+ Breaking news is that I tried TorchScript to transfer torch model from python to C++, but that seems to be hopeless as TorchScript does not support torch-scatter. Also, I failed to build torch-scatter in c++ with gpu support. Maybe I can make it work with torch-scatter some day (reimplementing GraphSAGE in C++ using torch-scatter and libtorch), but I'm also looking forward to alternatives.
+		+ Claim by pytorch-geometric developer: *If your model does not depend on scatter_max and pooling algorithms, you should be able to reimplement your model with scatter_add and gather operations quite easily in C++ using libtorch.* So I guess I should try this.
 
 # Mostly solved questions
 + Why do multithreading on single MCTS with virtual loss? Why not run n-threads MCTS in parallel instead and let each thread handle only one MCTS?
@@ -54,9 +65,7 @@ Thus, we cut the make-move time by a factor of, the convert graph time should dr
 		2. Adapted from reference implementations: store visits, priors, q etc. in dictionary based on unique hash of position.
 			* pro: No graph copying required. Fewer lines and less convoluted code. No need to store potentially many graphs in memory.
 			* con: Need to remake the move each time when traversing the graph. Need to create unique hash of each position. Isomorphism detection via hashing sounds great, but does not work easy because otherwise order of actions (vertex indices) is not well defined. Thus, we hash avoiding isomorphisms.
-	- Currently the first attempt is only faster for very deep MCTS trees. Otherwise second is faster.
-	- What is the range of v from the neural network? In the paper it says that it is the probability of the current player winner (0-1), but at some other places and in reference impl. it seems like it is -1 for lost games.
-	- Node that just got expanded have 0 or 1 visits? I think 1 makes more sense, but reference impl uses 0
+	- Currently the first (python) attempt is only faster for very deep MCTS trees. Otherwise second is faster.
 
 + GNN:
 	- My input features to the GNN: Currently, 3D, one dim for *is neighbor of termial node 1*, one dim for *is neighbor of terminal node 2* and one dim for *Is it makers turn*. Should I add more? E.g. degree? Is it sensible to add is\_makers\_turn as an additional feature dimension to all nodes or is there a smarter way?

@@ -23,6 +23,8 @@ model/
 .secrets/
 checkpoints/
 wandb/
+build/
+saved_models/
 
 gctest.py
 *.pyc

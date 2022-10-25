@@ -90,6 +90,7 @@ class NNetWrapper():
 
     def choose_move(self,game:Node_switching_game,temperature=0):
         data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True).to(self.device)
+        print(type(data.edge_index))
         policy,value = self.predict(data)
         moves = [int(data.backmap[x]) for x in range(len(policy))]
         print(moves,game.get_actions())

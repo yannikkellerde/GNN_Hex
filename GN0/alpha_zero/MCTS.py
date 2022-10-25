@@ -51,7 +51,7 @@ class MCTS():
         return self.game.get_actions(),probs
 
     def process_results(self,value=None,pi=None):
-        # start = perf_counter()
+        start = perf_counter()
         if self.mode == 'leaf':
             assert pi is not None and value is not None
             s = self.path.pop()[0]
@@ -71,20 +71,24 @@ class MCTS():
             self.Ns[s] += 1
             self.v = 1-self.v
         self.path = []
-        # self.timers["process_results"].append(perf_counter()-start)
+        self.timers["process_results"].append(perf_counter()-start)
 
     def find_leaf(self,set_to_graph=None):
         """This is for multi-mcts (batched processing)"""
         assert not isinstance(set_to_graph,GraphView) # Call with graph, not with view!
+        start = perf_counter()
+
         if set_to_graph is not None:
             self.game.set_to_graph(set_to_graph)
 
+        self.timers["set_to_graph"].append(perf_counter()-start)
+
         ###########################
-        # start = perf_counter()
+        start = perf_counter()
         ###########################
         s = get_unique_hash(self.game.view)
         ###########################
-        # self.timers["hash"].append(perf_counter()-start)
+        self.timers["hash"].append(perf_counter()-start)
         ###########################
 
         if s not in self.Es:
@@ -112,9 +116,9 @@ class MCTS():
 
         a = np.argmax(u)
         action = actions[a]
-        # start = perf_counter()
+        start = perf_counter()
         self.game.make_move(action,remove_dead_and_captured=self.remove_dead_and_captured)
-        # self.timers["make_move"].append(perf_counter()-start)
+        self.timers["make_move"].append(perf_counter()-start)
         self.path.append((s,a))
         return self.find_leaf()
 
