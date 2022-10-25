@@ -3,7 +3,7 @@
 <!-- + Question to Gopika: Do you need to manipulate graphs when training you GNNs? How do you represent them, what frameworks do you use? -->
 <!-- + Even without dead and captured removal, we need to remove a vertex and connect all it's neighbors when the maker makes a move. -->
 <!-- + Checking if the breaker has won requires a depth-first-search through the whole graph which is slow. We could fix that by keeping maker and breaker representation, but this would also double the move time. -->
-My current env is too slow to run any MCTS on interesting problems. Although this is a research project and not production code, I don't think I can get around spending a lot of time optimizing.
+My python env is too slow to run any MCTS on interesting problems. Although this is a research project and not production code, I don't think I can get around spending a lot of time optimizing.
 
 ## Things are slow!
 Experiment:
