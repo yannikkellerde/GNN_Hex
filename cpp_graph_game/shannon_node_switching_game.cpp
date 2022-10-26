@@ -114,12 +114,6 @@ class Node_switching_game {
 		Onturn onturn=maker;
 		int board_size = S;
 		Hex_board<S> board;
-		int speed_cut = 10;
-		long time_spend_removing = 0;
-		long time_spend_maker = 0;
-		long time_spend_who_won = 0;
-		long time_spend_breaker = 0;
-		long time_spend_dc = 0;
 		long considered_vertices = 0;
 
 		Node_switching_game (){
@@ -183,17 +177,11 @@ class Node_switching_game {
 		}
 
 		void remove_marked_nodes(){
-			auto start = chrono::high_resolution_clock::now();
 			for (int i=num_vertices(graph)-1;i>=0;--i){
 				if (graph[i].removed){
 					remove_vertex(i,graph);
-					/* cout << "removing " << i << endl; */
 				}
 			}
-			auto stop = chrono::high_resolution_clock::now();
-			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-			time_spend_removing+=duration.count();
-			/* cout << time_spend_removing << endl; */
 		}
 
 		vector<int> get_actions(){
@@ -203,7 +191,6 @@ class Node_switching_game {
 		}
 
 		void remove_dead_and_captured(set<int> &consider_set){
-			auto start_outer = chrono::high_resolution_clock::now();
 			bool can_continue,is_dead;
 			int v1;
 			set<int> big_set, change_set;
@@ -219,7 +206,7 @@ class Node_switching_game {
 				neighbors = adjacent_vertices(vertex,graph);
 
 				
-				if (neighbors.first!=neighbors.second && neighbors.second-neighbors.first<speed_cut){
+				if (neighbors.first!=neighbors.second){
 					neigh_neigh = adjacent_vertices(*neighbors.first,graph);
 					for (;neigh_neigh.first<=neigh_neigh.second;++neigh_neigh.first){
 						if (neigh_neigh.first==neigh_neigh.second){
@@ -233,27 +220,24 @@ class Node_switching_game {
 						}
 						neigh_neigh_neigh = adjacent_vertices(v1,graph);
 						neighbors = adjacent_vertices(vertex,graph);
-						if (neigh_neigh_neigh.second-neigh_neigh_neigh.first < speed_cut){
-							if (check_if_same(graph,neighbors,neigh_neigh_neigh,v1,vertex)){
-									/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
-									/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
-								/* cout << "maker captured " << v1 << vertex << endl; */
-								neigh_neigh_neigh = adjacent_vertices(v1,graph);
-								big_set.insert(neigh_neigh_neigh.first,neigh_neigh_neigh.second);
-								graph[v1].removed = true;
-								clear_vertex(v1,graph);
-								change_set = make_move(vertex,true,maker,false,true);
-								big_set.insert(change_set.begin(),change_set.end());
-								can_continue = true;
-								break;
-							}
+						if (check_if_same(graph,neighbors,neigh_neigh_neigh,v1,vertex)){
+								/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
+								/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
+							/* cout << "maker captured " << v1 << vertex << endl; */
+							neigh_neigh_neigh = adjacent_vertices(v1,graph);
+							big_set.insert(neigh_neigh_neigh.first,neigh_neigh_neigh.second);
+							graph[v1].removed = true;
+							clear_vertex(v1,graph);
+							change_set = make_move(vertex,true,maker,false,true);
+							big_set.insert(change_set.begin(),change_set.end());
+							can_continue = true;
+							break;
 						}
 					}
 				}
 				if (can_continue){
 					continue;
 				}
-				auto start = chrono::high_resolution_clock::now();
 				for (neighbors = adjacent_vertices(vertex,graph);neighbors.first!=neighbors.second;++neighbors.first){
 					v1 = *neighbors.first;
 					for (Graph::adjacency_iterator it2 = neighbors.first+1;it2!=neighbors.second;++it2){
@@ -266,20 +250,18 @@ class Node_switching_game {
 					}
 					tmp_neigh = adjacent_vertices(vertex,graph);
 					neigh_neigh = adjacent_vertices(v1,graph);
-					if (tmp_neigh.second-tmp_neigh.first < speed_cut || neigh_neigh.second-neigh_neigh.first < speed_cut){
-						if (is_fully_connected(graph,tmp_neigh,v1) && is_fully_connected(graph,neigh_neigh,vertex)){
-							/* cout << "breaker captured " << v1 << " " << vertex << endl; */
-							tmp_neigh = adjacent_vertices(vertex,graph);
-							neigh_neigh = adjacent_vertices(v1,graph);
-							big_set.insert(tmp_neigh.first,tmp_neigh.second);
-							big_set.insert(neigh_neigh.first,neigh_neigh.second);
-							clear_vertex(v1,graph);
-							clear_vertex(vertex,graph);
-							graph[v1].removed = true;
-							graph[vertex].removed = true;
-							can_continue = true;
-							break;
-						}
+					if (is_fully_connected(graph,tmp_neigh,v1) && is_fully_connected(graph,neigh_neigh,vertex)){
+						/* cout << "breaker captured " << v1 << " " << vertex << endl; */
+						tmp_neigh = adjacent_vertices(vertex,graph);
+						neigh_neigh = adjacent_vertices(v1,graph);
+						big_set.insert(tmp_neigh.first,tmp_neigh.second);
+						big_set.insert(neigh_neigh.first,neigh_neigh.second);
+						clear_vertex(v1,graph);
+						clear_vertex(vertex,graph);
+						graph[v1].removed = true;
+						graph[vertex].removed = true;
+						can_continue = true;
+						break;
 					}
 				}
 				if (is_dead && !can_continue){
@@ -290,13 +272,7 @@ class Node_switching_game {
 					clear_vertex(vertex,graph);
 					continue;
 				}
-				auto stop = chrono::high_resolution_clock::now();
-				auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-				time_spend_breaker+=duration.count();
 			}
-			auto stop = chrono::high_resolution_clock::now();
-			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start_outer);
-			time_spend_dc+=duration.count();
 			if (!big_set.empty()){
 				remove_dead_and_captured(big_set);
 			}
@@ -347,16 +323,12 @@ class Node_switching_game {
 		}
 
 		Onturn who_won(){
-			auto start = chrono::high_resolution_clock::now();
 			if (edge(terminal1,terminal2,graph).second){
 				return maker;
 			}
 			if (!path_exists(graph,terminal1,terminal2)){
 				return breaker;
 			}
-			auto stop = chrono::high_resolution_clock::now();
-			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-			time_spend_who_won+=duration.count();
 			return noplayer;
 		}
 

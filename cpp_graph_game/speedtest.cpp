@@ -17,18 +17,12 @@ int main(){
 		if (i%2==0){
 			game_list[i].switch_onturn();
 		}
-		game_list[i].speed_cut = 1000;
 	}
 	vector<Onturn> winstats;
 
 	auto start_out = chrono::high_resolution_clock::now();
 	for (int i=0;i<num_games;++i){
 		if (i>0){
-			game_list[i].time_spend_removing = game_list[i-1].time_spend_removing;
-			game_list[i].time_spend_maker = game_list[i-1].time_spend_maker;
-			game_list[i].time_spend_breaker = game_list[i-1].time_spend_breaker;
-			game_list[i].time_spend_dc = game_list[i-1].time_spend_dc;
-			game_list[i].time_spend_who_won = game_list[i-1].time_spend_who_won;
 			game_list[i].considered_vertices = game_list[i-1].considered_vertices;
 		}
 		move_num = 0;
@@ -50,11 +44,6 @@ int main(){
 	auto stop_out = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(stop_out - start_out);
 	cout << duration.count() << endl;
-	cout << game_list[num_games-1].time_spend_removing << endl;
-	cout << game_list[num_games-1].time_spend_maker << endl;
-	cout << game_list[num_games-1].time_spend_breaker << endl;
-	cout << game_list[num_games-1].time_spend_dc << endl;
-	cout << game_list[num_games-1].time_spend_who_won << endl;
 	cout << game_list[num_games-1].considered_vertices << endl;
 	cout << count(winstats.begin(),winstats.end(),maker) << endl;
 	cout << count(winstats.begin(),winstats.end(),breaker) << endl;

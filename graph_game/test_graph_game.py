@@ -22,7 +22,7 @@ def test_speed():
     for game in games:
         while game.who_won() is None:
             start_inner = perf_counter()
-            game.make_move(random.choice(game.get_actions()),remove_dead_and_captured=False)
+            game.make_move(random.choice(game.get_actions()),remove_dead_and_captured=True)
             move_time += perf_counter()-start_inner
     print(perf_counter()-start)
     print(move_time)
