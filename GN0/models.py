@@ -207,7 +207,6 @@ class ModifiedGraphSAGE(torch.nn.Module):
         x: Tensor,
         edge_index: Tensor,
     ) -> Tensor:
-        """"""
         for i,conv in enumerate(self.convs):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
@@ -732,7 +731,7 @@ class GCN_with_glob(torch.nn.Module):
 class PV_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=2,**gnn_kwargs):
         super().__init__()
-        self.gnn = ModifiedGraphSAGE(in_channels=in_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
+        self.gnn = ModifiedGraphSAGE(in_channels=in_channels-1,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
 
         self.maker_modules = torch.nn.ModuleDict()
         self.breaker_modules = torch.nn.ModuleDict()

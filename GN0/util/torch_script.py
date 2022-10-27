@@ -4,9 +4,19 @@ from GN0.util.convert_graph import convert_node_switching_game
 import torch
 
 def trace_pv_model():
-    model = PV_torch_script(hidden_channels=25,hidden_layers=10,policy_layers=2,value_layers=2,in_channels=2)
+    model = PV_torch_script(hidden_channels=25,hidden_layers=10,policy_layers=2,value_layers=2,in_channels=3)
+    node_features = torch.ones((5,3))
+    edge_index = torch.empty((2,2),dtype=torch.long);
+    graph_indices = torch.zeros(5,dtype=torch.long);
+    edge_index[0][0] = 0
+    edge_index[0][1] = 3
+    edge_index[1][0] = 3
+    edge_index[1][1]=4
+    print(model(node_features,edge_index,graph_indices))
+
+    
     traced = torch.jit.script(model)
-    traced.save("GN0/alpha_zero/saved_models/traced.pt")
+    traced.save("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/alpha_zero/saved_models/traced.pt")
 
 def test_traced_model(path):
     game = Hex_game(8)
@@ -16,4 +26,5 @@ def test_traced_model(path):
     print(res)
 
 if __name__ == "__main__":
-    test_traced_model("GN0/alpha_zero/saved_models/traced.pt")
+    trace_pv_model()
+    # test_traced_model("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/alpha_zero/saved_models/traced.pt")
