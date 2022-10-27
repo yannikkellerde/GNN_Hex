@@ -1,9 +1,10 @@
 /* #include <torch/script.h> // One-stop header. */
 #include <torch/script.h>
-#include <torchscatter/scatter.h>
+/* #include <torchscatter/scatter.h> */
 #include <ATen/ATen.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/autograd/function.h>
+#include "shannon_node_switching_game.cpp"
 
 #include <iostream>
 #include <memory>
@@ -49,6 +50,12 @@ int main(int argc, const char* argv[]) {
 	std::vector<torch::jit::IValue> inputs;
 	inputs.push_back(node_features);
 	inputs.push_back(edge_index);
+	inputs.push_back(graph_indices);
+	/* std::cout << module.forward(inputs); */
+	
+	Node_switching_game<5> game;
+	graph_indices = torch::zeros(num_vertices(game.graph)-2,options_long);
+	inputs = game.convert_graph(device);
 	inputs.push_back(graph_indices);
 	std::cout << module.forward(inputs);
 }

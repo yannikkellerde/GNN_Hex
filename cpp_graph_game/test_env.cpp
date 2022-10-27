@@ -2,10 +2,13 @@
 #include<iostream>
 #include <unistd.h>
 
-int main(){
+void interactive_env(){
+	torch::Device device(torch::kCUDA,0);
 	int move;
 	Hex_board<5> board;
-	Node_switching_game<5> game(board);
+	Node_switching_game<5> game_old(board);
+	std::vector<torch::jit::IValue> data = game_old.convert_graph(device);
+	Node_switching_game<5> game(data);
 	while (true){
 		/* game.graphviz_me(cout); */
 		ofstream my_file;
@@ -27,8 +30,22 @@ int main(){
 		if (winner==breaker){
 			cout << "breaker won" << endl;
 		}
-
 	}
+}
+
+void test_dead_and_captured_consistency(){
+	Node_switching_game<5> simple_game;
+	Node_switching_game<5> fancy_game;
+	for (int i=0;i<500;i++){
+		simple_game = Node_switching_game<5>();
+		fancy_game = Node_switching_game<5>();
+		while (simple_game.who_won()==noplayer){
+
+		}
+	}
+}
+
+int main(){
 	
 	return 0;
 }

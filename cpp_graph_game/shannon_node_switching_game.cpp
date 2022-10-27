@@ -11,6 +11,10 @@
 #include <boost/graph/adjacency_iterator.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/depth_first_search.hpp>
+#include <torch/csrc/autograd/variable.h>
+#include <torch/csrc/autograd/function.h>
+#include <torch/script.h>
+#include <ATen/ATen.h>
 #include "hex_board_game.cpp"
 #include <math.h>
 #include <boost/config.hpp>
@@ -19,7 +23,9 @@ using namespace boost;
 
 
 struct PropertyStruct{
+#ifdef FOR_INFERENCE
 	int board_location;
+#endif
 	bool removed;
 };
 
@@ -115,21 +121,51 @@ class Node_switching_game {
 		int board_size = S;
 		Hex_board<S> board;
 		long considered_vertices = 0;
+		map<int,int> response_set_maker;
+		map<int,int> response_set_breaker;
 
-		Node_switching_game (){
-			vi_map = get(vertex_index, graph);
+		Node_switching_game ():Node_switching_game(board){
 		};
 		Node_switching_game (Graph& g){
 			graph = g;
 			vi_map=get(vertex_index, graph);
 		};
-		Node_switching_game (Hex_board<S>& from_board){
-			board = from_board;
+		Node_switching_game (std::vector<torch::jit::IValue> &data){
+			// Convert model repr back to graph
+			torch::Tensor node_features= data[0].toTensor().cpu();
+			torch::Tensor edge_index = data[1].toTensor().cpu();
+			graph = Graph(node_features.size(0)+2);
+			for (int i=0;i<num_vertices(graph);i++){
+				if (i>1){
+#ifdef FOR_INFERENCE
+					graph[i].board_location = i-2;  // This only works if in starting position
+#endif
+					if (node_features[i-2][0].item<float>()==1.){
+						add_edge(i,terminal1,graph);
+					}
+					if (node_features[i-2][1].item<float>()==1.){
+						add_edge(i,terminal2,graph);
+					}
+				}
+				graph[i].removed = false;
+			}
+			for (int i=0;i<edge_index.size(1);i++){
+				long source = edge_index[0][i].item<long>()+2;
+				long target = edge_index[1][i].item<long>()+2;
+				if (!edge(source,target,graph).second){
+					add_edge(source,target,graph);
+				}
+			}
+			vi_map=get(vertex_index, graph);
+		}
+		Node_switching_game (Hex_board<S>& from_board):board(from_board){
 			graph = Graph(board.num_squares+2);
 			graph[terminal1].removed = false;
 			graph[terminal2].removed = false;
 			for (int i=0;i<board.num_squares;i++){
+#ifdef FOR_INFERENCE
 				graph[i+2].board_location = i;
+#endif
 				/* graph[i+2].removed = false; */
 				if (i<board.size){
 					add_edge(i+2,terminal1,graph);
@@ -149,6 +185,28 @@ class Node_switching_game {
 			}
 			vi_map=get(vertex_index, graph);
 		};
+
+#ifdef FOR_INFERENCE
+		int get_response(int vertex,bool for_maker){
+			int bloc = graph[vertex].board_location;
+			int bresp = -1; // board location of response
+			int vresp = -1; // vertex index of response
+			if (for_maker && response_set_maker.find(bloc)!=response_set_maker.end){
+				bresp = response_set_maker[bloc];
+			}
+			else if (!for_maker && response_set_breaker.find(bloc)!=response_set_breaker.end){
+				bresp = response_set_breaker[bloc];
+			}
+			if (bresp!=-1){
+				for (Neighbors vs = vertices(graph);vs.first!=vs.second;vs++){
+					if (graph[vs].board_location == bresp){
+						vresp = vs;
+					}
+				}
+			}
+			return vresp;
+		}
+#endif
 
 		Node_switching_game copy(){
 			Graph new_graph;
@@ -221,6 +279,10 @@ class Node_switching_game {
 						neigh_neigh_neigh = adjacent_vertices(v1,graph);
 						neighbors = adjacent_vertices(vertex,graph);
 						if (check_if_same(graph,neighbors,neigh_neigh_neigh,v1,vertex)){
+#ifdef FOR_INFERENCE
+							response_set_maker[graph[v1].board_location]=graph[vertex].board_location;
+							response_set_maker[graph[vertex].board_location]=graph[v1].board_location;
+#endif
 								/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
 								/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
 							/* cout << "maker captured " << v1 << vertex << endl; */
@@ -251,6 +313,10 @@ class Node_switching_game {
 					tmp_neigh = adjacent_vertices(vertex,graph);
 					neigh_neigh = adjacent_vertices(v1,graph);
 					if (is_fully_connected(graph,tmp_neigh,v1) && is_fully_connected(graph,neigh_neigh,vertex)){
+#ifdef FOR_INFERENCE
+						response_set_breaker[graph[v1].board_location]=graph[vertex].board_location;
+						response_set_breaker[graph[vertex].board_location]=graph[v1].board_location;
+#endif
 						/* cout << "breaker captured " << v1 << " " << vertex << endl; */
 						tmp_neigh = adjacent_vertices(vertex,graph);
 						neigh_neigh = adjacent_vertices(v1,graph);
@@ -332,6 +398,7 @@ class Node_switching_game {
 			return noplayer;
 		}
 
+#ifdef FOR_INFERENCE
 		StringPropMap get_grid_layout(){
 			double scale;
 			string* position_array;
@@ -352,6 +419,7 @@ class Node_switching_game {
 			StringPropMap pos_map = make_iterator_property_map(position_array,vi_map);
 			return pos_map;
 		}
+#endif
 
 		StringPropMap get_colors(){
 			string* color_array;
@@ -366,16 +434,60 @@ class Node_switching_game {
 		}
 
 		void graphviz_me (ostream &out){
-			get_grid_layout();
-			StringPropMap pos_map = get_grid_layout();
 			StringPropMap color_map = get_colors();
 			/* cout << "here " << num_vertices(graph) << endl; */
 			dynamic_properties dp;
 			dp.property("color", color_map);
+#ifdef FOR_INFERENCE
+			get_grid_layout();
+			StringPropMap pos_map = get_grid_layout();
 			dp.property("pos",pos_map);
+#endif
 			dp.property("node_id", get(vertex_index, graph));
 			write_graphviz_dp(out,graph,dp);
 		};
+	std::vector<torch::jit::IValue> convert_graph(torch::Device &device){
+		int n = num_vertices(graph);
+		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
+		torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
+		torch::Tensor node_features = torch::zeros({n-2,3},options_float);
+		Neighbors neigh = adjacent_vertices(terminal1,graph); //mark neighbors of terminals in node features
+		int num_t1_neigh = neigh.second-neigh.first;
+		for (;neigh.first!=neigh.second;++neigh.first){
+			node_features[(*neigh.first)-2][0] = 1.;
+		}
+		neigh = adjacent_vertices(terminal2,graph);
+		int num_t2_neigh = neigh.second-neigh.first;
+		for (;neigh.first!=neigh.second;++neigh.first){
+			node_features[(*neigh.first)-2][1] = 1.;
+		}
+		if (onturn==maker){
+			for (int i=0;i<n-2;++i){
+				node_features[i][2] = 1;
+			}
+		}
+
+		torch::Tensor edge_index = torch::empty({2,((int)num_edges(graph)-(int)num_t1_neigh-(int)num_t2_neigh)*2},options_long);
+		graph_traits<Graph>::edge_iterator ei, ei_end;
+		int ind = 0;
+		for (boost::tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei){
+			int s = source(*ei,graph);
+			int t = target(*ei,graph);
+			if (s>1 && t>1){
+				edge_index[0][ind] = s-2;  // double, because undirected graph
+				edge_index[1][ind] = t-2;  // -2, because we throw out terminals
+				ind++;
+				edge_index[1][ind] = s-2;
+				edge_index[0][ind] = t-2;
+				ind++;
+			}
+		}
+
+		std::vector<torch::jit::IValue> parts;
+		parts.push_back(node_features);
+		parts.push_back(edge_index);
+		return parts;
+	}
 };
 
 
