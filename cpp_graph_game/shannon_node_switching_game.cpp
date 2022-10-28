@@ -5,6 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <chrono>
+#include <stdlib.h>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -16,6 +17,7 @@
 #include <torch/script.h>
 #include <ATen/ATen.h>
 #include "hex_board_game.cpp"
+#include "util.cpp"
 #include <math.h>
 #include <boost/config.hpp>
 using namespace std;
@@ -36,6 +38,7 @@ typedef iterator_property_map<string*,IndexMap> StringPropMap;
 typedef typename Graph::vertex_descriptor Vertex;
 typedef set<string> labels ;
 typedef pair<typename Graph::adjacency_iterator,typename Graph::adjacency_iterator> Neighbors; 
+typedef pair<graph_traits<Graph>::vertex_iterator, graph_traits<Graph>::vertex_iterator> Viters;
 enum Onturn {noplayer,maker,breaker};
 enum Teminals {terminal1, terminal2};
 
@@ -120,11 +123,13 @@ class Node_switching_game {
 		Onturn onturn=maker;
 		int board_size = S;
 		Hex_board<S> board;
-		long considered_vertices = 0;
+#ifdef FOR_INFERENCE
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
+#endif
 
-		Node_switching_game ():Node_switching_game(board){
+		Node_switching_game (){
+			reset();
 		};
 		Node_switching_game (Graph& g){
 			graph = g;
@@ -159,14 +164,27 @@ class Node_switching_game {
 			vi_map=get(vertex_index, graph);
 		}
 		Node_switching_game (Hex_board<S>& from_board):board(from_board){
+			reset();
+		};
+
+		void reset(){
+#ifdef FOR_INFERENCE
+			response_set_maker = map<int,int>();
+			response_set_breaker = map<int,int>();
+#endif
+			onturn = maker;
 			graph = Graph(board.num_squares+2);
 			graph[terminal1].removed = false;
 			graph[terminal2].removed = false;
+#ifdef FOR_INFERENCE
+			graph[terminal1].board_location = -1;
+			graph[terminal2].board_location = -1;
+#endif
 			for (int i=0;i<board.num_squares;i++){
 #ifdef FOR_INFERENCE
 				graph[i+2].board_location = i;
 #endif
-				/* graph[i+2].removed = false; */
+				graph[i+2].removed = false;
 				if (i<board.size){
 					add_edge(i+2,terminal1,graph);
 				}
@@ -184,27 +202,43 @@ class Node_switching_game {
 				}
 			}
 			vi_map=get(vertex_index, graph);
-		};
+		}
 
 #ifdef FOR_INFERENCE
-		int get_response(int vertex,bool for_maker){
-			int bloc = graph[vertex].board_location;
-			int bresp = -1; // board location of response
-			int vresp = -1; // vertex index of response
-			if (for_maker && response_set_maker.find(bloc)!=response_set_maker.end){
-				bresp = response_set_maker[bloc];
-			}
-			else if (!for_maker && response_set_breaker.find(bloc)!=response_set_breaker.end){
-				bresp = response_set_breaker[bloc];
-			}
-			if (bresp!=-1){
-				for (Neighbors vs = vertices(graph);vs.first!=vs.second;vs++){
-					if (graph[vs].board_location == bresp){
-						vresp = vs;
+		int vertex_from_board_location(int board_location){
+				for (Viters vs = vertices(graph);vs.first!=vs.second;++vs.first){
+					int v = *vs.first;
+					if (graph[v].board_location == board_location){
+						return v;
 					}
 				}
+				return -1;
+		}
+
+		int get_response(int bloc,bool for_maker){
+			if (response_set_maker.find(bloc)!=response_set_maker.end()){
+				if (for_maker){
+					return response_set_maker[bloc];
+				}
+				else{
+					int otherside = response_set_maker[bloc];
+					response_set_maker.erase(otherside);
+					response_set_maker.erase(bloc);
+					return -1;
+				}
 			}
-			return vresp;
+			else if (response_set_breaker.find(bloc)!=response_set_breaker.end()){
+				if (!for_maker){
+					return response_set_breaker[bloc];
+				}
+				else{
+					int otherside = response_set_breaker[bloc];
+					response_set_breaker.erase(otherside);
+					response_set_breaker.erase(bloc);
+					return -1;
+				}
+			}
+			return -1;
 		}
 #endif
 
@@ -242,6 +276,12 @@ class Node_switching_game {
 			}
 		}
 
+		int get_random_action(){
+			vector<int> actions = get_actions();
+			/* return *select_randomly(actions.begin(),actions.end()); // unbiased, non-repeatable*/
+			return repeatable_random_choice(actions);
+		}
+
 		vector<int> get_actions(){
 			vector <int> res(num_vertices(graph)-2);
 			iota(res.begin(),res.end(),2);
@@ -260,7 +300,6 @@ class Node_switching_game {
 				if (graph[vertex].removed || vertex<2){
 					continue;
 				}
-				considered_vertices += 1;
 				neighbors = adjacent_vertices(vertex,graph);
 
 				
@@ -345,6 +384,7 @@ class Node_switching_game {
 		}
 
 		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false){
+			assert(vertex<num_vertices(graph));
 			set<int> change_set;
 			Onturn player = do_force_color?force_color:onturn;
 			if (!do_force_color){
@@ -399,6 +439,7 @@ class Node_switching_game {
 		}
 
 #ifdef FOR_INFERENCE
+
 		StringPropMap get_grid_layout(){
 			double scale;
 			string* position_array;

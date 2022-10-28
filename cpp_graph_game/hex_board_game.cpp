@@ -162,8 +162,8 @@ class Hex_board {
 		Hex_color position[S*S];
 		Hex_color onturn;
 	public:
-		int size = S;
-		int num_squares = S*S;
+		static const int size = S;
+		static const int num_squares = S*S;
 		Hex_board(Hex_color c=red){
 			onturn = c;
 			fill(begin(position),begin(position)+num_squares,empty_square);

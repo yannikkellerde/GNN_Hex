@@ -7,6 +7,7 @@ find_package(TorchScatter REQUIRED)
 find_package(TorchSparse REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
+add_definitions(-DFOR_INFERENCE)
 add_executable(test_torch_script test_torch_script.cpp)
 target_compile_features(test_torch_script PUBLIC cxx_range_for)
 target_link_libraries(test_torch_script TorchScatter::TorchScatter)
