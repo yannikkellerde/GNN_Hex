@@ -3,7 +3,8 @@
 #include <unistd.h>
 #include <chrono>
 
-int main(){
+void run_experiment(){
+	torch::Device device(torch::kCUDA,0);
 	int move,move_num,move_time;
 	Onturn winner;
 	const int size=11;
@@ -20,11 +21,10 @@ int main(){
 	}
 	vector<Onturn> winstats;
 
+	vector<vector<torch::jit::IValue>> converted;
+
 	auto start_out = chrono::high_resolution_clock::now();
 	for (int i=0;i<num_games;++i){
-		if (i>0){
-			game_list[i].considered_vertices = game_list[i-1].considered_vertices;
-		}
 		move_num = 0;
 		do{
 			auto start = chrono::high_resolution_clock::now();
@@ -34,7 +34,10 @@ int main(){
 			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 			move_time+=duration.count();
 			winner = game_list[i].who_won();
-			if (winner!=noplayer){
+			if (winner == noplayer){
+				game_list[i].convert_graph(device);
+			}
+			else{
 				winstats.push_back(winner);
 				break;
 			}
@@ -44,10 +47,18 @@ int main(){
 	auto stop_out = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(stop_out - start_out);
 	cout << duration.count() << endl;
-	cout << game_list[num_games-1].considered_vertices << endl;
-	cout << count(winstats.begin(),winstats.end(),maker) << endl;
-	cout << count(winstats.begin(),winstats.end(),breaker) << endl;
+	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
+	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
 	/* cout << move_time << endl; */
 	
 	/* return 0; */
+}
+
+int main(){
+	run_experiment();
+	run_experiment();
+	run_experiment();
+	run_experiment();
+	run_experiment();
+	run_experiment();
 }
