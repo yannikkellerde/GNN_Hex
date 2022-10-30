@@ -12,9 +12,9 @@
 #include <boost/graph/adjacency_iterator.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/depth_first_search.hpp>
+#include <torch/script.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/autograd/function.h>
-#include <torch/script.h>
 #include <ATen/ATen.h>
 #include "hex_board_game.cpp"
 #include "util.cpp"
@@ -22,6 +22,10 @@
 #include <boost/config.hpp>
 using namespace std;
 using namespace boost;
+
+int init_time = 0;
+int feat_time = 0;
+int ei_time = 0;
 
 
 struct PropertyStruct{
@@ -487,11 +491,27 @@ class Node_switching_game {
 			dp.property("node_id", get(vertex_index, graph));
 			write_graphviz_dp(out,graph,dp);
 		};
+
+	std::vector<torch::jit::IValue> convert_graph_old(torch::Device &device){
+		int n = num_vertices(graph);
+		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
+		torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
+		torch::Tensor node_features = torch::zeros({n,2},options_float);
+		node_features[0][0] = 1;
+		node_features[1][0] = 1;
+	}
+
 	std::vector<torch::jit::IValue> convert_graph(torch::Device &device){
+
+		auto start = chrono::high_resolution_clock::now();
 		int n = num_vertices(graph);
 		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
 		torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
 		torch::Tensor node_features = torch::zeros({n-2,3},options_float);
+		auto stop = chrono::high_resolution_clock::now();
+		auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+		init_time+=duration.count();
+		start = chrono::high_resolution_clock::now();
 		Neighbors neigh = adjacent_vertices(terminal1,graph); //mark neighbors of terminals in node features
 		int num_t1_neigh = neigh.second-neigh.first;
 		for (;neigh.first!=neigh.second;++neigh.first){
@@ -507,8 +527,12 @@ class Node_switching_game {
 				node_features[i][2] = 1;
 			}
 		}
-
 		torch::Tensor edge_index = torch::empty({2,((int)num_edges(graph)-(int)num_t1_neigh-(int)num_t2_neigh)*2},options_long);
+		stop = chrono::high_resolution_clock::now();
+		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+		feat_time+=duration.count();
+		start = chrono::high_resolution_clock::now();
+
 		graph_traits<Graph>::edge_iterator ei, ei_end;
 		int ind = 0;
 		for (boost::tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei){
@@ -527,6 +551,9 @@ class Node_switching_game {
 		std::vector<torch::jit::IValue> parts;
 		parts.push_back(node_features);
 		parts.push_back(edge_index);
+		stop = chrono::high_resolution_clock::now();
+		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+		ei_time+=duration.count();
 		return parts;
 	}
 };

@@ -1,10 +1,10 @@
 #include "shannon_node_switching_game.cpp"
-#include<iostream>
+#include <iostream>
 #include <unistd.h>
 #include <chrono>
 
 void run_experiment(){
-	torch::Device device(torch::kCUDA,0);
+	torch::Device device(torch::kCPU,0);
 	int move,move_num,move_time;
 	Onturn winner;
 	const int size=11;
@@ -47,6 +47,9 @@ void run_experiment(){
 	auto stop_out = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(stop_out - start_out);
 	cout << duration.count() << endl;
+	cout << init_time << endl;
+	cout << feat_time << endl;
+	cout << ei_time << endl;
 	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
 	/* cout << move_time << endl; */
@@ -55,10 +58,5 @@ void run_experiment(){
 }
 
 int main(){
-	run_experiment();
-	run_experiment();
-	run_experiment();
-	run_experiment();
-	run_experiment();
 	run_experiment();
 }
