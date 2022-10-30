@@ -80,8 +80,8 @@ void test_dead_and_captured_consistency(){
 int main(){
 	srand(0);
 #ifdef FOR_INFERENCE
-	test_dead_and_captured_consistency();
-	/* interactive_env(); */
+	/* test_dead_and_captured_consistency(); */
+	interactive_env();
 #endif
 	return 0;
 }

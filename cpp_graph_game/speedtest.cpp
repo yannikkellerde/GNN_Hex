@@ -50,6 +50,7 @@ void run_experiment(){
 	cout << init_time << endl;
 	cout << feat_time << endl;
 	cout << ei_time << endl;
+	cout << different_time << endl;
 	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
 	/* cout << move_time << endl; */

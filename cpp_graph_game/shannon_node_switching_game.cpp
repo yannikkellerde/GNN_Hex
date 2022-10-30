@@ -26,6 +26,7 @@ using namespace boost;
 int init_time = 0;
 int feat_time = 0;
 int ei_time = 0;
+int different_time = 0;
 
 
 struct PropertyStruct{
@@ -492,15 +493,6 @@ class Node_switching_game {
 			write_graphviz_dp(out,graph,dp);
 		};
 
-	std::vector<torch::jit::IValue> convert_graph_old(torch::Device &device){
-		int n = num_vertices(graph);
-		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
-		torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
-		torch::Tensor node_features = torch::zeros({n,2},options_float);
-		node_features[0][0] = 1;
-		node_features[1][0] = 1;
-	}
-
 	std::vector<torch::jit::IValue> convert_graph(torch::Device &device){
 
 		auto start = chrono::high_resolution_clock::now();
@@ -533,6 +525,9 @@ class Node_switching_game {
 		feat_time+=duration.count();
 		start = chrono::high_resolution_clock::now();
 
+		vector<int> source_vec;
+		vector<int> targ_vec;
+
 		graph_traits<Graph>::edge_iterator ei, ei_end;
 		int ind = 0;
 		for (boost::tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei){
@@ -545,15 +540,27 @@ class Node_switching_game {
 				edge_index[1][ind] = s-2;
 				edge_index[0][ind] = t-2;
 				ind++;
+				source_vec.push_back(s-2);
+				source_vec.push_back(t-2);
+				targ_vec.push_back(t-2);
+				targ_vec.push_back(s-2);
 			}
 		}
+		stop = chrono::high_resolution_clock::now();
+		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+		ei_time+=duration.count();
+
+		start = chrono::high_resolution_clock::now();
+		torch::Tensor source_tensor = torch::tensor(source_vec,options_long);
+		torch::Tensor target_tensor = torch::tensor(targ_vec,options_long);
+		stop = chrono::high_resolution_clock::now();
+		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+		different_time+=duration.count();
+		assert(source_tensor.size(0)==edge_index.size(1));
 
 		std::vector<torch::jit::IValue> parts;
 		parts.push_back(node_features);
 		parts.push_back(edge_index);
-		stop = chrono::high_resolution_clock::now();
-		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-		ei_time+=duration.count();
 		return parts;
 	}
 };
