@@ -18,6 +18,7 @@
 		* convert_graph time: 0.01 seconds
 		* total time: 0.023 seconds
 		* for reference: with BGL, make move took already 0.05 seconds and convert_graph time was around 0.3 seconds.
+		* In total, we now have ~30x efficientcy gain with respect to python implementation
 
 # Roadmap
 - [x] Create fast Hex Graph envirionment
