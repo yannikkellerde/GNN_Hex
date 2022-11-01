@@ -131,10 +131,8 @@ class Node_switching_game {
 		int board_size = S;
 		Hex_board<S> board;
 		bool maker_won=false;
-#ifdef FOR_INFERENCE
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
-#endif
 
 		Node_switching_game (){
 			reset();
@@ -174,10 +172,8 @@ class Node_switching_game {
 		};
 
 		void reset(){
-#ifdef FOR_INFERENCE
 			response_set_maker = map<int,int>();
 			response_set_breaker = map<int,int>();
-#endif
 			maker_won = false;
 			onturn = maker;
 			graph = Graph(board.num_squares);
@@ -215,7 +211,6 @@ class Node_switching_game {
 				return -1;
 		}
 
-#ifdef FOR_INFERENCE
 		int get_response(int bloc,bool for_maker){
 			if (response_set_maker.find(bloc)!=response_set_maker.end()){
 				if (for_maker){
@@ -241,7 +236,6 @@ class Node_switching_game {
 			}
 			return -1;
 		}
-#endif
 
 		Node_switching_game copy(){
 			Graph new_graph;
@@ -374,10 +368,8 @@ class Node_switching_game {
 							continue;
 						}
 						if (check_if_same(graph,v1,vertex)){
-#ifdef FOR_INFERENCE
 							response_set_maker[graph[v1].board_location]=graph[vertex].board_location;
 							response_set_maker[graph[vertex].board_location]=graph[v1].board_location;
-#endif
 								/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
 								/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
 							/* cout << "maker captured " << v1 << vertex << endl; */
@@ -410,10 +402,6 @@ class Node_switching_game {
 						}
 					}
 					if (is_fully_connected(graph,vertex,v1) && is_fully_connected(graph,v1,vertex)){
-#ifdef FOR_INFERENCE
-						response_set_breaker[graph[v1].board_location]=graph[vertex].board_location;
-						response_set_breaker[graph[vertex].board_location]=graph[v1].board_location;
-#endif
 						/* cout << "breaker captured " << v1 << " " << vertex << endl; */
 						tmp_neigh = adjacent_vertices(vertex,graph);
 						neigh_neigh = adjacent_vertices(v1,graph);

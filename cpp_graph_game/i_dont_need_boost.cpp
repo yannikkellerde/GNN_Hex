@@ -13,7 +13,8 @@ class Graph{
 		vector<int> sources;
 		vector<int> targets;
 		int num_vertices;
-		vector<vector<int>> vprops;
+		vector<vector<int>> lprops;
+		vector<vector<float>> fprops;
 		vector<int> edge_starts;
 
 		Graph(){}
@@ -32,7 +33,7 @@ class Graph{
 			while(ps!=next_edges && targets[ps]<t){
 				ps++;
 			}
-			if (targets[ps] == t){
+			if (ps!=next_edges && targets[ps] == t){
 				return false;
 			}
 			sources.insert(sources.begin()+ps,s);
@@ -44,11 +45,12 @@ class Graph{
 			return true;
 		}
 
-		void add_edge(int v1, int v2){
+		bool add_edge(int v1, int v2){
 			// Does not add edges if already exists
 			if (add_edge_onside(v1,v2)){
-				add_edge_onside(v2,v1);
+				return add_edge_onside(v2,v1);
 			}
+			return false;
 		}
 
 		Neighbors adjacent_vertices(int vertex){
@@ -111,8 +113,12 @@ class Graph{
 			}
 		}
 
-		void add_vprop(int init=0){
-			vprops.push_back(vector<int>(num_vertices,init));
+		void add_lprop(int init){
+			lprops.push_back(vector<int>(num_vertices,init));
+		}
+
+		void add_fprop(float init){
+			fprops.push_back(vector<float>(num_vertices,init));
 		}
 
 		bool edge_exists(int source, int target){
@@ -160,7 +166,11 @@ class Graph{
 			}
 			num_vertices--;
 			edge_starts.erase(edge_starts.end()-2);
-			for (vector<vector<int>>::iterator vp = vprops.begin();vp!=vprops.end();++vp){
+			for (vector<vector<int>>::iterator vp = lprops.begin();vp!=lprops.end();++vp){
+				(*vp)[vertex] = *(vp->end()-1);
+				vp->pop_back();
+			}
+			for (vector<vector<float>>::iterator vp = fprops.begin();vp!=fprops.end();++vp){
 				(*vp)[vertex] = *(vp->end()-1);
 				vp->pop_back();
 			}
@@ -186,8 +196,10 @@ class Graph{
 
 		void do_complete_dump(string fname="graph_dump.txt"){
 			vector<int>::iterator s,t,v;
+			vector<float>::iterator f;
 			vector<int>::iterator p;
-			vector<vector<int>>::iterator vp;
+			vector<vector<int>>::iterator lp;
+			vector<vector<float>>::iterator fp;
 			ofstream my_file;
 			my_file.open(fname);
 			my_file << "num vertices: " << num_vertices << endl << endl;
@@ -201,10 +213,17 @@ class Graph{
 			}
 			my_file << endl;
 
-			my_file << endl << "Vertex Properties:" << endl;
-			for (vp=vprops.begin();vp!=vprops.end();vp++){
-				for (v=vp->begin();v!=vp->end();v++){
+			my_file << endl << "Long Properties:" << endl;
+			for (lp=lprops.begin();lp!=lprops.end();lp++){
+				for (v=lp->begin();v!=lp->end();v++){
 					my_file << *v << " ";
+				}
+				my_file << endl << endl;
+			}
+			my_file << endl << "Long Properties:" << endl;
+			for (fp=fprops.begin();fp!=fprops.end();fp++){
+				for (f=fp->begin();f!=fp->end();v++){
+					my_file << *f << " ";
 				}
 				my_file << endl << endl;
 			}

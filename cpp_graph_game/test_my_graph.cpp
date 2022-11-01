@@ -9,7 +9,7 @@ void play_around_with_graph(){
 	Graph g(10);
 	Graph b = g;
 	while (true){
-		b.graphviz_me("my_graph.dot");
+		b.graphviz_me("my_graph.dot",false);
 		b.do_complete_dump("graph_dump.txt");
     system("pkill -f 'mupdf my_graph.pdf'");
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
@@ -19,7 +19,7 @@ void play_around_with_graph(){
 		getline(cin,user_command);
 		boost::split(command_parts,user_command,boost::is_any_of(" "));
 		if (command_parts[0] == "add_edge"){
-			g.add_edge(stoi(command_parts[1]),stoi(command_parts[2]));
+			cout << g.add_edge(stoi(command_parts[1]),stoi(command_parts[2])) << endl;
 		}
 		else if (command_parts[0] == "clear_vertex"){
 			g.clear_vertex(stoi(command_parts[1]));

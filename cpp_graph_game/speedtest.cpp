@@ -1,4 +1,5 @@
-#include "shannon_node_switching_game.cpp"
+/* #include "shannon_node_switching_game.cpp" */
+#include "boost_free_node_switching_game.cpp"
 #include <iostream>
 #include <unistd.h>
 #include <chrono>
@@ -14,7 +15,9 @@ void run_experiment(){
 	Node_switching_game<size> game(board);
 	Node_switching_game<size> game_list[num_games];
 	for (int i=0;i<num_games;i++){
-		game_list[i] = game.copy();
+		/* game_list[i] = game.copy(); */
+		/* game_list[i] = Node_switching_game<size>(game); // this copys, i think */
+		/* game_list[i] = Node_switching_game<size>(); */
 		if (i%2==0){
 			game_list[i].switch_onturn();
 		}
@@ -28,8 +31,8 @@ void run_experiment(){
 		move_num = 0;
 		do{
 			auto start = chrono::high_resolution_clock::now();
-			assert (num_vertices(game_list[i].graph)!=0);
-			move = (rand()/((RAND_MAX + 1u)/(num_vertices(game_list[i].graph))));
+			move = (rand()/((RAND_MAX + 1u)/(game_list[i].graph.num_vertices)));
+
 			game_list[i].make_move(move,false,noplayer,true);
 			auto stop = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -47,14 +50,15 @@ void run_experiment(){
 	}
 	auto stop_out = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(stop_out - start_out);
-	cout << duration.count() << endl;
-	cout << init_time << endl;
-	cout << feat_time << endl;
-	cout << ei_time << endl;
+	cout << endl;
+	cout << "total time " << duration.count() << endl;
+	cout << "initialization" << init_time << endl;
+	cout << "node features" << feat_time << endl;
+	cout << "edge indices" << ei_time << endl;
 	/* cout << different_time << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
-	/* cout << move_time << endl; */
+	cout << "move time " << move_time << endl;
 	
 	/* return 0; */
 }
