@@ -19,6 +19,9 @@
 		* total time: 0.023 seconds
 		* for reference: with BGL, make move took already 0.05 seconds and convert_graph time was around 0.3 seconds.
 		* In total, we now have ~30x efficientcy gain with respect to python implementation
+	- Correctness is verified as well as posible:
+		* First of all interactively by playing around with env
+		* Second of all by playing games with random moves with and with out dead and captured removal and checking if the result is the same.
 
 # Roadmap
 - [x] Create fast Hex Graph envirionment
