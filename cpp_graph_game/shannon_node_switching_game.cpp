@@ -22,6 +22,7 @@
 #include <boost/config.hpp>
 using namespace std;
 using namespace boost;
+using namespace torch::indexing;
 
 int init_time = 0;
 int feat_time = 0;
@@ -30,9 +31,9 @@ int different_time = 0;
 
 
 struct PropertyStruct{
-#ifdef FOR_INFERENCE
 	int board_location;
-#endif
+	bool t1connect;
+	bool t2connect;
 	bool removed;
 };
 
@@ -45,43 +46,24 @@ typedef set<string> labels ;
 typedef pair<typename Graph::adjacency_iterator,typename Graph::adjacency_iterator> Neighbors; 
 typedef pair<graph_traits<Graph>::vertex_iterator, graph_traits<Graph>::vertex_iterator> Viters;
 enum Onturn {noplayer,maker,breaker};
-enum Teminals {terminal1, terminal2};
 
-bool path_exists(Graph& g, Vertex src, Vertex dest) {
-  bool visited[num_vertices(g)];
-	fill(visited,visited+num_vertices(g),false);
-  visited[src] = true;
-  std::stack<Vertex> next;
-  next.push(src);
 
-  while(!next.empty()) {
-    Vertex cv = next.top();
-    next.pop();
-		for (Neighbors neigh = adjacent_vertices(cv,g);neigh.first!=neigh.second;++neigh.first){
-			Vertex nv = *neigh.first;
-			if (!visited[nv]){
-				if (nv==dest){
-					return true;
-				}
-				visited[nv] = true;
-				next.push(nv);
-			}
-		}
+bool check_if_same(Graph& g, int v1, int v2){
+	if (g[v1].t1connect!=g[v2].t1connect || g[v1].t2connect!=g[v2].t2connect){
+		return false;
 	}
-  return false;
-}
-
-bool check_if_same(Graph& g, Neighbors& neigh1, Neighbors& neigh2, int ignore1, int ignore2){
+	Neighbors neigh1 = adjacent_vertices(v1,g);
+	Neighbors neigh2 = adjacent_vertices(v2,g);
 	if (neigh1.second-neigh1.first!=neigh2.second-neigh2.first){
 		return false;
 	}
 	for (;neigh1.first!=neigh1.second;++neigh1.first){
-		int v1 = *neigh1.first;
-		if (v1 != ignore1){
+		int n1 = *neigh1.first;
+		if (n1 != v2){
 			auto pi = neigh2.first;
 			bool found = false;
 			for (;pi!=neigh2.second;++pi){
-				if (*pi==v1){
+				if (*pi==n1){
 					found = true;
 					break;
 				}
@@ -109,6 +91,26 @@ bool is_fully_connected(Graph& g,Neighbors& neigh, int ignore){
 	return true;
 }
 
+bool is_fully_connected(Graph& g,int vert,int ignore){
+	if (g[vert].t1connect&&g[vert].t2connect){
+		return false;
+	}
+	Neighbors neigh = adjacent_vertices(vert,g);
+	if (g[vert].t1connect||g[vert].t2connect){
+		if (neigh.second - neigh.first > 1){
+			return false;
+		}
+		else if (neigh.second - neigh.first==1){
+			return *neigh.first==ignore;
+		}
+		else{
+			return true;
+		}
+	}
+	return is_fully_connected(g,neigh,ignore);
+}
+
+
 bool is_fully_connected(Graph& g,Neighbors& neigh){
 	for (;neigh.first!=neigh.second;++neigh.first){
 		for (Graph::adjacency_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
@@ -128,6 +130,7 @@ class Node_switching_game {
 		Onturn onturn=maker;
 		int board_size = S;
 		Hex_board<S> board;
+		bool maker_won=false;
 #ifdef FOR_INFERENCE
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
@@ -144,24 +147,22 @@ class Node_switching_game {
 			// Convert model repr back to graph
 			torch::Tensor node_features= data[0].toTensor().cpu();
 			torch::Tensor edge_index = data[1].toTensor().cpu();
-			graph = Graph(node_features.size(0)+2);
+			graph = Graph(node_features.size(0));
 			for (int i=0;i<num_vertices(graph);i++){
-				if (i>1){
-#ifdef FOR_INFERENCE
-					graph[i].board_location = i-2;  // This only works if in starting position
-#endif
-					if (node_features[i-2][0].item<float>()==1.){
-						add_edge(i,terminal1,graph);
-					}
-					if (node_features[i-2][1].item<float>()==1.){
-						add_edge(i,terminal2,graph);
-					}
+				graph[i].t1connect = false;
+				graph[i].t2connect = false;
+				graph[i].board_location = i;  // This only works if in starting position
+				if (node_features[i][0].item<float>()==1.){
+					graph[i].t1connect = true;
+				}
+				if (node_features[i][1].item<float>()==1.){
+					graph[i].t2connect = true;
 				}
 				graph[i].removed = false;
 			}
 			for (int i=0;i<edge_index.size(1);i++){
-				long source = edge_index[0][i].item<long>()+2;
-				long target = edge_index[1][i].item<long>()+2;
+				long source = edge_index[0][i].item<long>();
+				long target = edge_index[1][i].item<long>();
 				if (!edge(source,target,graph).second){
 					add_edge(source,target,graph);
 				}
@@ -177,39 +178,33 @@ class Node_switching_game {
 			response_set_maker = map<int,int>();
 			response_set_breaker = map<int,int>();
 #endif
+			maker_won = false;
 			onturn = maker;
-			graph = Graph(board.num_squares+2);
-			graph[terminal1].removed = false;
-			graph[terminal2].removed = false;
-#ifdef FOR_INFERENCE
-			graph[terminal1].board_location = -1;
-			graph[terminal2].board_location = -1;
-#endif
+			graph = Graph(board.num_squares);
 			for (int i=0;i<board.num_squares;i++){
-#ifdef FOR_INFERENCE
-				graph[i+2].board_location = i;
-#endif
-				graph[i+2].removed = false;
+				graph[i].board_location = i;
+				graph[i].t1connect = false;
+				graph[i].t2connect = false;
+				graph[i].removed = false;
 				if (i<board.size){
-					add_edge(i+2,terminal1,graph);
+					graph[i].t1connect = true;
 				}
 				if (floor(i/board.size)==board.size-1){
-					add_edge(i+2,terminal2,graph);
+					graph[i].t2connect = true;
 				}
 				if (i%board.size>0 && board.size<=i && i<=board.num_squares-board.size){
-					add_edge(i+2,i+1,graph);
+					add_edge(i,i-1,graph);
 				}
 				if (i>=board.size){
-					add_edge(i+2,i+2-board.size,graph);
+					add_edge(i,i-board.size,graph);
 					if (i%board.size!=board.size-1){
-						add_edge(i+2,i+3-board.size,graph);
+						add_edge(i,i+1-board.size,graph);
 					}
 				}
 			}
 			vi_map=get(vertex_index, graph);
 		}
 
-#ifdef FOR_INFERENCE
 		int vertex_from_board_location(int board_location){
 				for (Viters vs = vertices(graph);vs.first!=vs.second;++vs.first){
 					int v = *vs.first;
@@ -220,6 +215,7 @@ class Node_switching_game {
 				return -1;
 		}
 
+#ifdef FOR_INFERENCE
 		int get_response(int bloc,bool for_maker){
 			if (response_set_maker.find(bloc)!=response_set_maker.end()){
 				if (for_maker){
@@ -257,18 +253,22 @@ class Node_switching_game {
 			onturn = onturn==maker?breaker:maker;
 		}
 
-		set<int> fix_terminal_connections(int terminal){
+		set<int> fix_terminal_connections(int vertex, bool is_t1){
 			set<int> change_set;
-			for (Neighbors neigh = adjacent_vertices(terminal,graph);neigh.first!=neigh.second;++neigh.first){
-				for (Graph::adjacency_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
-					int v1 = *neigh.first;
-					int v2 = *it2;
-					if (edge(v1,v2,graph).second){
-						remove_edge(v1,v2,graph);
+			vector<pair<int,int>> to_remove;
+			for (Neighbors neigh = adjacent_vertices(vertex,graph);neigh.first!=neigh.second;++neigh.first){
+				int v1 = *neigh.first;
+				for (Neighbors neigh2 = adjacent_vertices(v1,graph);neigh2.first!=neigh2.second;++neigh2.first){
+					int v2 = *neigh2.first;
+					if (v2!=vertex && (is_t1?graph[v2].t1connect:graph[v2].t2connect)){
+						to_remove.push_back(pair<int,int>(v1,v2)); //otherwise iterators get messed up
 						change_set.insert(v1);
 						change_set.insert(v2);
 					}
 				}
+			}
+			for (auto p=to_remove.begin();p!=to_remove.end();++p){
+				remove_edge(p->first,p->second,graph);
 			}
 			return change_set;
 		}
@@ -288,9 +288,62 @@ class Node_switching_game {
 		}
 
 		vector<int> get_actions(){
-			vector <int> res(num_vertices(graph)-2);
-			iota(res.begin(),res.end(),2);
+			vector <int> res(num_vertices(graph));
+			iota(res.begin(),res.end(),0);
 			return res;
+		}
+
+		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false){
+			assert(vertex<num_vertices(graph));
+			set<int> change_set;
+			Onturn player = do_force_color?force_color:onturn;
+			if (!do_force_color){
+				switch_onturn();
+			}
+			if (player==maker){
+				if (graph[vertex].t1connect&&graph[vertex].t2connect){
+					maker_won=true;
+					return change_set;
+				}
+				for (Neighbors neigh = adjacent_vertices(vertex,graph);neigh.first!=neigh.second;++neigh.first){
+					int v1 = *neigh.first;
+					if (graph[vertex].t1connect){
+						graph[v1].t1connect = true;
+					}
+					else if (graph[vertex].t2connect){
+						graph[v1].t2connect = true;
+					}
+					else{
+						for (Graph::adjacency_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
+							Vertex v2 = *it2;
+							if (!((graph[v1].t1connect&&graph[v2].t1connect)||
+										(graph[v1].t2connect&&graph[v2].t2connect)||
+										edge(v1,v2,graph).second)){
+								add_edge(v1,v2,graph);
+							}
+						}
+					}
+				}
+				if (graph[vertex].t1connect||graph[vertex].t2connect){
+					change_set = fix_terminal_connections(vertex,graph[vertex].t1connect);
+				}
+			}
+			if (do_remove_dead_and_captured){
+				Neighbors neigh = adjacent_vertices(vertex,graph);
+				change_set.insert(neigh.first,neigh.second);
+			}
+			clear_vertex(vertex,graph);
+			if (do_remove_dead_and_captured || only_mark_removed){
+				graph[vertex].removed = true;
+			}
+			else{
+				remove_vertex(vertex,graph);
+			}
+			if (do_remove_dead_and_captured){
+				remove_dead_and_captured(change_set);
+				remove_marked_nodes();
+			}
+			return change_set;
 		}
 
 		void remove_dead_and_captured(set<int> &consider_set){
@@ -302,7 +355,7 @@ class Node_switching_game {
 				/* cout << vertex << endl; */
 				is_dead = true;
 				can_continue = false;
-				if (graph[vertex].removed || vertex<2){
+				if (graph[vertex].removed){
 					continue;
 				}
 				neighbors = adjacent_vertices(vertex,graph);
@@ -317,12 +370,10 @@ class Node_switching_game {
 						else{
 							v1 = *neigh_neigh.first;
 						}
-						if (v1<2 || v1==vertex){
+						if (v1==vertex){
 							continue;
 						}
-						neigh_neigh_neigh = adjacent_vertices(v1,graph);
-						neighbors = adjacent_vertices(vertex,graph);
-						if (check_if_same(graph,neighbors,neigh_neigh_neigh,v1,vertex)){
+						if (check_if_same(graph,v1,vertex)){
 #ifdef FOR_INFERENCE
 							response_set_maker[graph[v1].board_location]=graph[vertex].board_location;
 							response_set_maker[graph[vertex].board_location]=graph[v1].board_location;
@@ -344,19 +395,21 @@ class Node_switching_game {
 				if (can_continue){
 					continue;
 				}
-				for (neighbors = adjacent_vertices(vertex,graph);neighbors.first!=neighbors.second;++neighbors.first){
+				neighbors = adjacent_vertices(vertex,graph);
+				if (graph[vertex].t1connect&&graph[vertex].t2connect){
+					is_dead = false;
+				}
+				else if ((graph[vertex].t1connect||graph[vertex].t2connect)&&(neighbors.second-neighbors.first)>0){
+					is_dead = false;
+				}
+				for (;neighbors.first!=neighbors.second;++neighbors.first){
 					v1 = *neighbors.first;
 					for (Graph::adjacency_iterator it2 = neighbors.first+1;it2!=neighbors.second;++it2){
-						if (!edge(*neighbors.first,*it2,graph).second){
+						if (is_dead&&!edge(*neighbors.first,*it2,graph).second){
 							is_dead = false;
 						}
 					}
-					if (v1 < 2){
-						continue;
-					}
-					tmp_neigh = adjacent_vertices(vertex,graph);
-					neigh_neigh = adjacent_vertices(v1,graph);
-					if (is_fully_connected(graph,tmp_neigh,v1) && is_fully_connected(graph,neigh_neigh,vertex)){
+					if (is_fully_connected(graph,vertex,v1) && is_fully_connected(graph,v1,vertex)){
 #ifdef FOR_INFERENCE
 						response_set_breaker[graph[v1].board_location]=graph[vertex].board_location;
 						response_set_breaker[graph[vertex].board_location]=graph[v1].board_location;
@@ -388,62 +441,63 @@ class Node_switching_game {
 			}
 		}
 
-		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false){
-			assert(vertex<num_vertices(graph));
-			set<int> change_set;
-			Onturn player = do_force_color?force_color:onturn;
-			if (!do_force_color){
-				switch_onturn();
+
+		Onturn who_won(){
+			int src=0;
+			bool found1,found2,not_again;
+			bool visited[num_vertices(graph)];
+			bool ever_visited[num_vertices(graph)];
+			if (maker_won){
+				return maker;
 			}
-			if (player==maker){
-				int have_to_fix = -1;
-				for (Neighbors neigh = adjacent_vertices(vertex,graph);neigh.first!=neigh.second;++neigh.first){
-					int v1 = *neigh.first;
-					if (v1 == terminal1 || v1 == terminal2){
-						have_to_fix = v1;
-					}
-					for (Graph::adjacency_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
-						Vertex v2 = *it2;
-						if (!((edge(v1,terminal1,graph).second&&edge(v2,terminal1,graph).second)||
-									(edge(v1,terminal2,graph).second&&edge(v2,terminal2,graph).second)||
-									edge(v1,v2,graph).second)){
-							add_edge(v1,v2,graph);
+			if (num_vertices(graph)==0){
+				return breaker;
+			}
+			while (true){
+				fill(visited,visited+num_vertices(graph),false);
+				visited[src] = true;
+				std::stack<int> next;
+				found1 = graph[src].t1connect;
+				found2 = graph[src].t2connect;
+				next.push(src);
+
+				while(!next.empty()) {
+					int cv = next.top();
+					next.pop();
+					for (Neighbors neigh = adjacent_vertices(cv,graph);neigh.first!=neigh.second;++neigh.first){
+						int nv = *neigh.first;
+						if (!visited[nv]){
+							if (graph[nv].t1connect){
+								found1 = true;
+							}
+							if (graph[nv].t2connect){
+								found2 = true;
+							}
+							if (found1&&found2){
+								return noplayer;
+							}
+							visited[nv] = true;
+							ever_visited[nv] = true;
+							next.push(nv);
 						}
 					}
 				}
-				if (have_to_fix!=-1){
-					change_set = fix_terminal_connections(have_to_fix);
+				if (found1&&found2){
+					return noplayer;
+				}
+				not_again = true;
+				for (int i=src+1;i<num_vertices(graph);i++){
+					if (!ever_visited[i]){
+						src = i;
+						not_again=false;
+						break;
+					}
+				}
+				if (not_again){
+					return breaker;
 				}
 			}
-			if (do_remove_dead_and_captured){
-				Neighbors neigh = adjacent_vertices(vertex,graph);
-				change_set.insert(neigh.first,neigh.second);
-			}
-			clear_vertex(vertex,graph);
-			if (do_remove_dead_and_captured || only_mark_removed){
-				graph[vertex].removed = true;
-			}
-			else{
-				remove_vertex(vertex,graph);
-			}
-			if (do_remove_dead_and_captured){
-				remove_dead_and_captured(change_set);
-				remove_marked_nodes();
-			}
-			return change_set;
 		}
-
-		Onturn who_won(){
-			if (edge(terminal1,terminal2,graph).second){
-				return maker;
-			}
-			if (!path_exists(graph,terminal1,terminal2)){
-				return breaker;
-			}
-			return noplayer;
-		}
-
-#ifdef FOR_INFERENCE
 
 		StringPropMap get_grid_layout(){
 			double scale;
@@ -454,9 +508,7 @@ class Node_switching_game {
 			const double ystart = 0;
 			const double xend = xstart+1.5*(board_size-1)*scale;
 			const double yend = ystart+sqrt(3./4.)*(board_size-1)*scale;
-			position_array[terminal1] = to_string(xstart)+","+to_string((yend/2))+"!";
-			position_array[terminal2] = to_string(xend)+","+to_string((yend/2))+"!";
-			for (int i=2;i<num_vertices(graph);i++){
+			for (int i=0;i<num_vertices(graph);i++){
 				int bi = graph[i].board_location;
 				int row = floor(bi/board_size);
 				int col = bi%board_size;
@@ -465,18 +517,35 @@ class Node_switching_game {
 			StringPropMap pos_map = make_iterator_property_map(position_array,vi_map);
 			return pos_map;
 		}
-#endif
 
 		StringPropMap get_colors(){
 			string* color_array;
 			color_array = new string[num_vertices(graph)];
-			for (int i=2;i<num_vertices(graph);i++){
-				color_array[i] = "black";
+			for (int i=0;i<num_vertices(graph);i++){
+				if (graph[i].t1connect){
+					if (graph[i].t2connect){
+						color_array[i] = "brown";
+					}
+					else{
+						color_array[i] = "green";
+					}
+				}
+				else if (graph[i].t2connect){
+					color_array[i] = "red";
+				}
+				else{
+					color_array[i] = "black";
+				}
 			}
-			color_array[terminal1] = "red";
-			color_array[terminal2] = "red";
 			StringPropMap pos_map = make_iterator_property_map(color_array,vi_map);
 			return pos_map;
+		}
+
+		void graphviz_me (string out){
+			ofstream my_file;
+			my_file.open(out);
+			graphviz_me(my_file);
+			my_file.close();
 		}
 
 		void graphviz_me (ostream &out){
@@ -484,79 +553,44 @@ class Node_switching_game {
 			/* cout << "here " << num_vertices(graph) << endl; */
 			dynamic_properties dp;
 			dp.property("color", color_map);
-#ifdef FOR_INFERENCE
-			get_grid_layout();
 			StringPropMap pos_map = get_grid_layout();
 			dp.property("pos",pos_map);
-#endif
 			dp.property("node_id", get(vertex_index, graph));
 			write_graphviz_dp(out,graph,dp);
 		};
 
 	std::vector<torch::jit::IValue> convert_graph(torch::Device &device){
-
+		Neighbors neigh;
 		auto start = chrono::high_resolution_clock::now();
 		int n = num_vertices(graph);
 		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
 		torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
-		torch::Tensor node_features = torch::zeros({n-2,3},options_float);
+		torch::Tensor node_features = torch::zeros({n,3},options_float);
 		auto stop = chrono::high_resolution_clock::now();
 		auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 		init_time+=duration.count();
 		start = chrono::high_resolution_clock::now();
-		Neighbors neigh = adjacent_vertices(terminal1,graph); //mark neighbors of terminals in node features
-		int num_t1_neigh = neigh.second-neigh.first;
-		for (;neigh.first!=neigh.second;++neigh.first){
-			node_features[(*neigh.first)-2][0] = 1.;
+		for (int vi=0;vi<num_vertices(graph);++vi){
+			node_features[vi][0] = graph[vi].t1connect;
+			node_features[vi][1] = graph[vi].t2connect;
 		}
-		neigh = adjacent_vertices(terminal2,graph);
-		int num_t2_neigh = neigh.second-neigh.first;
-		for (;neigh.first!=neigh.second;++neigh.first){
-			node_features[(*neigh.first)-2][1] = 1.;
-		}
-		if (onturn==maker){
-			for (int i=0;i<n-2;++i){
-				node_features[i][2] = 1;
-			}
-		}
-		torch::Tensor edge_index = torch::empty({2,((int)num_edges(graph)-(int)num_t1_neigh-(int)num_t2_neigh)*2},options_long);
+		torch::Tensor edge_index = torch::empty({2,(int)num_edges(graph)*2},options_long);
 		stop = chrono::high_resolution_clock::now();
 		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 		feat_time+=duration.count();
 		start = chrono::high_resolution_clock::now();
 
-		vector<int> source_vec;
-		vector<int> targ_vec;
-
-		graph_traits<Graph>::edge_iterator ei, ei_end;
 		int ind = 0;
-		for (boost::tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei){
-			int s = source(*ei,graph);
-			int t = target(*ei,graph);
-			if (s>1 && t>1){
-				edge_index[0][ind] = s-2;  // double, because undirected graph
-				edge_index[1][ind] = t-2;  // -2, because we throw out terminals
-				ind++;
-				edge_index[1][ind] = s-2;
-				edge_index[0][ind] = t-2;
-				ind++;
-				source_vec.push_back(s-2);
-				source_vec.push_back(t-2);
-				targ_vec.push_back(t-2);
-				targ_vec.push_back(s-2);
-			}
+		for (int vi=0;vi<num_vertices(graph);++vi){
+			neigh = adjacent_vertices(vi,graph);
+			edge_index.index_put_({0,Slice(ind,ind+(neigh.second-neigh.first))},vi);
+			/* cout << ind << " " << ind+(neigh.second-neigh.first) << endl; */
+			edge_index.index_put_({1,Slice(ind,ind+(neigh.second-neigh.first))},torch::tensor(vector<int>(neigh.first,neigh.second)));
+			ind+=neigh.second-neigh.first;
 		}
 		stop = chrono::high_resolution_clock::now();
 		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 		ei_time+=duration.count();
-
-		start = chrono::high_resolution_clock::now();
-		torch::Tensor source_tensor = torch::tensor(source_vec,options_long);
-		torch::Tensor target_tensor = torch::tensor(targ_vec,options_long);
-		stop = chrono::high_resolution_clock::now();
-		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-		different_time+=duration.count();
-		assert(source_tensor.size(0)==edge_index.size(1));
 
 		std::vector<torch::jit::IValue> parts;
 		parts.push_back(node_features);

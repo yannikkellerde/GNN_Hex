@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(test_torch_script)
 
 option(WITH_CUDA "Enable CUDA support" ON)
+option(FOR_INFERENCE "" ON)
+add_definitions(-DFOR_INFERENCE)
 
 find_package(Torch REQUIRED)
 find_package(TorchScatter REQUIRED)
@@ -12,7 +14,6 @@ if (WITH_CUDA)
 find_package(CUDAToolkit REQUIRED)
 endif()
 
-add_definitions(-DFOR_INFERENCE)
 add_executable(test_torch_script test_torch_script.cpp)
 target_compile_features(test_torch_script PUBLIC cxx_range_for)
 target_link_libraries(test_torch_script TorchScatter::TorchScatter)

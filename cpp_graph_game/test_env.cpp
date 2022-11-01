@@ -1,15 +1,16 @@
 #include "shannon_node_switching_game.cpp"
+/* #include "boost_free_node_switching_game.cpp" */
 #include<iostream>
 #include <unistd.h>
 
 void interactive_env(){
-	torch::Device device(torch::kCUDA,0);
+	torch::Device device(torch::kCPU,0);
 	int move;
 	/* Hex_board<11> board; */
 	/* Node_switching_game<11> game_old(board); */
 	/* std::vector<torch::jit::IValue> data = game_old.convert_graph(device); */
 	/* Node_switching_game<11> game(data); */
-	Node_switching_game<11> game;
+	Node_switching_game<8> game;
 	while (true){
 		/* game.graphviz_me(cout); */
 		ofstream my_file;
@@ -57,7 +58,7 @@ void test_dead_and_captured_consistency(){
 				}
 			}
 			else{
-				board_response = fancy_game.get_response(bmove,fancy_game.onturn == breaker); // if breaker moved, maker responds
+				board_response = fancy_game.get_response(bmove,simple_game.onturn == maker); // if breaker moved, maker responds
 				if (board_response!=-1){
 					vertex_response = simple_game.vertex_from_board_location(board_response);
 					/* cout << "got response " << board_response << " " << vertex_response << " " << bmove << endl; */
@@ -68,8 +69,14 @@ void test_dead_and_captured_consistency(){
 				}
 			}
 		}
-		cout << simple_game.who_won() << "  " << fancy_game.who_won() << endl;
-		assert(simple_game.who_won()==fancy_game.who_won());
+		Onturn sww = simple_game.who_won();
+		Onturn fww = fancy_game.who_won();
+		cout << sww << "  " << fww << endl;
+		if (sww!=fww){
+			simple_game.graphviz_me("simple.dot");
+			fancy_game.graphviz_me("fancy.dot");
+		}
+		assert(sww==fww);
 		simple_game.reset();
 		fancy_game.reset();
 		/* return; */
@@ -79,9 +86,9 @@ void test_dead_and_captured_consistency(){
 
 int main(){
 	srand(0);
+	/* interactive_env(); */
 #ifdef FOR_INFERENCE
-	/* test_dead_and_captured_consistency(); */
-	interactive_env();
+	test_dead_and_captured_consistency();
 #endif
 	return 0;
 }

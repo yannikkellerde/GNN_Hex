@@ -28,7 +28,8 @@ void run_experiment(){
 		move_num = 0;
 		do{
 			auto start = chrono::high_resolution_clock::now();
-			move = (rand()/((RAND_MAX + 1u)/(num_vertices(game_list[i].graph)-2)))+2;
+			assert (num_vertices(game_list[i].graph)!=0);
+			move = (rand()/((RAND_MAX + 1u)/(num_vertices(game_list[i].graph))));
 			game_list[i].make_move(move,false,noplayer,true);
 			auto stop = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -50,7 +51,7 @@ void run_experiment(){
 	cout << init_time << endl;
 	cout << feat_time << endl;
 	cout << ei_time << endl;
-	cout << different_time << endl;
+	/* cout << different_time << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
 	/* cout << move_time << endl; */

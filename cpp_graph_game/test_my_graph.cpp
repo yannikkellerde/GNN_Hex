@@ -7,9 +7,10 @@ void play_around_with_graph(){
 	string user_command;
 	vector<string> command_parts;
 	Graph g(10);
+	Graph b = g;
 	while (true){
-		g.graphviz_me("my_graph.dot");
-		g.do_complete_dump("graph_dump.txt");
+		b.graphviz_me("my_graph.dot");
+		b.do_complete_dump("graph_dump.txt");
     system("pkill -f 'mupdf my_graph.pdf'");
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
 		system("mupdf my_graph.pdf &");

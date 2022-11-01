@@ -6,7 +6,7 @@
 
 using namespace std;
 
-typedef pair<vector<int>::iterator,vector<int>::iterator> Neighborhood;
+typedef pair<vector<int>::iterator,vector<int>::iterator> Neighbors;
 
 class Graph{
 	public:
@@ -23,7 +23,8 @@ class Graph{
 			targets.reserve(num_vertices*6);
 		}
 
-		void add_edge_onside(int s, int t){
+		bool add_edge_onside(int s, int t){
+			// Does not add edges if already exists
 			int ps,pt;
 			vector<int>::iterator ps_pointer = edge_starts.begin()+s;
 			ps = *ps_pointer;
@@ -31,24 +32,39 @@ class Graph{
 			while(ps!=next_edges && targets[ps]<t){
 				ps++;
 			}
+			if (targets[ps] == t){
+				return false;
+			}
 			sources.insert(sources.begin()+ps,s);
 			targets.insert(targets.begin()+ps,t);
 			++ps_pointer;
 			for (;ps_pointer!=edge_starts.end();++ps_pointer){
 			  (*ps_pointer)+=1;
 			}
+			return true;
 		}
 
 		void add_edge(int v1, int v2){
-			add_edge_onside(v1,v2);
-			add_edge_onside(v2,v1);
+			// Does not add edges if already exists
+			if (add_edge_onside(v1,v2)){
+				add_edge_onside(v2,v1);
+			}
 		}
 
-		Neighborhood adjacent_vertices(int vertex){
+		Neighbors adjacent_vertices(int vertex){
 			vector<int>::iterator edge_start = edge_starts.begin()+vertex;
-			return Neighborhood(targets.begin()+(*edge_start),targets.begin()+*(edge_start+1));
+			return Neighbors(targets.begin()+(*edge_start),targets.begin()+*(edge_start+1));
+		}
+
+		int num_neighbors(int vertex){
+			vector<int>::iterator edge_start = edge_starts.begin()+vertex;
+			return *(edge_start+1)-*edge_start;
+
 		}
 		
+		bool delete_edge(int v1, int v2){
+			return delete_edge_onesided(v1,v2)&&delete_edge_onesided(v2,v1);
+		}
 
 		bool delete_edge_onesided(int source, int target){
 			int targ_vert;
@@ -151,7 +167,7 @@ class Graph{
 		}
 
 		void clear_vertex(int vertex){
-			Neighborhood neigh = adjacent_vertices(vertex);
+			Neighbors neigh = adjacent_vertices(vertex);
 			vector<int> del_sources(neigh.first,neigh.second);
 			delete_many_onesided(del_sources,vertex);
 
@@ -192,6 +208,30 @@ class Graph{
 				}
 				my_file << endl << endl;
 			}
+			my_file.close();
+		}
+		void graphviz_me(vector<pair<string,vector<string>>> props, string fname="my_graph.dot", bool undirected=true){
+			ofstream my_file;
+			vector<int>::iterator s,t;
+			my_file.open(fname);
+			my_file << "graph G {" << endl;
+			for (int i=0;i<num_vertices;i++){
+				my_file << to_string(i) << " [";
+				for (auto p=props.begin();p!=props.end();++p){
+					my_file<<p->first<<"=\"";
+					my_file<<p->second[i]<<"\"";
+					if (p!=props.end()-1){
+						my_file << ", ";
+					}
+				}
+				my_file<<"];"<<endl;
+			}
+			for (s=sources.begin(),t=targets.begin();s!=sources.end();++s,++t){
+				if (!undirected || (*s<*t)){
+					my_file << to_string(*s) << "--" << to_string(*t) << " ;" << endl;
+				}
+			}
+			my_file<<"}";
 			my_file.close();
 		}
 
