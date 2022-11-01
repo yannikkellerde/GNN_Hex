@@ -51,11 +51,11 @@ int main(int argc, const char* argv[]) {
 	inputs.push_back(node_features);
 	inputs.push_back(edge_index);
 	inputs.push_back(graph_indices);
-	/* std::cout << module.forward(inputs); */
-	
-	Node_switching_game<5> game;
-	graph_indices = torch::zeros(num_vertices(game.graph)-2,options_long);
-	inputs = game.convert_graph(device);
-	inputs.push_back(graph_indices);
 	std::cout << module.forward(inputs);
+	
+	/* Node_switching_game<5> game; */
+	/* graph_indices = torch::zeros(num_vertices(game.graph)-2,options_long); */
+	/* inputs = game.convert_graph(device); */
+	/* inputs.push_back(graph_indices); */
+	/* std::cout << module.forward(inputs); */
 }

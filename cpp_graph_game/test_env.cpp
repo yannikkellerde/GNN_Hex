@@ -6,11 +6,11 @@
 void interactive_env(){
 	torch::Device device(torch::kCPU,0);
 	int move;
-	/* Hex_board<11> board; */
-	/* Node_switching_game<11> game_old(board); */
-	/* std::vector<torch::jit::IValue> data = game_old.convert_graph(device); */
-	/* Node_switching_game<11> game(data); */
-	Node_switching_game<5> game;
+	Hex_board<11> board;
+	Node_switching_game<11> game_old(board);
+	std::vector<torch::jit::IValue> data = game_old.convert_graph(device);
+	Node_switching_game<11> game(data);
+	/* Node_switching_game<5> game; */
 	while (true){
 		/* game.graphviz_me(cout); */
 		game.graphviz_me("my_graph.dot");

@@ -222,7 +222,7 @@ class Graph{
 			}
 			my_file << endl << "Long Properties:" << endl;
 			for (fp=fprops.begin();fp!=fprops.end();fp++){
-				for (f=fp->begin();f!=fp->end();v++){
+				for (f=fp->begin();f!=fp->end();f++){
 					my_file << *f << " ";
 				}
 				my_file << endl << endl;

@@ -558,7 +558,7 @@ class Node_switching_game {
 		start = chrono::high_resolution_clock::now();
 		torch::Tensor edge_index = torch::empty({2,(int)graph.sources.size()},options_long);
 		edge_index.index_put_({0,Ellipsis},torch::tensor(graph.sources,options_long));
-		edge_index.index_put_({1,Ellipsis},torch::tensor(graph.sources,options_float));
+		edge_index.index_put_({1,Ellipsis},torch::tensor(graph.targets,options_long));
 
 		stop = chrono::high_resolution_clock::now();
 		duration = chrono::duration_cast<chrono::microseconds>(stop - start);
