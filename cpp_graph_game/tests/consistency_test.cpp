@@ -1,4 +1,4 @@
-#include "boost_free_node_switching_game.cpp"
+#include "../shannon_node_switching_game.cpp"
 #include<iostream>
 #include <unistd.h>
 
@@ -50,8 +50,4 @@ void test_dead_and_captured_consistency(){
 		fancy_game.reset();
 		/* return; */
 	}
-}
-
-int main(){
-	test_dead_and_captured_consistency();
 }

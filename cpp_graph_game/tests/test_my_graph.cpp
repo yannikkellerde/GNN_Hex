@@ -1,4 +1,4 @@
-#include "i_dont_need_boost.cpp"
+#include "../shannon_node_switching_game.cpp"
 #include <unistd.h>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -7,10 +7,9 @@ void play_around_with_graph(){
 	string user_command;
 	vector<string> command_parts;
 	Graph g(10);
-	Graph b = g;
 	while (true){
-		b.graphviz_me("my_graph.dot",false);
-		b.do_complete_dump("graph_dump.txt");
+		g.graphviz_me("my_graph.dot",false);
+		g.do_complete_dump("graph_dump.txt");
     system("pkill -f 'mupdf my_graph.pdf'");
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
 		system("mupdf my_graph.pdf &");
@@ -31,8 +30,4 @@ void play_around_with_graph(){
 			g.remove_vertex(stoi(command_parts[1]));
 		}
 	}
-}
-
-int main(){
-	play_around_with_graph();
 }

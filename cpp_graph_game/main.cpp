@@ -1,21 +1,28 @@
-#include "shannon_node_switching_game.cpp"
+#include "tests/speedtest.cpp"
+#include "tests/test_env.cpp"
+#include "tests/consistency_test.cpp"
+#include "tests/test_my_graph.cpp"
+#include "tests/test_torch_script.cpp"
 
-int main(){
-	Hex_board<5> board;
-	Node_switching_game game(board);
-	for (int i=0;i<1;i++){
-		game.make_move(8);
+int main(int argc, char * argv[]){
+	assert (argc>1);
+	if (string(argv[1]).compare("interactive")==0){
+		interactive_env();
 	}
-	game.graphviz_me(cout);
-	ofstream my_file;
-	my_file.open("my_graph.dot");
-	game.graphviz_me(my_file);
-	my_file.close();
-
-	ofstream next_file;
-	my_file.open("prop_graph.dot");
-	write_graphviz(my_file, game.graph, make_label_writer(get(&PropertyStruct::board_location, game.graph)));
-	next_file.close();
-	
-	return 0;
+	else if (string(argv[1]).compare("speedtest")==0){
+		speedtest();
+	}
+	else if (string(argv[1]).compare("consistency")==0){
+		test_dead_and_captured_consistency();
+	}
+	else if (string(argv[1]).compare("graph")==0){
+		play_around_with_graph();
+	}
+	else if (string(argv[1]).compare("torch_script")==0){
+		assert (argc>2);
+		test_torch_script(argv[2]);
+	}
+	else{
+		throw runtime_error("Error: Invalid argument "+string(argv[1]));
+	}
 }

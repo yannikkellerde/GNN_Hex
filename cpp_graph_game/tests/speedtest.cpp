@@ -1,10 +1,10 @@
 /* #include "shannon_node_switching_game.cpp" */
-#include "boost_free_node_switching_game.cpp"
+#include "../shannon_node_switching_game.cpp"
 #include <iostream>
 #include <unistd.h>
 #include <chrono>
 
-void run_experiment(){
+void speedtest(){
 	torch::Device device(torch::kCPU,0);
 	int move,move_num,move_time;
 	Onturn winner;
@@ -52,17 +52,13 @@ void run_experiment(){
 	auto duration = chrono::duration_cast<chrono::microseconds>(stop_out - start_out);
 	cout << endl;
 	cout << "total time " << duration.count() << endl;
-	cout << "initialization" << init_time << endl;
-	cout << "node features" << feat_time << endl;
-	cout << "edge indices" << ei_time << endl;
+	/* cout << "initialization" << init_time << endl; */
+	/* cout << "node features" << feat_time << endl; */
+	/* cout << "edge indices" << ei_time << endl; */
 	/* cout << different_time << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
 	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
 	cout << "move time " << move_time << endl;
 	
 	/* return 0; */
-}
-
-int main(){
-	run_experiment();
 }

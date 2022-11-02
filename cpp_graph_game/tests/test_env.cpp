@@ -1,5 +1,5 @@
 /* #include "shannon_node_switching_game.cpp" */
-#include "boost_free_node_switching_game.cpp"
+#include "../shannon_node_switching_game.cpp"
 #include<iostream>
 #include <unistd.h>
 
@@ -30,11 +30,4 @@ void interactive_env(){
 			cout << "breaker won" << endl;
 		}
 	}
-}
-
-
-int main(){
-	srand(0);
-	interactive_env();
-	return 0;
 }

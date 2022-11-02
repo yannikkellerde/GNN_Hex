@@ -6,6 +6,9 @@
 
 using namespace std;
 
+#if !defined(GRAPH)
+#define GRAPH
+
 typedef pair<vector<int>::iterator,vector<int>::iterator> Neighbors;
 
 class Graph{
@@ -271,3 +274,5 @@ class Graph{
 			my_file.close();
 		}
 };
+
+#endif

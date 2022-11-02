@@ -6,6 +6,9 @@
 
 using namespace std;
 
+#if !defined(UTIL)
+#define UTIL
+
 template<typename Iter, typename RandomGenerator>
 Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
     std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
@@ -23,3 +26,5 @@ Iter select_randomly(Iter start, Iter end) {
 int repeatable_random_choice(vector<int> vec) {
 	return vec[rand()%vec.size()]; // This is biased, but who cares
 }
+
+#endif

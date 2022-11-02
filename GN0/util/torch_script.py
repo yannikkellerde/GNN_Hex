@@ -11,7 +11,7 @@ def trace_pv_model():
     edge_index[0][0] = 0
     edge_index[0][1] = 3
     edge_index[1][0] = 3
-    edge_index[1][1]=4
+    edge_index[1][1] = 4
     print(model(node_features,edge_index,graph_indices))
 
     
