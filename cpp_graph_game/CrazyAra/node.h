@@ -33,10 +33,10 @@
 #include <unordered_map>
 
 #include <blaze/Math.h>
-#include "stateobj.h"
 
 #include "agents/config/searchsettings.h"
 #include "nodedata.h"
+#include "../hex_graph_game/shannon_node_switching_game.cpp"
 
 
 using blaze::HybridVector;
@@ -52,7 +52,7 @@ struct NodeAndIdx {
         node(node), childIdx(childIdx) {}
 };
 using Trajectory = vector<NodeAndIdx>;
-using HashMap = unordered_map<Key, weak_ptr<Node>> ;
+using HashMap = unordered_map<uint64_t, weak_ptr<Node>> ;
 // wrapper for unordered_map with a mutex for thread safe access
 struct MapWithMutex {
     mutex mtx;
@@ -78,9 +78,9 @@ struct NodeSplit {
 struct NodeAndBudget {
     Node* node;
     uint_fast16_t budget;
-    StateObj* curState;
+    Node_switching_game* curState;
     Trajectory curTrajectory;
-    NodeAndBudget(Node* node, uint_fast16_t budget, StateObj* state) :
+    NodeAndBudget(Node* node, uint_fast16_t budget, Node_switching_game* state) :
         node(node), budget(budget), curState(state) {}
 };
 
@@ -90,8 +90,8 @@ private:
     mutex mtx;
 
     DynamicVector<float> policyProbSmall;
-    vector<Action> legalActions;
-    Key key;
+    vector<int> legalActions;
+    uint16_t key;
 
     // singular values
     // valueSum stores the sum of all incoming value evaluations
@@ -99,7 +99,7 @@ private:
 
     unique_ptr<NodeData> d;
 #ifdef MCTS_STORE_STATES
-    unique_ptr<StateObj> state;
+    unique_ptr<Node_switching_game> state;
 #endif
 
     uint32_t realVisitsSum;
@@ -119,7 +119,7 @@ public:
      * @param State Corresponding state object
      * @param searchSettings Pointer to the searchSettings
      */
-    Node(StateObj *state,
+    Node(Node_switching_game *state,
          const SearchSettings* searchSettings);
 
     /**
@@ -237,7 +237,7 @@ public:
     bool is_solved() const;
     bool has_forced_win() const;
 
-    Action get_action(ChildIdx childIdx) const;
+    int get_action(ChildIdx childIdx) const;
     Node* get_child_node(ChildIdx childIdx) const;
     shared_ptr<Node> get_child_node_shared(ChildIdx childIdx) const;
 
@@ -264,7 +264,7 @@ public:
     void increment_no_visit_idx();
     void fully_expand_node();
 
-    Key hash_key() const;
+    uint16_t hash_key() const;
 
     size_t get_number_child_nodes() const;
 
@@ -343,7 +343,7 @@ public:
      * @param transposition Return true, if the transposition request was successfull, else false, i.e. a new node was added
      * @return the newly added node
      */
-    Node* add_new_node_to_tree(MapWithMutex* mapWithMutex, StateObj* newState, ChildIdx childIdx, const SearchSettings* searchSettings, bool& transposition);
+    Node* add_new_node_to_tree(MapWithMutex* mapWithMutex, Node_switching_game* newState, ChildIdx childIdx, const SearchSettings* searchSettings, bool& transposition);
 
     void add_transposition_parent_node();
 
@@ -370,7 +370,7 @@ public:
      * @return float
      */
     float updated_value_eval() const;
-    std::vector<Action> get_legal_actions() const;
+    std::vector<int> get_legal_actions() const;
     int get_checkmate_idx() const;
 
     /**
@@ -390,7 +390,7 @@ public:
      * @param qValueWeight Decides if Q-values are taken into account
      * @param qVetoDelta Describes how much better the highest Q-Value has to be to replace the candidate move with the highest visit count
      */
-     void get_principal_variation(vector<Action>& pv, float qValueWeight, float qVetoDelta);
+     void get_principal_variation(vector<int>& pv, float qValueWeight, float qVetoDelta);
 
     /**
      * @brief is_root_node Checks if the current node is the root node
@@ -455,7 +455,7 @@ public:
      * @param customOrdering Optional custom ordering of how the moves shall be displayed (e.g. according to the MCTS policy after search).
      *  If an empty vector is given, it will use the current ordering of the child nodes (by default according to the prior policy).
      */
-    void print_node_statistics(const StateObj* pos, const vector<size_t>& customOrdering) const;
+    void print_node_statistics(const Node_switching_game* pos, const vector<size_t>& customOrdering) const;
 
     /**
      * @brief get_node_count Returns the number of nodes in the subgraph of this nodes without counting terminal simulations
@@ -505,7 +505,7 @@ public:
     void set_as_inspected();
 
 #ifdef MCTS_STORE_STATES
-    StateObj* get_state() const;
+    Node_switching_game* get_state() const;
 
     /**
      * @brief set_auxiliary_outputs Sets the auxiliary outputs of the neural network to the state object
@@ -526,7 +526,7 @@ private:
      * @brief check_for_terminal Checks if the given board position is a terminal node and updates isTerminal
      * @param state Current board position for this node
      */
-    void check_for_terminal(StateObj* state);
+    void check_for_terminal(Node_switching_game* state);
 
 #ifdef MCTS_TB_SUPPORT
     /**
@@ -534,7 +534,7 @@ private:
      *  updates isTerminal and the value evaluation
      * @param state Current board position for this node
      */
-    void check_for_tablebase_wdl(StateObj* state);
+    void check_for_tablebase_wdl(Node_switching_game* state);
 
     void mark_as_tablebase();
 #endif
@@ -799,14 +799,5 @@ void backup_value(float value, float virtualLoss, const Trajectory& trajectory, 
         }
     }
 }
-
-/**
- * @brief is_transposition_verified Checks if the node and state object are a verified position, i.e. same move counter and node has nn results
- * @param node Node object
- * @param state State object
- * @return True, for verification, else false
- */
-bool is_transposition_verified(const Node* node, const StateObj* state);
-
 
 #endif // NODE_H

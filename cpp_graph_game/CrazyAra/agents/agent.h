@@ -28,22 +28,25 @@
 #ifndef AGENT_H
 #define AGENT_H
 
-#include "../stateobj.h"
 #include "../evalinfo.h"
 #include "config/searchlimits.h"
 #include "config/playsettings.h"
 #ifdef USE_RL
 #include "../rl/traindataexporter.h"
 #endif
-#include "nn/neuralnetapiuser.h"
+#include <torch/script.h>
+#include <torch/csrc/jit/api/module.h>
+#include "../../hex_graph_game/shannon_node_switching_game.cpp"
+#include "../../hex_graph_game/nn_api.cpp"
 
 namespace crazyara {
+typedef torch::jit::script::Module Module;
 /**
  * @brief The Agent class defines a generic agent interface which use to find the best move.
  * It is assumed that the agent uses a neural network in some way,
  * therefore it inherits from NeuralNetAPIUser.
  */
-class Agent : public NeuralNetAPIUser
+class Agent
 {
 private:
     /**
@@ -54,18 +57,25 @@ private:
     void set_best_move(size_t moveCounter);
 
 protected:
+		torch::Tensor probOutputs;
+		torch::Tensor valueOutputs;
+
+		// The next batch of inputs
+		std::vector<torch::jit::IValue> inputs;
+
     SearchLimits* searchLimits;
     PlaySettings* playSettings;
-    StateObj* state;
+    Node_switching_game * state;
     EvalInfo* evalInfo;
     // protect the isRunning attribute and makes sure that the stop() command can only be called after the search has actually been started
     mutex runnerMutex;
     bool verbose;
     // boolean which can be triggered by "stop" from std-in to stop the current search
     bool isRunning;
+		NN_api * net;
 
 public:
-    Agent(NeuralNetAPI* net, PlaySettings* playSettings, bool verbose);
+    Agent(NN_api * net, PlaySettings* playSettings, bool verbose);
 
     /**
      * @brief perform_action Selects an action based on the evaluation result
@@ -85,7 +95,7 @@ public:
      * @param limits Pointer to the search limit
      * @param evalInfo Returns the evaluation information
      */
-    void set_search_settings(StateObj *state, SearchLimits* searchLimits, EvalInfo* evalInfo);
+    void set_search_settings(Node_switching_game *state, SearchLimits* searchLimits, EvalInfo* evalInfo);
 
     /**
      * @brief stop Stops the current search is called after "stop" from the stdin
@@ -97,13 +107,13 @@ public:
      * @param move Move which has been played
      * @param ownMove Boolean indicating if it was CrazyAra's move
      */
-    virtual void apply_move_to_tree(Action move, bool ownMove) = 0;
+    virtual void apply_move_to_tree(int move, bool ownMove) = 0;
 
     /**
      * @brief get_best_action Returns the best action. It is assumed this function gets called after the search.
      * @return Action
      */
-    Action get_best_action();
+    int get_best_action();
 
     void lock();
 

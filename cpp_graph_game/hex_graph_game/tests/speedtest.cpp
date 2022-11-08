@@ -11,9 +11,9 @@ void speedtest(){
 	const int size=11;
 	const int num_games = 10;
 	move_time = 0;
-	Hex_board<size> board;
-	Node_switching_game<size> game(board);
-	Node_switching_game<size> game_list[num_games];
+	Hex_board board(size);
+	Node_switching_game game(board);
+	Node_switching_game game_list[num_games];
 	for (int i=0;i<num_games;i++){
 		/* game_list[i] = game.copy(); */
 		/* game_list[i] = Node_switching_game<size>(game); // this copys, i think */

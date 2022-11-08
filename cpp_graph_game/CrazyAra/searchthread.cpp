@@ -40,11 +40,10 @@ size_t SearchThread::get_max_depth() const
     return depthMax;
 }
 
-SearchThread::SearchThread(NeuralNetAPI *netBatch, const SearchSettings* searchSettings, MapWithMutex* mapWithMutex):
-    NeuralNetAPIUser(netBatch),
+SearchThread::SearchThread(NN_api *netBatch, const SearchSettings* searchSettings, MapWithMutex* mapWithMutex):
     rootNode(nullptr), rootState(nullptr), newState(nullptr),  // will be be set via setter methods
     newNodes(make_unique<FixedVector<Node*>>(searchSettings->batchSize)),
-    newNodeSideToMove(make_unique<FixedVector<SideToMove>>(searchSettings->batchSize)),
+    newNodeOnturn(make_unique<FixedVector<Onturn>>(searchSettings->batchSize)),
     transpositionValues(make_unique<FixedVector<float>>(searchSettings->batchSize*2)),
     isRunning(true), mapWithMutex(mapWithMutex), searchSettings(searchSettings),
     tbHits(0), depthSum(0), depthMax(0), visitsPreSearch(0),
@@ -86,7 +85,7 @@ void SearchThread::set_reached_tablebases(bool value)
     reachedTablebases = value;
 }
 
-Node* SearchThread::add_new_node_to_tree(StateObj* newState, Node* parentNode, ChildIdx childIdx, NodeBackup& nodeBackup)
+Node* SearchThread::add_new_node_to_tree(Node_switching_game* newState, Node* parentNode, ChildIdx childIdx, NodeBackup& nodeBackup)
 {
     bool transposition;
     Node* newNode = parentNode->add_new_node_to_tree(mapWithMutex, newState, childIdx, searchSettings, transposition);
@@ -190,15 +189,15 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
         description.depth++;
         if (nextNode == nullptr) {
 #ifdef MCTS_STORE_STATES
-            StateObj* newState = currentNode->get_state()->clone();
+            Node_switching_game* newState = currentNode->get_state()->clone();
 #else
-            newState = unique_ptr<StateObj>(rootState->clone());
+            newState = unique_ptr<Node_switching_game>(rootState->clone());
             assert(actionsBuffer.size() == description.depth-1);
-            for (Action action : actionsBuffer) {
-                newState->do_action(action);
+            for (int action : actionsBuffer) {
+                newState->make_move(action);
             }
 #endif
-            newState->do_action(currentNode->get_action(childIdx));
+            newState->make_move(currentNode->get_action(childIdx));
             currentNode->increment_no_visit_idx();
 #ifdef MCTS_STORE_STATES
             nextNode = add_new_node_to_tree(newState, currentNode, childIdx, description.type);
@@ -212,18 +211,13 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
                 Node* nextNode = currentNode->get_child_node(childIdx);
                 nextNode->set_value(newState->random_rollout());
                 nextNode->enable_has_nn_results();
-                if (searchSettings->useTranspositionTable && !nextNode->is_terminal()) {
-                    mapWithMutex->mtx.lock();
-                    mapWithMutex->hashTable.insert({nextNode->hash_key(), nextNode});
-                    mapWithMutex->mtx.unlock();
-                }
 #else
                 // fill a new board in the input_planes vector
                 // we shift the index by nbNNInputValues each time
                 newState->get_state_planes(true, inputPlanes + newNodes->size() * net->get_nb_input_values_total(), net->get_version());
                 // save a reference newly created list in the temporary list for node creation
                 // it will later be updated with the evaluation of the NN
-                newNodeSideToMove->add_element(newState->side_to_move());
+                newNodeOnturn->add_element(newState->onturn);
 #endif
             }
             return nextNode;
@@ -261,7 +255,7 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
     }
 }
 
-void SearchThread::set_root_state(StateObj* value)
+void SearchThread::set_root_state(Node_switching_game* value)
 {
     rootState = value;
 }
@@ -295,7 +289,7 @@ void SearchThread::set_nn_results_to_child_nodes()
     for (auto node: *newNodes) {
         if (!node->is_terminal()) {
             fill_nn_results(batchIdx, net->is_policy_map(), valueOutputs, probOutputs, auxiliaryOutputs, node,
-                            tbHits, rootState->mirror_policy(newNodeSideToMove->get_element(batchIdx)),
+                            tbHits, rootState->mirror_policy(newNodeOnturn->get_element(batchIdx)),
                             searchSettings, rootNode->is_tablebase());
         }
         ++batchIdx;
@@ -305,7 +299,7 @@ void SearchThread::set_nn_results_to_child_nodes()
 void SearchThread::backup_value_outputs()
 {
     backup_values(*newNodes, newTrajectories);
-    newNodeSideToMove->reset_idx();
+    newNodeOnturn->reset_idx();
     backup_values(transpositionValues.get(), transpositionTrajectories);
 }
 
@@ -422,9 +416,9 @@ ChildIdx SearchThread::select_enhanced_move(Node* currentNode) const {
     if (currentNode->is_playout_node() && !currentNode->was_inspected() && !currentNode->is_terminal()) {
 
         // iterate over the current state
-        unique_ptr<StateObj> pos = unique_ptr<StateObj>(rootState->clone());
-        for (Action action : actionsBuffer) {
-            pos->do_action(action);
+        unique_ptr<Node_switching_game> pos = unique_ptr<Node_switching_game>(rootState->clone());
+        for (int action : actionsBuffer) {
+            pos->make_move(action);
         }
 
         // make sure a check has been explored at least once

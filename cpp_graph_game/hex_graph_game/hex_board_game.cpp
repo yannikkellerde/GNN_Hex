@@ -11,21 +11,19 @@ using namespace std;
 
 enum Hex_color{empty_square,red,blue};
 
-template <int S>
 class Hex_board {
 	private:
-		Hex_color position[S*S];
 		Hex_color onturn;
+		vector<Hex_color> position;
 	public:
-		static const int size = S;
-		static const int num_squares = S*S;
-		Hex_board(Hex_color c=red){
-			onturn = c;
-			fill(begin(position),begin(position)+num_squares,empty_square);
+		int size;
+		int num_squares;
+		Hex_board(int size=11, Hex_color c=red):onturn(c),size(size),num_squares(size*size){
+			position = vector<Hex_color>(num_squares,empty_square);
 		};
 		vector<int> get_actions(){
 			vector <int> actions = {};
-			for (int i=0; i<sizeof(position)/sizeof(*position); ++i){
+			for (int i=0; i<position.size(); ++i){
 				if (position[i]==empty_square){
 					actions.push_back(i);
 				}

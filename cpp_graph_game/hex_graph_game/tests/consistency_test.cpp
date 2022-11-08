@@ -3,8 +3,8 @@
 #include <unistd.h>
 
 void test_dead_and_captured_consistency(){
-	Node_switching_game<5> simple_game;
-	Node_switching_game<5> fancy_game;
+	Node_switching_game simple_game(11);
+	Node_switching_game fancy_game(11);
 	string f;
 	int move, board_response, vertex_response, bmove, fancy_vmove, movenum;
 	vector<int> moves;

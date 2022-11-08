@@ -36,8 +36,6 @@
 #include "agent.h"
 #include "../evalinfo.h"
 #include "../node.h"
-#include "../stateobj.h"
-#include "../nn/neuralnetapi.h"
 #include "config/searchsettings.h"
 #include "config/searchlimits.h"
 #include "config/playsettings.h"
@@ -56,7 +54,7 @@ public:
     unique_ptr<TimeManager> timeManager;
 
     shared_ptr<Node> rootNode;
-    unique_ptr<StateObj> rootState;
+    unique_ptr<Node_switching_game> rootState;
 
     // stores the pointer to the root node which will become the new root
     shared_ptr<Node> ownNextRoot;
@@ -65,7 +63,7 @@ public:
 
     MapWithMutex mapWithMutex;
     float lastValueEval;
-    SideToMove lastSideToMove;
+    Onturn lastOnturn;
 
     // boolean which indicates if the same node was requested twice for analysis
     bool reusedFullTree;
@@ -82,8 +80,8 @@ public:
     unique_ptr<ThreadManager> threadManager;
     bool reachedTablebases;
 public:
-    MCTSAgent(NeuralNetAPI* netSingle,
-              vector<unique_ptr<NeuralNetAPI>>& netBatches,
+    MCTSAgent(NN_api* netSingle,
+              vector<unique_ptr<NN_api>>& netBatches,
               SearchSettings* searchSettings,
               PlaySettings* playSettings);
     ~MCTSAgent();
@@ -114,7 +112,7 @@ public:
      */
     void export_search_tree(size_t maxDepth, const string& filename);
 
-    void apply_move_to_tree(Action move, bool ownMove) override;
+    void apply_move_to_tree(int move, bool ownMove) override;
 
     /**
      * @brief clear_game_history Traverses all root positions for the game and calls clear_subtree() for each of them
@@ -154,7 +152,7 @@ public:
      * @param value New value to set
      */
     void update_dirichlet_epsilon(float value);
-    StateObj *get_root_state() const;
+    Node_switching_game *get_root_state() const;
     bool is_running() const;
 
     /**
@@ -174,7 +172,7 @@ public:
      * @param pos Requested board position
      * @return Number of nodes that have already been explored before the serach
      */
-    size_t init_root_node(StateObj* state);
+    size_t init_root_node(Node_switching_game* state);
 
     /**
      * @brief get_new_root_node Returns the pointer of the new root node for the given position in the case
@@ -183,13 +181,13 @@ public:
      * @param pos Requested board position
      * @return Pointer to root node or nullptr
      */
-    shared_ptr<Node> get_root_node_from_tree(StateObj* state);
+    shared_ptr<Node> get_root_node_from_tree(Node_switching_game* state);
 
     /**
      * @brief create_new_root_node Creates a new root node for the given board position and requests the neural network for evaluation
      * @param pos Board position
      */
-    inline void create_new_root_node(StateObj* state);
+    inline void create_new_root_node(Node_switching_game* state);
 
     /**
      * @brief delete_old_tree Clear the old tree except the gameNodes (rootNode, opponentNextRoot)
@@ -220,6 +218,6 @@ public:
  * @param depth Current depth in the search tree
  * @param maxDepth Maximum depth which will be printed. If 0, the full tree will be printed
  */
-void print_child_nodes_to_file(const Node* parentNode, StateObj* state, size_t parentId, size_t& nodeId, ostream& outFile, size_t depth, size_t maxDepth);
+void print_child_nodes_to_file(const Node* parentNode, Node_switching_game* state, size_t parentId, size_t& nodeId, ostream& outFile, size_t depth, size_t maxDepth);
 
 #endif // MCTSAGENT_H

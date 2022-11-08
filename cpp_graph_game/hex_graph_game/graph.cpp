@@ -23,8 +23,8 @@ class Graph{
 		Graph(){}
 		Graph(int num_verts):num_vertices(num_verts){
 			edge_starts = vector<int>(num_vertices+1,0);
-			sources.reserve(num_vertices*6); // just some heuristic estimate on how many edges there will be
-			targets.reserve(num_vertices*6);
+			sources.reserve(num_vertices*7); // just some heuristic estimate on how many edges there will be
+			targets.reserve(num_vertices*7);
 		}
 
 		bool add_edge_onside(int s, int t){

@@ -49,9 +49,13 @@ void test_torch_script(string fname) {
 	/* inputs.push_back(graph_indices); */
 	/* std::cout << module.forward(inputs); */
 	
-	Node_switching_game<5> game;
+	Node_switching_game game(5);
 	graph_indices = torch::zeros(game.graph.num_vertices,options_long);
 	inputs = game.convert_graph(device);
 	inputs.push_back(graph_indices);
-	std::cout << module.forward(inputs);
+	c10::IValue res = module.forward(inputs);
+	auto out = res.toTupleRef();
+	auto he = out.elements()[0].toTensor();
+
+	std::cout << he;
 }

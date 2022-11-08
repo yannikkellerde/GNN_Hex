@@ -27,9 +27,7 @@
 #include <chrono>
 
 #include "agent.h"
-#include "../util/communication.h"
 #include "../util/blazeutil.h"
-#include "stateobj.h"
 
 using namespace std;
 using namespace crazyara;
@@ -38,7 +36,6 @@ using namespace crazyara;
 void Agent::set_best_move(size_t moveCounter)
 {
     if (moveCounter < playSettings->temperatureMoves && playSettings->initTemperature > 0.01) {
-        info_string("Sample move");
         DynamicVector<double> policyProbSmall = evalInfo->policyProbSmall;
         apply_temperature(policyProbSmall, get_current_temperature(*playSettings, moveCounter));
         if (playSettings->quantileClipping != 0) {
@@ -52,20 +49,19 @@ void Agent::set_best_move(size_t moveCounter)
     }
 }
 
-Agent::Agent(NeuralNetAPI* net, PlaySettings* playSettings, bool verbose):
-    NeuralNetAPIUser(net),
-    playSettings(playSettings), verbose(verbose), isRunning(false)
+Agent::Agent(NN_api * net, PlaySettings* playSettings, bool verbose):
+    playSettings(playSettings), verbose(verbose), isRunning(false), net(net)
 {
 }
 
-void Agent::set_search_settings(StateObj *pos, SearchLimits *searchLimits, EvalInfo* evalInfo)
+void Agent::set_search_settings(Node_switching_game *pos, SearchLimits *searchLimits, EvalInfo* evalInfo)
 {
     this->state = pos;
     this->searchLimits = searchLimits;
     this->evalInfo = evalInfo;
 }
 
-Action Agent::get_best_action()
+int Agent::get_best_action()
 {
     return evalInfo->bestMove;
 }
@@ -86,14 +82,7 @@ void Agent::perform_action()
     evalInfo->start = chrono::steady_clock::now();
     this->evaluate_board_state();
     evalInfo->end = chrono::steady_clock::now();
-    set_best_move(state->steps_from_null());
-    info_msg(*evalInfo);
-    info_string(state->fen());
-    #ifdef MODE_STRATEGO
-        info_bestmove(StateConstants::action_to_uci(evalInfo->bestMove, state->is_chess960()) + " equals " + state->action_to_string(evalInfo->bestMove));
-    #else
-        info_bestmove(StateConstants::action_to_uci(evalInfo->bestMove, state->is_chess960()));
-    #endif
+    set_best_move(state->move_num);
     isRunning = false;
     runnerMutex.unlock();
 }

@@ -1,3 +1,4 @@
+set(CMAKE_BUILD_TYPE Debug)
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/include/libtorch")
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(test_torch_script)

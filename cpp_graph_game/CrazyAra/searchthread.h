@@ -30,10 +30,10 @@
 
 #include "node.h"
 #include "constants.h"
-#include "neuralnetapi.h"
-#include "config/searchlimits.h"
+#include "agents/config/searchlimits.h"
 #include "util/fixedvector.h"
-#include "nn/neuralnetapiuser.h"
+#include "../hex_graph_game/shannon_node_switching_game.cpp"
+#include "../hex_graph_game/nn_api.cpp"
 
 
 enum NodeBackup : uint8_t {
@@ -51,16 +51,16 @@ struct NodeDescription
     size_t depth;
 };
 
-class SearchThread : NeuralNetAPIUser
+class SearchThread
 {
 private:
     Node* rootNode;
-    StateObj* rootState;
-    unique_ptr<StateObj> newState;
+    Node_switching_game* rootState;
+    unique_ptr<Node_switching_game> newState;
 
     // list of all node objects which have been selected for expansion
     unique_ptr<FixedVector<Node*>> newNodes;
-    unique_ptr<FixedVector<SideToMove>> newNodeSideToMove;
+    unique_ptr<FixedVector<Onturn>> newNodeOnturn;
     unique_ptr<FixedVector<float>> transpositionValues;
 
     vector<Trajectory> newTrajectories;
@@ -68,7 +68,7 @@ private:
     vector<Trajectory> collisionTrajectories;
 
     Trajectory trajectoryBuffer;
-    vector<Action> actionsBuffer;
+    vector<int> actionsBuffer;
 
     bool isRunning;
 
@@ -88,7 +88,7 @@ public:
      * @param searchSettings Given settings for this search run
      * @param MapWithMutex Handle to the hash table
      */
-    SearchThread(NeuralNetAPI* netBatch, const SearchSettings* searchSettings, MapWithMutex* mapWithMutex);
+    SearchThread(NN_api* netBatch, const SearchSettings* searchSettings, MapWithMutex* mapWithMutex);
 
     /**
      * @brief create_mini_batch Creates a mini-batch of new unexplored nodes.
@@ -138,14 +138,14 @@ public:
      * @param nodeBackup Returns NODE_TRANSPOSITION if a tranpsosition node was added and NODE_NEW_NODE otherwise
      * @return The newly added node
      */
-    Node* add_new_node_to_tree(StateObj* newPos, Node* parentNode, ChildIdx childIdx, NodeBackup& nodeBackup);
+    Node* add_new_node_to_tree(Node_switching_game* newPos, Node* parentNode, ChildIdx childIdx, NodeBackup& nodeBackup);
 
     /**
      * @brief reset_tb_hits Sets the number of table hits to 0
      */
     void reset_stats();
 
-    void set_root_state(StateObj* value);
+    void set_root_state(Node_switching_game* value);
     size_t get_tb_hits() const;
 
     size_t get_avg_depth();

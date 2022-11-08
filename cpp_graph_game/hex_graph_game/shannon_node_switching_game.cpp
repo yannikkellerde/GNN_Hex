@@ -114,18 +114,18 @@ bool is_fully_connected(Graph& g,Neighbors& neigh){
 	return true;
 }
 
-template <int S>
 class Node_switching_game {
 	public:
 		Graph graph;
 		Onturn onturn=maker;
-		int board_size = S;
-		Hex_board<S> board;
+		int board_size;
+		Hex_board board;
 		bool maker_won=false;
+		int move_num;
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
 
-		Node_switching_game (){
+		Node_switching_game (int board_size=11):board_size(board_size){
 			reset();
 		};
 		Node_switching_game (Graph& g){
@@ -155,18 +155,28 @@ class Node_switching_game {
 				graph.add_edge(source,target);
 			}
 		}
-		Node_switching_game (Hex_board<S>& from_board):board(from_board){
+		Node_switching_game (Hex_board& from_board):board(from_board){
 			reset();
 		};
 
-		Node_switching_game(Node_switching_game<S>& ref){
+		Node_switching_game(Node_switching_game& ref){
 			graph = ref.graph;
 			maker_won = ref.maker_won;
 			response_set_maker = ref.response_set_maker;
 			response_set_breaker = ref.response_set_breaker;
+			onturn = ref.onturn;
+			board_size = ref.board_size;
+			board = ref.board;
+			move_num = ref.move_num;
+		}
+
+		Node_switching_game * clone(){
+			return new Node_switching_game(*this);
 		}
 
 		void reset(){
+			move_num = 0;
+			board_size = board.size;
 			maker_won=false;
 			response_set_maker = map<int,int>();
 			response_set_breaker = map<int,int>();
@@ -284,6 +294,7 @@ class Node_switching_game {
 			set<int> change_set;
 			Onturn player = do_force_color?force_color:onturn;
 			if (!do_force_color){
+				++move_num;
 				switch_onturn();
 			}
 			if (player==maker){

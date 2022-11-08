@@ -42,7 +42,7 @@ using namespace crazyara;
 class RawNetAgent: public Agent
 {
 public:
-    RawNetAgent(NeuralNetAPI* net, PlaySettings* playSettings, bool verbose);
+    RawNetAgent(NN_api * net, PlaySettings* playSettings, bool verbose);
     RawNetAgent(const RawNetAgent&) = delete;
     RawNetAgent& operator=(RawNetAgent const&) = delete;
 
@@ -50,7 +50,7 @@ public:
 
     void stop() override;
 
-    void apply_move_to_tree(Action move, bool ownMove) override;
+    void apply_move_to_tree(int move, bool ownMove) override;
 };
 
 #endif // RAWNETAGENT_H
