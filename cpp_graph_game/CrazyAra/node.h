@@ -89,7 +89,6 @@ class Node
 private:
     mutex mtx;
 
-    DynamicVector<float> policyProbSmall;
     vector<int> legalActions;
     uint16_t key;
 
@@ -114,6 +113,7 @@ private:
     bool sorted;
 
 public:
+    DynamicVector<float> policyProbSmall;
     /**
      * @brief Node Primary constructor which is used when expanding a node during search
      * @param State Corresponding state object

@@ -81,6 +81,15 @@ private:
     size_t visitsPreSearch;
     const uint_fast32_t terminalNodeCache;
     bool reachedTablebases;
+		NN_api * net;
+
+		torch::Tensor probOutputs;
+		torch::Tensor valueOutputs;
+
+		// The next batch of inputs
+		vector<torch::Tensor> edge_indices;
+		vector<torch::Tensor> node_features;
+		vector<int> batch_ptr;
 public:
     /**
      * @brief SearchThread
@@ -190,9 +199,9 @@ private:
 
 void run_search_thread(SearchThread *t);
 
-void fill_nn_results(size_t batchIdx, bool isPolicyMap, const float* valueOutputs, const float* probOutputs, const float* auxiliaryOutputs, Node *node, size_t& tbHits, bool mirrorPolicy, const SearchSettings* searchSettings, bool isRootNodeTB);
+void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB);
 void node_post_process_policy(Node *node, float temperature, const SearchSettings* searchSettings);
-void node_assign_value(Node *node, const float* valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB);
+void node_assign_value(Node *node, const torch::Tensor valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB);
 
 /**
  * @brief random_root_playout Uses random move exploration (epsilon greedy) from the given position. The probability for doing a random move decays by depth.

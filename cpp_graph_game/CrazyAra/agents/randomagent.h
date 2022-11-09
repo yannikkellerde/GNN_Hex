@@ -32,8 +32,6 @@
 #include "mctsagent.h"
 #include "../evalinfo.h"
 #include "../node.h"
-#include "../stateobj.h"
-#include "../nn/neuralnetapi.h"
 #include "config/searchsettings.h"
 #include "config/searchlimits.h"
 #include "config/playsettings.h"
@@ -50,8 +48,8 @@ class MCTSAgentRandom : public MCTSAgent
 public:
 
 public:
-    MCTSAgentRandom(NeuralNetAPI* netSingle,
-              vector<unique_ptr<NeuralNetAPI>>& netBatches,
+    MCTSAgentRandom(NN_api* netSingle,
+              vector<unique_ptr<NN_api>>& netBatches,
               SearchSettings* searchSettings,
               PlaySettings* playSettings);
     ~MCTSAgentRandom();

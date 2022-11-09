@@ -18,33 +18,31 @@
 */
 
 /*
- * @file: treemanager.h
- * Created on 24.07.2019
+ * @file: timeoutreadythread.cpp
+ * Created on 05.05.2021
  * @author: queensgambit
- *
- * Contains all utility methods regarding sarch tree management
  */
 
-#ifndef TREEMANAGER_H
-#define TREEMANAGER_H
+#include "timeoutreadythread.h"
 
-//#include "../board.h"
-#include "../node.h"
+void TimeOutReadyThread::print_is_ready()
+{
+    isRunning = true;
+    size_t remainingMoveTimeMS = timeOutMS;
+    remainingMoveTimeMS = timeOutMS;
+    if (wait_for(chrono::milliseconds(timeOutMS))){
+        if (isRunning) {
+            cout << "readyok" << endl;
+            hasReplied = true;
+        }
+    }
+}
 
-/**
- * @brief pick_next_node Return the next node when doing the given move for the parent node
- * @param move Move
- * @param ownMove Boolean indicating if it was CrazyAra's move
- */
-shared_ptr<Node> pick_next_node(int move, const Node* parentNode);
+bool TimeOutReadyThread::has_replied()
+{
+    return hasReplied;
+}
 
-/**
- * @brief same_hash_key Checks if the given node isn't a nullptr and
- *  shares the same hash key and plies from null as the position
- * @param node Node pointer
- * @param pos Position pointer
- * @return bool
- */
-bool same_hash_key(Node* node, Node_switching_game* state);
-
-#endif // TREEMANAGER_H
+void run_timeout_thread(TimeOutReadyThread* t) {
+    t->print_is_ready();
+}

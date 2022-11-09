@@ -22,12 +22,10 @@
  * Created on 28.08.2019
  * @author: queensgambit
  */
-
 #include "node.h"
 #include <limits.h>
 #include "util/blazeutil.h" // get_dirichlet_noise()
 #include "constants.h"
-#include "../util/communication.h"
 #include "evalinfo.h"
 
 bool Node::is_sorted() const
@@ -67,7 +65,7 @@ bool Node::has_transposition_child_node()
 }
 
 #ifdef MCTS_STORE_STATES
-StateObj* Node::get_state() const
+Node_switching_game* Node::get_state() const
 {
     return state.get();
 }
@@ -78,8 +76,8 @@ void Node::set_auxiliary_outputs(const float* auxiliaryOutputs)
 }
 #endif
 
-Node::Node(StateObj* state, const SearchSettings* searchSettings):
-    legalActions(state->legal_actions()),
+Node::Node(Node_switching_game* state, const SearchSettings* searchSettings):
+    legalActions(state->get_actions()),
     key(state->hash_key()),
     valueSum(0),
     d(nullptr),
@@ -87,7 +85,7 @@ Node::Node(StateObj* state, const SearchSettings* searchSettings):
     state(state),
     #endif
     realVisitsSum(0),
-    pliesFromNull(state->steps_from_null()),
+    pliesFromNull(state->move_num),
     numberParentNodes(1),
     isTerminal(false),
     isTablebase(false),
@@ -424,7 +422,7 @@ void Node::sort_moves_by_probabilities()
     sorted = true;
 }
 
-Action Node::get_action(ChildIdx childIdx) const
+int Node::get_action(ChildIdx childIdx) const
 {
     return legalActions[childIdx];
 }
@@ -566,7 +564,7 @@ uint32_t Node::get_real_visits() const
     return realVisitsSum;
 }
 
-Key Node::hash_key() const
+uint16_t Node::hash_key() const
 {
     return key;
 }
@@ -655,42 +653,11 @@ void Node::set_value(float value)
     this->valueSum = value * this->realVisitsSum;
 }
 
-Node* Node::add_new_node_to_tree(MapWithMutex* mapWithMutex, StateObj* newState, ChildIdx childIdx, const SearchSettings* searchSettings, bool& transposition)
+Node* Node::add_new_node_to_tree(MapWithMutex* mapWithMutex, Node_switching_game* newState, ChildIdx childIdx, const SearchSettings* searchSettings, bool& transposition)
 {
-    if(searchSettings->useMCGS) {
-        mapWithMutex->mtx.lock();
-        HashMap::const_iterator it = mapWithMutex->hashTable.find(newState->hash_key());
-        if (it != mapWithMutex->hashTable.end()) {
-            shared_ptr<Node> transpositionNode = it->second.lock();
-            Node* tranpositionNode = get_child_node(childIdx);
-            if (tranpositionNode != nullptr) {
-                if(is_transposition_verified(tranpositionNode, newState)) {
-                    d->childNodes[childIdx] = atomic_load(&transpositionNode);
-                    mapWithMutex->mtx.unlock();
-                    tranpositionNode->lock();
-                    tranpositionNode->add_transposition_parent_node();
-                    tranpositionNode->unlock();
-    #ifndef MCTS_SINGLE_PLAYER
-                    if (tranpositionNode->is_playout_node() && tranpositionNode->get_node_type() == LOSS) {
-                        set_checkmate_idx(childIdx);
-                    }
-    #endif
-                    transposition = true;
-                    return tranpositionNode;
-                }
-            }
-        }
-        mapWithMutex->mtx.unlock();
-    }
-
     // connect the Node to the parent
     shared_ptr<Node> newNode = make_shared<Node>(newState, searchSettings);
     atomic_store(&d->childNodes[childIdx], newNode);
-    if (searchSettings->useMCGS) {
-        mapWithMutex->mtx.lock();
-        mapWithMutex->hashTable.insert({d->childNodes[childIdx]->hash_key(), d->childNodes[childIdx]});
-        mapWithMutex->mtx.unlock();
-    }
     transposition = false;
     return d->childNodes[childIdx].get();
 }
@@ -743,7 +710,7 @@ float Node::updated_value_eval() const
     return d->qValues[argmax(d->childNumberVisits)];
 }
 
-std::vector<Action> Node::get_legal_actions() const
+std::vector<int> Node::get_legal_actions() const
 {
     return legalActions;
 }
@@ -811,10 +778,10 @@ void Node::mark_as_terminal()
     d->noVisitIdx = 0;
 }
 
-void Node::check_for_terminal(StateObj* pos)
+void Node::check_for_terminal(Node_switching_game* pos)
 {
     float customValue;
-    TerminalType terminalType = pos->is_terminal(get_number_child_nodes(), customValue);
+    TerminalType terminalType = pos->get_winner();
 
     if (terminalType != TERMINAL_NONE) {
         mark_as_terminal();
@@ -836,35 +803,6 @@ void Node::check_for_terminal(StateObj* pos)
         }
     }
 }
-
-#ifdef MCTS_TB_SUPPORT
-void Node::check_for_tablebase_wdl(StateObj* state)
-{
-    Tablebase::ProbeState result;
-    Tablebase::WDLScore wdlScore = state->check_for_tablebase_wdl(result);
-
-    if (result != Tablebase::FAIL) {
-        mark_as_tablebase();
-        switch(wdlScore) {
-        case Tablebase::WDLLoss:
-            mark_as_tb_loss();
-            break;
-        case Tablebase::WDLWin:
-            mark_as_tb_win();
-            break;
-        default:
-            mark_as_tb_draw();
-        }
-    }
-    // default: isTablebase = false;
-}
-
-void Node::mark_as_tablebase()
-{
-    init_node_data();
-    isTablebase = true;
-}
-#endif
 
 void Node::make_to_root()
 {
@@ -892,25 +830,6 @@ void Node::apply_temperature_to_prior_policy(float temperature)
     apply_temperature(policyProbSmall, temperature);
 }
 
-void Node::set_probabilities_for_moves(const float *data, bool mirrorPolicy)
-{
-    // allocate sufficient memory -> is assumed that it has already been done
-    assert(legalActions.size() == policyProbSmall.size());
-    for (size_t mvIdx = 0; mvIdx < legalActions.size(); ++mvIdx) {
-        // retrieve vector index from look-up table
-        // set the right prob value
-        // accessing the data on the raw floating point vector is faster
-        // than calling policyProb.At(batchIdx, vectorIdx)
-        if (mirrorPolicy) {
-            // use mirrored action_to_index
-            policyProbSmall[mvIdx] = data[StateConstants::action_to_index<normal,mirrored>(legalActions[mvIdx])];
-        }
-        else {
-            // use non-mirrored action_to_index
-            policyProbSmall[mvIdx] = data[StateConstants::action_to_index<normal,notMirrored>(legalActions[mvIdx])];
-        }
-    }
-}
 
 void Node::apply_softmax_to_policy()
 {
@@ -941,29 +860,6 @@ void Node::disable_action(size_t childIdxForParent)
 {
     policyProbSmall[childIdxForParent] = 0;
     d->qValues[childIdxForParent] = -INT_MAX;
-}
-
-void Node::enhance_moves(const SearchSettings* searchSettings)
-{
-    //    if (!searchSettings->enhanceChecks && !searchSettings->enhanceCaptures) {
-    //        return;
-    //    }
-
-    //    bool checkUpdate = false;
-    //    bool captureUpdate = false;
-
-    //    if (searchSettings->enhanceChecks) {
-    //        checkUpdate = enhance_move_type(min(searchSettings->threshCheck, max(policyProbSmall)*searchSettings->checkFactor),
-    //                                        searchSettings->threshCheck, legalMoves, isCheck, policyProbSmall);
-    //    }
-    //    if (searchSettings->enhanceCaptures) {
-    //        captureUpdate = enhance_move_type(min(searchSettings->threshCapture, max(policyProbSmall)*searchSettings->captureFactor),
-    //                                          searchSettings->threshCheck, legalMoves, isCapture, policyProbSmall);
-    //    }
-
-    //    if (checkUpdate || captureUpdate) {
-    //        policyProbSmall /= sum(policyProbSmall);
-    //    }
 }
 
 DynamicVector<float> Node::get_current_u_values(const SearchSettings* searchSettings)
@@ -1002,7 +898,6 @@ void Node::get_mcts_policy(DynamicVector<double>& mctsPolicy, ChildIdx& bestMove
         if (qVetoDelta != 0 && bestQIdx != bestMoveIdx && d->qValues[bestQIdx] > d->qValues[bestMoveIdx] + qVetoDelta && d->childNumberVisits[bestQIdx] > 1) {
             if (mctsPolicy[bestMoveIdx] > mctsPolicy[bestQIdx]) {
                 // swap values of highest qValues and most visits
-                info_string("veto move");
                 const double qSavePolicy = mctsPolicy[bestQIdx];
                 mctsPolicy[bestQIdx] = mctsPolicy[bestMoveIdx];
                 mctsPolicy[bestMoveIdx] = qSavePolicy;
@@ -1021,7 +916,7 @@ void Node::get_mcts_policy(DynamicVector<double>& mctsPolicy, ChildIdx& bestMove
     bestMoveIdx = argmax(mctsPolicy);
 }
 
-void Node::get_principal_variation(vector<Action>& pv, float qValueWeight, float qVetoDelta)
+void Node::get_principal_variation(vector<int>& pv, float qValueWeight, float qVetoDelta)
 {
     Node* curNode = this;
     while (curNode != nullptr && curNode->is_playout_node() && !curNode->is_terminal()) {
@@ -1158,7 +1053,7 @@ float get_current_cput(float visits, const SearchSettings* searchSettings)
     return log((visits + searchSettings->cpuctBase + 1) / searchSettings->cpuctBase) + searchSettings->cpuctInit;
 }
 
-void Node::print_node_statistics(const StateObj* state, const vector<size_t>& customOrdering) const
+void Node::print_node_statistics(const Node_switching_game* state, const vector<size_t>& customOrdering) const
 {
     const string header = "  #  | Move  |    Visits    |  Policy   |  Q-values  |  CP   |    Type    ";
     const string filler = "-----+-------+--------------+-----------+------------+-------+------------";
@@ -1174,13 +1069,13 @@ void Node::print_node_statistics(const StateObj* state, const vector<size_t>& cu
             q = d->qValues[childIdx];
         }
 
-        const Action move = get_legal_actions()[childIdx];
+        const int move = get_legal_actions()[childIdx];
         cout << " " << setfill('0') << setw(3) << childIdx << " | " << setfill(' ');
         if (state == nullptr) {
-            cout << setw(5) << StateConstants::action_to_uci(move, false) << " | ";
+            cout << setw(5) << move << " | ";
         }
         else {
-            cout << setw(5) << state->action_to_san(move, get_legal_actions(), false, false) << " | ";
+            cout << setw(5) << move << " | ";
         }
         cout << setw(12) << n << " | "
              << setw(9) << policyProbSmall[childIdx] << " | "
@@ -1247,11 +1142,10 @@ bool is_terminal_value(float value)
 
 float get_transposition_q_value(uint_fast32_t transposVisits, double transposQValue, double targetQValue)
 {
-    return std::clamp(transposVisits * (targetQValue - transposQValue) + targetQValue, double(LOSS_VALUE), double(WIN_VALUE));
+    return blaze::clamp(transposVisits * (targetQValue - transposQValue) + targetQValue, double(LOSS_VALUE), double(WIN_VALUE));
 }
 
-bool is_transposition_verified(const Node* node, const StateObj* state) {
+bool is_transposition_verified(const Node* node, const Node_switching_game* state) {
     return  node->has_nn_results() &&
-            node->plies_from_null() == state->steps_from_null() &&
-            state->number_repetitions() == 0;
+            node->plies_from_null() == state->move_num;
 }

@@ -26,6 +26,7 @@ checkpoints/
 wandb/
 build/
 saved_models/
+3rdparty/
 
 gctest.py
 *.pyc

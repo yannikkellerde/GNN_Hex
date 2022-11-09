@@ -33,11 +33,10 @@
 #include "../manager/treemanager.h"
 #include "../manager/threadmanager.h"
 #include "../node.h"
-#include "../util/communication.h"
 #include "util/gcthread.h"
 
 
-MCTSAgentRandom::MCTSAgentRandom(NeuralNetAPI *netSingle, vector<unique_ptr<NeuralNetAPI>>& netBatches,
+MCTSAgentRandom::MCTSAgentRandom(NN_api *netSingle, vector<unique_ptr<NN_api>>& netBatches,
                      SearchSettings* searchSettings, PlaySettings* playSettings):
     MCTSAgent(netSingle, netBatches, searchSettings, playSettings)
     {
@@ -58,12 +57,10 @@ string MCTSAgentRandom::get_name() const
 
 void MCTSAgentRandom::perform_action()
 {
-    vector<Action> lM  = state->legal_actions();
+    vector<int> lM  = state->get_actions();
     if (lM.size() != 0){
         int randomIndex = rand() % lM.size();
         
-        info_string(state->fen());
-        info_bestmove(state->action_to_san(lM[randomIndex], state->legal_actions(), false, false));
         evalInfo->bestMove = lM[randomIndex];
     }
 }

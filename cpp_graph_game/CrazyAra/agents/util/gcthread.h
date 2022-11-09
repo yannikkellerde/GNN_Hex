@@ -26,7 +26,7 @@
 #define GCTHREAD_H
 
 #include <vector>
-#include "node.h"
+#include "../../node.h"
 using namespace std;
 
 /**

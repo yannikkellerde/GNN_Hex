@@ -46,7 +46,7 @@ SearchThread::SearchThread(NN_api *netBatch, const SearchSettings* searchSetting
     newNodeOnturn(make_unique<FixedVector<Onturn>>(searchSettings->batchSize)),
     transpositionValues(make_unique<FixedVector<float>>(searchSettings->batchSize*2)),
     isRunning(true), mapWithMutex(mapWithMutex), searchSettings(searchSettings),
-    tbHits(0), depthSum(0), depthMax(0), visitsPreSearch(0),
+    tbHits(0), depthSum(0), depthMax(0), visitsPreSearch(0),net(netBatch),
 #ifdef MCTS_SINGLE_PLAYER
     terminalNodeCache(1),
 #else
@@ -214,7 +214,10 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
 #else
                 // fill a new board in the input_planes vector
                 // we shift the index by nbNNInputValues each time
-                newState->get_state_planes(true, inputPlanes + newNodes->size() * net->get_nb_input_values_total(), net->get_version());
+								vector<torch::Tensor> tens = newState->convert_graph(net->device);
+								node_features.push_back(tens[0]);
+								edge_indices.push_back(tens[1]);
+
                 // save a reference newly created list in the temporary list for node creation
                 // it will later be updated with the evaluation of the NN
                 newNodeOnturn->add_element(newState->onturn);
@@ -272,14 +275,11 @@ void SearchThread::reset_stats()
     depthSum = 0;
 }
 
-void fill_nn_results(size_t batchIdx, bool isPolicyMap, const float* valueOutputs, const float* probOutputs, const float* auxiliaryOutputs, Node *node, size_t& tbHits, bool mirrorPolicy, const SearchSettings* searchSettings, bool isRootNodeTB)
+void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB)
 {
-    node->set_probabilities_for_moves(get_policy_data_batch(batchIdx, probOutputs, isPolicyMap), mirrorPolicy);
+		node->policyProbSmall = torch_to_blaze<float>(probOutputs.index({Slice(batch_ptr[batchIdx],batch_ptr[batchIdx+1])}));
     node_post_process_policy(node, searchSettings->nodePolicyTemperature, searchSettings);
     node_assign_value(node, valueOutputs, tbHits, batchIdx, isRootNodeTB);
-#ifdef MCTS_STORE_STATES
-    node->set_auxiliary_outputs(get_auxiliary_data_batch(batchIdx, auxiliaryOutputs));
-#endif
     node->enable_has_nn_results();
 }
 
@@ -288,9 +288,8 @@ void SearchThread::set_nn_results_to_child_nodes()
     size_t batchIdx = 0;
     for (auto node: *newNodes) {
         if (!node->is_terminal()) {
-            fill_nn_results(batchIdx, net->is_policy_map(), valueOutputs, probOutputs, auxiliaryOutputs, node,
-                            tbHits, rootState->mirror_policy(newNodeOnturn->get_element(batchIdx)),
-                            searchSettings, rootNode->is_tablebase());
+            fill_nn_results(batchIdx, false, valueOutputs, probOutputs, batch_ptr, node,
+                            tbHits, searchSettings, rootNode->is_tablebase());
         }
         ++batchIdx;
     }
@@ -371,7 +370,13 @@ void SearchThread::thread_iteration()
     create_mini_batch();
 #ifndef SEARCH_UCT
     if (newNodes->size() != 0) {
-        net->predict(inputPlanes, valueOutputs, probOutputs, auxiliaryOutputs);
+				std::vector<torch::jit::IValue> inputs;
+
+				tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+
+        vector<at::Tensor> tvec = net->predict(inputs);
+				probOutputs = tvec[0].exp();
+				valueOutputs = tvec[1];
         set_nn_results_to_child_nodes();
     }
 #endif
@@ -412,31 +417,7 @@ void SearchThread::backup_values(FixedVector<float>* values, vector<Trajectory>&
     trajectories.clear();
 }
 
-ChildIdx SearchThread::select_enhanced_move(Node* currentNode) const {
-    if (currentNode->is_playout_node() && !currentNode->was_inspected() && !currentNode->is_terminal()) {
-
-        // iterate over the current state
-        unique_ptr<Node_switching_game> pos = unique_ptr<Node_switching_game>(rootState->clone());
-        for (int action : actionsBuffer) {
-            pos->make_move(action);
-        }
-
-        // make sure a check has been explored at least once
-        for (size_t childIdx = currentNode->get_no_visit_idx(); childIdx < currentNode->get_number_child_nodes(); ++childIdx) {
-            if (pos->gives_check(currentNode->get_action(childIdx))) {
-                for (size_t idx = currentNode->get_no_visit_idx(); idx < childIdx+1; ++idx) {
-                    currentNode->increment_no_visit_idx();
-                }
-                return childIdx;
-            }
-        }
-        // a full loop has been done
-        currentNode->set_as_inspected();
-    }
-    return uint16_t(-1);
-}
-
-void node_assign_value(Node *node, const float* valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB)
+void node_assign_value(Node *node, const torch::Tensor valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB)
 {
 #ifdef MCTS_TB_SUPPORT
     if (node->is_tablebase()) {
@@ -449,7 +430,7 @@ void node_assign_value(Node *node, const float* valueOutputs, size_t& tbHits, si
         return;
     }
 #endif
-    node->set_value(valueOutputs[batchIdx]);
+    node->set_value(valueOutputs[batchIdx].item<float>());
 }
 
 void node_post_process_policy(Node *node, float temperature, const SearchSettings* searchSettings)

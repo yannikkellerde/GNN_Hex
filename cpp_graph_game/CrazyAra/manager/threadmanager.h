@@ -54,9 +54,9 @@ struct ThreadManagerInfo {
     const SearchSettings* searchSettings;
     const SearchLimits* searchLimits;
     const float overallNPS;
-    const SideToMove sideToMove;
+    const Onturn sideToMove;
 
-    ThreadManagerInfo(const SearchSettings* searchSettings, const SearchLimits* searchLimits, const float overallNPS, const SideToMove sideToMove) :
+    ThreadManagerInfo(const SearchSettings* searchSettings, const SearchLimits* searchLimits, const float overallNPS, const Onturn sideToMove) :
         searchSettings(searchSettings), searchLimits(searchLimits), overallNPS(overallNPS), sideToMove(sideToMove)
     {}
 };

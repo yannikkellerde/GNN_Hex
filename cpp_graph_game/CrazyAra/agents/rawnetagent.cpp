@@ -50,14 +50,21 @@ void RawNetAgent::evaluate_board_state()
         evalInfo->pv[0] = {evalInfo->legalMoves[0]};
         return;
     }
-		inputs = state->convert_graph(net->device);
+		vector<torch::Tensor> tens = state->convert_graph(net->device);
+		node_features.push_back(tens[0]);
+		edge_indices.push_back(tens[1]);
+
+		std::vector<torch::jit::IValue> inputs;
+		vector<int> batch_ptr;
+
+		tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
 
     vector<at::Tensor> tvec = net->predict(inputs);
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
 
     /* evalInfo->policyProbSmall.resize(evalInfo->legalMoves.size()); */
-		evalInfo->policyProbSmall = torch_to_blaze(probOutputs);
+		evalInfo->policyProbSmall = torch_to_blaze<double>(probOutputs);
 
     size_t selIdx = argmax(evalInfo->policyProbSmall);
     int bestmove = evalInfo->legalMoves[selIdx];

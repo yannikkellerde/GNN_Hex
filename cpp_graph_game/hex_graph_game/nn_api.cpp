@@ -6,11 +6,16 @@
 
 using namespace std;
 
+#if !defined(NNAPI)
+#define NNAPI
+
 class NN_api{
 	public:
 		torch::jit::script::Module model;
 		torch::Device device;
+		string model_name;
 		NN_api(string fname, torch::Device device):
+			model_name(fname.substr(fname.find_last_of("/\\") + 1)),
 			model(torch::jit::load(fname)),device(device){
 				model.to(device);
 		}
@@ -21,3 +26,4 @@ class NN_api{
 			return vector<at::Tensor>({res.elements()[0].toTensor(),res.elements()[1].toTensor()});
 		}
 };
+#endif

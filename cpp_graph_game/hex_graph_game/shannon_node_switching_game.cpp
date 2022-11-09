@@ -20,12 +20,20 @@ using namespace torch::indexing;
 #if !defined(SHANNON)
 #define SHANNON
 
+enum TerminalType {
+    TERMINAL_LOSS,
+    TERMINAL_DRAW,
+    TERMINAL_WIN,
+    TERMINAL_CUSTOM,
+    TERMINAL_NONE
+};
+
 struct PropertyStruct{
 	int board_location;
 	bool removed;
 };
 
-enum Onturn {noplayer,maker,breaker};
+enum Onturn {maker,breaker,noplayer};
 enum Fprops {t1connect,t2connect};
 enum Lprops {removed,board_location};
 
@@ -125,16 +133,16 @@ class Node_switching_game {
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
 
-		Node_switching_game (int board_size=11):board_size(board_size){
+		Node_switching_game (int board_size=11):board_size(board_size),board(board_size){
 			reset();
 		};
 		Node_switching_game (Graph& g){
 			graph = g;
 		};
-		Node_switching_game (std::vector<torch::jit::IValue> &data){
+		Node_switching_game (std::vector<torch::Tensor> &data){
 			// Convert model repr back to graph
-			torch::Tensor node_features = data[0].toTensor().cpu();
-			torch::Tensor edge_index = data[1].toTensor().cpu();
+			torch::Tensor node_features = data[0].cpu();
+			torch::Tensor edge_index = data[1].cpu();
 			graph = Graph(node_features.size(0));
 			graph.add_fprop(0.); // t1connect
 			graph.add_fprop(0.); // t2connect
@@ -204,6 +212,16 @@ class Node_switching_game {
 					}
 				}
 			}
+		}
+		uint16_t hash_key() { // https://stackoverflow.com/a/27216842
+			std::size_t seed = graph.sources.size();
+			for(int& i : graph.sources) {
+				seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			}
+			for(int& i : graph.targets) {
+				seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			}
+			return seed;
 		}
 
 		int vertex_from_board_location(int bl){
@@ -437,6 +455,21 @@ class Node_switching_game {
 				remove_dead_and_captured(big_set);
 			}
 		}
+
+		TerminalType get_winner(){
+			Onturn res = who_won();
+			if (res==onturn){ // This is from perspective of current onturn player
+				return TERMINAL_WIN;
+			}
+			else if (res==noplayer){
+				return TERMINAL_NONE;
+			}
+			else{
+				return TERMINAL_LOSS;
+			}
+
+		}
+
 		Onturn who_won(){
 			int src=0;
 			bool found1,found2,not_again;
@@ -542,7 +575,7 @@ class Node_switching_game {
 			graph.graphviz_me(props,fname,true);
 		};
 
-	std::vector<torch::jit::IValue> convert_graph(torch::Device &device){
+	std::vector<torch::Tensor> convert_graph(torch::Device &device){
 		Neighbors neigh;
 		int n = graph.num_vertices;
 		torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
@@ -559,7 +592,7 @@ class Node_switching_game {
 		edge_index.index_put_({0,Ellipsis},torch::tensor(graph.sources,options_long));
 		edge_index.index_put_({1,Ellipsis},torch::tensor(graph.targets,options_long));
 
-		std::vector<torch::jit::IValue> parts;
+		std::vector<torch::Tensor> parts;
 		parts.push_back(node_features);
 		parts.push_back(edge_index);
 		return parts;

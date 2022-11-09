@@ -8,7 +8,7 @@ void interactive_env(){
 	int move;
 	Hex_board board(11);
 	Node_switching_game game_old(board);
-	std::vector<torch::jit::IValue> data = game_old.convert_graph(device);
+	std::vector<torch::Tensor> data = game_old.convert_graph(device);
 	Node_switching_game game(data);
 	game.board_size = 11;
 	/* Node_switching_game<5> game; */

@@ -63,7 +63,7 @@ public:
 
     MapWithMutex mapWithMutex;
     float lastValueEval;
-    Onturn lastOnturn;
+    Onturn lastSideToMove;
 
     // boolean which indicates if the same node was requested twice for analysis
     bool reusedFullTree;

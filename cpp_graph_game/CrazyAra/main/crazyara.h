@@ -30,27 +30,16 @@
 
 #include <iostream>
 
-#include "agents/rawnetagent.h"
-#include "agents/mctsagent.h"
-#include "agents/mctsagentbatch.h"
-#include "agents/randomagent.h"
-#include "agents/mctsagenttruesight.h"
-#include "nn/neuralnetapi.h"
-#include "agents/config/searchsettings.h"
-#include "agents/config/searchlimits.h"
-#include "agents/config/playsettings.h"
-#include "node.h"
-#include "timeoutreadythread.h"
+#include "../agents/rawnetagent.h"
+#include "../agents/mctsagent.h"
+#include "../agents/randomagent.h"
+#include "../agents/config/searchsettings.h"
+#include "../agents/config/searchlimits.h"
+#include "../agents/config/playsettings.h"
+#include "../node.h"
 #ifdef USE_RL
-#include "rl/selfplay.h"
-#include "agents/config/rlsettings.h"
-#endif
-#ifdef SF_DEPENDENCY
-#include "uci.h"
-using namespace UCI;
-#else
-#include "customuci.h"
-using namespace CUSTOM_UCI;
+#include "../rl/selfplay.h"
+#include "../agents/config/rlsettings.h"
 #endif
 
 using namespace crazyara;
@@ -80,12 +69,12 @@ private:
                     string("              ASCII-Art: Joan G. Stark, Chappell, Burton                      \n");
     unique_ptr<RawNetAgent> rawAgent;
     unique_ptr<MCTSAgent> mctsAgent;
-    unique_ptr<NeuralNetAPI> netSingle;
-    vector<unique_ptr<NeuralNetAPI>> netBatches;
+    unique_ptr<NN_api> netSingle;
+    vector<unique_ptr<NN_api>> netBatches;
 #ifdef USE_RL
-    unique_ptr<NeuralNetAPI> netSingleContender;
+    unique_ptr<NN_api> netSingleContender;
     unique_ptr<MCTSAgent> mctsAgentContender;
-    vector<unique_ptr<NeuralNetAPI>> netBatchesContender;
+    vector<unique_ptr<NN_api>> netBatchesContender;
     RLSettings rlSettings;
 #endif
     SearchSettings searchSettings;
@@ -140,7 +129,7 @@ public:
      * @param is List of command line arguments for the search
      * @param evalInfo Returns the evalutation information
      */
-    void go(StateObj* state, istringstream& is, EvalInfo& evalInfo);
+    void go(Node_switching_game* state, istringstream& is, EvalInfo& evalInfo);
 
     /**
      * @brief go Wrapper function for go() which accepts a FEN string
@@ -156,7 +145,7 @@ public:
      * @param pos Position object which will be set
      * @param is List of command line arguments which describe the position
      */
-    void position(StateObj* pos, istringstream& is);
+    void position(Node_switching_game* pos, istringstream& is);
 
     /**
      * @brief benchmark Runs a list of benchmark position for a given time
@@ -272,21 +261,21 @@ private:
      * @param type Which type of agent should be used, default is 0. 
      * @return Pointer to the new MCTSAgent object
      */
-    unique_ptr<MCTSAgent> create_new_mcts_agent(NeuralNetAPI* netSingle, vector<unique_ptr<NeuralNetAPI>>& netBatches, SearchSettings* searchSettings, MCTSAgentType type = MCTSAgentType::kDefault);
+    unique_ptr<MCTSAgent> create_new_mcts_agent(NN_api* netSingle, vector<unique_ptr<NN_api>>& netBatches, SearchSettings* searchSettings, MCTSAgentType type = MCTSAgentType::kDefault);
 
     /**
      * @brief create_new_net_single Factory to create and load a new model from a given directory
      * @param modelDirectory Model directory where the .params and .json files are stored
      * @return Pointer to the newly created object
      */
-    unique_ptr<NeuralNetAPI> create_new_net_single(const string& modelDirectory);
+    unique_ptr<NN_api> create_new_net_single(const string& modelDirectory);
 
     /**
      * @brief create_new_net_batches Factory to create and load a new model for batch-size access
      * @param modelDirectory Model directory where the .params and .json files are stored
      * @return Vector of pointers to the newly createded objects. For every thread a sepreate net.
      */
-    vector<unique_ptr<NeuralNetAPI>> create_new_net_batches(const string& modelDirectory);
+    vector<unique_ptr<NN_api>> create_new_net_batches(const string& modelDirectory);
 
     /**
      * @brief set_uci_option Updates an UCI option using the given input stream and set changedUCIoption to true.
@@ -294,20 +283,8 @@ private:
      * @param is Input stream
      * @param state State object
      */
-    void set_uci_option(istringstream &is, StateObj& state);
+    void set_uci_option(istringstream &is, Node_switching_game& state);
 };
-
-/**
- * @brief get_num_gpus Returns the number of GPU based on the UCI settings "First_Device_ID" and "Last_Device_ID"
- * @return number of gpus
- */
-size_t get_num_gpus(OptionsMap& option);
-
-/**
- * @brief validate_device_indices Valdiates if the "Last_Device_ID" >= "First_Device_ID"
- * @param option
- */
-void validate_device_indices(OptionsMap& option);
 
 /**
 * @brief Calculates all combinations of size K out of set N

@@ -61,7 +61,8 @@ protected:
 		torch::Tensor valueOutputs;
 
 		// The next batch of inputs
-		std::vector<torch::jit::IValue> inputs;
+		std::vector<torch::Tensor> edge_indices;
+		std::vector<torch::Tensor> node_features;
 
     SearchLimits* searchLimits;
     PlaySettings* playSettings;
