@@ -1,24 +1,19 @@
-#include <cassert>
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
-
-using namespace std;
 
 #if !defined(GRAPH_H)
 #define GRAPH_H
 
-typedef pair<vector<int>::iterator,vector<int>::iterator> Neighbors;
+typedef std::pair<std::vector<int>::iterator,std::vector<int>::iterator> Neighbors;
 
 class Graph{
 	public:
-		vector<int> sources;
-		vector<int> targets;
+		std::vector<int> sources;
+		std::vector<int> targets;
 		int num_vertices;
-		vector<vector<int>> lprops;
-		vector<vector<float>> fprops;
-		vector<int> edge_starts;
+		std::vector<std::vector<int>> lprops;
+		std::vector<std::vector<float>> fprops;
+		std::vector<int> edge_starts;
 
 		Graph();
 
@@ -36,7 +31,7 @@ class Graph{
 
 		bool delete_edge_onesided(int source, int target);
 
-		void delete_many_onesided(vector<int> s, int t);
+		void delete_many_onesided(std::vector<int> s, int t);
 
 		void add_lprop(int init);
 
@@ -48,11 +43,11 @@ class Graph{
 
 		void clear_vertex(int vertex);
 
-		void do_complete_dump(string fname="graph_dump.txt");
+		void do_complete_dump(std::string fname="graph_dump.txt");
 
-		void graphviz_me(vector<pair<string,vector<string>>> props, string fname="my_graph.dot", bool undirected=true);
+		void graphviz_me(std::vector<std::pair<std::string,std::vector<std::string>>> props, std::string fname="my_graph.dot", bool undirected=true);
 
-		void graphviz_me(string fname="my_graph.dot",bool undirected=true);
+		void graphviz_me(std::string fname="my_graph.dot",bool undirected=true);
 };
 
 #endif

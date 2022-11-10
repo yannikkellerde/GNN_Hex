@@ -1,4 +1,9 @@
+#include <cassert>
+#include <fstream>
+#include <iostream>
 #include "graph.h"
+
+using namespace std;
 
 Graph::Graph(){}
 

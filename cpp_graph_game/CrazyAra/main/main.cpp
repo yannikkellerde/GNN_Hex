@@ -18,36 +18,19 @@
 */
 
 /*
- * @file: searchsettings.cpp
- * Created on 12.06.2019
+ * @file: main.cpp
+ * Created on 17.08.2019
  * @author: queensgambit
+ *
+ * Main entry point for the engine CrazyAra
  */
 
-#include "searchsettings.h"
+#include <iostream>
+#include "crazyara.h"
 
-SearchSettings::SearchSettings():
-        threads(2),
-        batchSize(8),
-        dirichletEpsilon(0.25f),
-        dirichletAlpha(0.2f),
-        nodePolicyTemperature(1.0f),
-        qValueWeight(1.0f),
-        qVetoDelta(0.4f),
-        virtualLoss(1.0f),
-        verbose(true),
-        useMCGS(true),
-        cpuctInit(2.5f),
-        cpuctBase(19652.0f),
-        uInit(1.0f),
-        uMin(0.25f),
-        uBase(1965.0f),
-        randomMoveFactor(0.0f),
-        allowEarlyStopping(false),
-        useNPSTimemanager(false),
-        useTablebase(false),
-        epsilonGreedyCounter(20),
-        reuseTree(true),
-        mctsSolver(false)
-{
-
+int main(int argc, char* argv[]) {
+    CrazyAra crazyara;
+    crazyara.init();
+    crazyara.welcome();
+    crazyara.uci_loop(argc, argv);
 }

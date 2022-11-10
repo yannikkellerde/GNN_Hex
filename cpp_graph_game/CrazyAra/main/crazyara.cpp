@@ -23,8 +23,8 @@
  * @author: queensgambit
  */
 
-#include "crazyara.h"
 #include "options.h"
+#include "crazyara.h"
 
 #include <thread>
 #include <fstream>
@@ -33,6 +33,7 @@
 #include "timeoutreadythread.h"
 #include "../evalinfo.h"
 #include "../constants.h"
+#include "../../hex_graph_game/util.h"
 
 
 CrazyAra::CrazyAra():
@@ -102,12 +103,10 @@ void CrazyAra::uci_loop(int argc, char *argv[])
         }
         else if (token == "setoption")  set_uci_option(is, *state.get());
         else if (token == "go")         go(state.get(), is, evalInfo);
-        else if (token == "position")   position(state.get(), is);
         else if (token == "ucinewgame") ucinewgame();
         else if (token == "isready")    is_ready<true>();
 
         // Additional custom non-UCI commands, mainly for debugging
-        else if (token == "benchmark")  benchmark(is);
         else if (token == "root")       mctsAgent->print_root_node();
         else if (token == "tree")      export_search_tree(is);
         else if (token == "flip")       state->switch_onturn();
@@ -137,7 +136,6 @@ void CrazyAra::go(Node_switching_game* state, istringstream &is,  EvalInfo& eval
 {
     wait_to_finish_last_search();
     ongoingSearch = true;
-    prepare_search_config_structs();
 
     string token;
     while (is >> token) {
@@ -210,7 +208,6 @@ void CrazyAra::activeuci()
 #ifdef USE_RL
 void CrazyAra::selfplay(istringstream &is)
 {
-    prepare_search_config_structs();
     SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
     size_t numberOfGames;
     is >> numberOfGames;
@@ -220,7 +217,6 @@ void CrazyAra::selfplay(istringstream &is)
 
 void CrazyAra::arena(istringstream &is)
 {
-    prepare_search_config_structs();
     SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
     netSingleContender = create_new_net_single(Options["Model_Directory_Contender"]);
     netBatchesContender = create_new_net_batches(Options["Model_Directory_Contender"]);

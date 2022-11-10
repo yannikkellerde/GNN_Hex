@@ -25,8 +25,8 @@
  * UCI Option definition and initialization with default values.
  */
 
-#ifndef OPTIONSUCI_H
-#define OPTIONSUCI_H
+#ifndef OPTIONS_H
+#define OPTIONS_H
 
 #include "customuci.h"
 #include "../agents/config/searchlimits.h"
@@ -76,4 +76,4 @@ namespace OptionsUCI {
     void init_new_search(SearchLimits& searchLimits, OptionsMap &options);
 }
 
-#endif // OPTIONSUCI_H
+#endif // OPTIONS_H

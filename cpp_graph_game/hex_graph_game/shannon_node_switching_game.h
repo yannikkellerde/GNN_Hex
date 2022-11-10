@@ -1,19 +1,9 @@
-#include <iostream>
-#include <fstream>
-#include <iterator>
-#include <utility>
-#include <numeric>
-#include <algorithm>
-#include <chrono>
-#include <stdlib.h>
 #include <torch/script.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/autograd/function.h>
 #include <ATen/ATen.h>
 #include "hex_board_game.h"
 #include "graph.h"
-#include "util.h"
-#include <math.h>
 
 using namespace std;
 using namespace torch::indexing;

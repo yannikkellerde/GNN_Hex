@@ -32,8 +32,8 @@
 #include "constants.h"
 #include "agents/config/searchlimits.h"
 #include "util/fixedvector.h"
-#include "../hex_graph_game/shannon_node_switching_game.cpp"
-#include "../hex_graph_game/nn_api.cpp"
+#include "../hex_graph_game/shannon_node_switching_game.h"
+#include "../hex_graph_game/nn_api.h"
 
 
 enum NodeBackup : uint8_t {
@@ -189,12 +189,6 @@ private:
     void backup_values(FixedVector<Node*>& nodes, vector<Trajectory>& trajectories);
     void backup_values(FixedVector<float>* values, vector<Trajectory>& trajectories);
 
-    /**
-     * @brief select_enhanced_move Selects an enhanced move (e.g. checking move) which has not been explored under given conditions.
-     * @param currentNode Current node during forward simulation
-     * @return uint_16_t(-1) for no action else custom idx
-     */
-    ChildIdx select_enhanced_move(Node* currentNode) const;
 };
 
 void run_search_thread(SearchThread *t);

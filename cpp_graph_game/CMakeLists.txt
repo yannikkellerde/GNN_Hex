@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 set(CMAKE_BUILD_TYPE Debug)
 
 set (CMAKE_CXX_STANDARD 17)
@@ -95,12 +95,10 @@ file(GLOB uci_files
 	"CrazyAra/main/*.cpp"
     )
 
-if (NOT MODE_XIANGQI)
-    set(source_files
-        ${source_files}
-        ${uci_files}
-        )
-endif ()
+set(source_files
+		${source_files}
+		${uci_files}
+		)
 
 
 include_directories("3rdparty/catch-2.9.1")

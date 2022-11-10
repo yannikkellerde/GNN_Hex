@@ -1,3 +1,7 @@
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#include <utility>
 #include "hex_board_game.h"
 
 using namespace std;

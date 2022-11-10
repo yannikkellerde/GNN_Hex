@@ -26,7 +26,7 @@
 #include <blaze/Math.h>
 #include "rawnetagent.h"
 #include "../util/blazeutil.h"
-#include "../../hex_graph_game/util.cpp"
+#include "../../hex_graph_game/util.h"
 
 RawNetAgent::RawNetAgent(NN_api * net, PlaySettings* playSettings, bool verbose):
     Agent(net, playSettings, verbose)

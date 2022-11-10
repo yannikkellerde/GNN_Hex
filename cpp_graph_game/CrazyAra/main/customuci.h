@@ -67,5 +67,6 @@ void init(OptionsMap&);
 
 } // namespace CUSTOM_UCI
 
+extern CUSTOM_UCI::OptionsMap Options;
 
 #endif // #ifndef CUSTOMUCI_H_INCLUDED

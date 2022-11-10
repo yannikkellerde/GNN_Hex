@@ -22,11 +22,14 @@ if( blaze_FOUND )
 endif()
 
 file(GLOB source_files
-    "tests/*.h"
-    "tests/*.cpp"
     "*.h"
     "*.cpp"
+    "tests/*.h"
+    "tests/*.cpp"
+    "main/*.h"
+    "main/*.cpp"
 )
+
 set(source_files
 		${source_files}
 		)

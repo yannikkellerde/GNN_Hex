@@ -27,7 +27,7 @@
 
 #include <chrono>
 #include <ostream>
-#include "../../../hex_graph_game/shannon_node_switching_game.cpp"
+#include "../../../hex_graph_game/shannon_node_switching_game.h"
 
 #ifndef SEARCHLIMITS_H
 #define SEARCHLIMITS_H

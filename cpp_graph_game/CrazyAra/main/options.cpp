@@ -29,8 +29,7 @@
 #include <string>
 #include <algorithm>
 #include <cstring>
-#include "customuci.h"
-#include "../../hex_graph_game/util.cpp"
+#include "../../hex_graph_game/util.h"
 
 using namespace std;
 

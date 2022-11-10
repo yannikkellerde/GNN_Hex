@@ -36,7 +36,7 @@
 
 #include "agents/config/searchsettings.h"
 #include "nodedata.h"
-#include "../hex_graph_game/shannon_node_switching_game.cpp"
+#include "../hex_graph_game/shannon_node_switching_game.h"
 
 
 using blaze::HybridVector;

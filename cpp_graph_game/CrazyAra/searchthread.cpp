@@ -24,11 +24,7 @@
  */
 
 #include "searchthread.h"
-#ifdef TENSORRT
-#include "NvInfer.h"
-#include <cuda_runtime_api.h>
-#include "common.h"
-#endif
+#include "../hex_graph_game/util.h"
 
 #include <stdlib.h>
 #include <climits>
@@ -165,15 +161,6 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
         currentNode = get_starting_node(currentNode, description, childIdx);
         currentNode->lock();
         random_playout(currentNode, childIdx);
-        currentNode->unlock();
-    }
-    else if (searchSettings->epsilonChecksCounter && rootNode->is_playout_node() && rand() % searchSettings->epsilonChecksCounter == 0) {
-        currentNode = get_starting_node(currentNode, description, childIdx);
-        currentNode->lock();
-        childIdx = select_enhanced_move(currentNode);
-        if (childIdx ==  uint16_t(-1)) {
-            random_playout(currentNode, childIdx);
-        }
         currentNode->unlock();
     }
 
@@ -435,7 +422,6 @@ void node_assign_value(Node *node, const torch::Tensor valueOutputs, size_t& tbH
 
 void node_post_process_policy(Node *node, float temperature, const SearchSettings* searchSettings)
 {
-    node->enhance_moves(searchSettings);
     node->apply_temperature_to_prior_policy(temperature);
 }
 

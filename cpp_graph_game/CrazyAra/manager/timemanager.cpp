@@ -24,7 +24,7 @@
  */
 
 #include "timemanager.h"
-#include "../../hex_graph_game/util.cpp"
+#include "../../hex_graph_game/util.h"
 #include <cassert>
 
 using namespace std;

@@ -32,6 +32,7 @@
 #include "../manager/treemanager.h"
 #include "../manager/threadmanager.h"
 #include "../node.h"
+#include "../../hex_graph_game/util.h"
 
 
 MCTSAgent::MCTSAgent(NN_api *netSingle, vector<unique_ptr<NN_api>>& netBatches,

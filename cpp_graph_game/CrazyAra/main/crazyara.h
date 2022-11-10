@@ -30,6 +30,7 @@
 
 #include <iostream>
 
+#include "customuci.h"
 #include "../agents/rawnetagent.h"
 #include "../agents/mctsagent.h"
 #include "../agents/randomagent.h"
@@ -48,26 +49,26 @@ class CrazyAra
 {
 private:
     const string intro =  string("\n") +
-                    string("                                  _                                           \n") +
-                    string("                   _..           /   ._   _.  _        /\\   ._   _.           \n") +
-                    string("                 .' _ `\\         \\_  |   (_|  /_  \\/  /--\\  |   (_|           \n") +
-                    string("                /  /e)-,\\                         /                           \n") +
-                    string("               /  |  ,_ |                    __    __    __    __             \n") +
-                    string("              /   '-(-.)/          bw     8 /__////__////__////__////         \n") +
-                    string("            .'--.   \\  `                 7 ////__////__////__////__/          \n") +
-                    string("           /    `\\   |                  6 /__////__////__////__////           \n") +
-                    string("         /`       |  / /`\\.-.          5 ////__////__////__////__/            \n") +
-                    string("       .'        ;  /  \\_/__/         4 /__////__////__////__////             \n") +
-                    string("     .'`-'_     /_.'))).-` \\         3 ////__////__////__////__/              \n") +
-                    string("    / -'_.'---;`'-))).-'`\\_/        2 /__////__////__////__////               \n") +
-                    string("   (__.'/   /` .'`                 1 ////__////__////__////__/                \n") +
-                    string("    (_.'/ /` /`                       a  b  c  d  e  f  g  h                  \n") +
-                    string("      _|.' /`                                                                 \n") +
-                    string("jgs.-` __.'|  Developers: Johannes Czech, Moritz Willig, Alena Beyer          \n") +
-                    string("    .-'||  |  Source-Code: QueensGambit/CrazyAra (GPLv3-License)              \n") +
-                    string("       \\_`/   Inspiration: A0-paper by Silver, Hubert, Schrittwieser et al.   \n") +
-                    string("              ASCII-Art: Joan G. Stark, Chappell, Burton                      \n");
-    unique_ptr<RawNetAgent> rawAgent;
+                    string("                   _..          _    _                                           \n") +
+                    string("                 .' _ `\\       | |  | |              /\\                          \n") +
+                    string("                /  /e)-,\\      | |__| | _____  __   /  \\   _ __ __ _             \n") +
+                    string("               /  |  ,_ |      |  __  |/ _ \\ \\/ /  / /\\ \\ | '__/ _` |         \n") +
+                    string("              /   '-(-.)/      | |  | |  __/>  <  / ____ \\| | | (_| |            \n") +
+                    string("            .'--.   \\  `       |_|  |_|\\___/_/\\_\\/_/    \\_\\_|  \\__,_|      \n") +
+                    string("           /    `\\   |                 																	        \n") +
+                    string("         /`       |  / /`\\.-.             _    _    _	                		      \n") +
+                    string("       .'        ;  /  \\_/__/       ,----|2|--|5|--|8|                           \n") +
+                    string("     .'`-'_     /_.'))).-` \\        ⬤---⹁_ ‾ \\_/‾ \\_ ‾\\                      \n") +
+                    string("    / -'_.'---;`'-))).-'`\\_/        \\   |1|--|4|--|7|  \\                      \n") +
+                    string("   (__.'/   /` .'`                    \\ _ ‾ \\_/‾ \\_ ‾`---◯   						   \n") +
+                    string("    (_.'/ /` /`                        |0|--|3|--|6|----´       						  \n") +
+                    string("      _|.' /`                           ‾    ‾    ‾                           \n") +
+                    string("   .-` __.'|   Developer: Yannik Keller																				\n") +
+                    string("    .-'||  |   Based on CrazyAra by Johannes Czech, Moritz Willig, Alena Beyer\n") +
+                    string("       \\_`/    Source-Code: QueensGambit/CrazyAra (GPLv3-License)             \n") +
+                    string("               Inspiration: A0-paper by Silver, Hubert, Schrittwieser et al.  \n")+
+                    string("               ASCII-Art: Joan G. Stark, Chappell, Burton                     \n");
+    unique_ptr<RawNetAgent> rawAgent;      
     unique_ptr<MCTSAgent> mctsAgent;
     unique_ptr<NN_api> netSingle;
     vector<unique_ptr<NN_api>> netBatches;
@@ -130,28 +131,6 @@ public:
      * @param evalInfo Returns the evalutation information
      */
     void go(Node_switching_game* state, istringstream& is, EvalInfo& evalInfo);
-
-    /**
-     * @brief go Wrapper function for go() which accepts a FEN string
-     * @param fen FEN string
-     * @param goCommand Go command (such as "go movetime 5000")
-     * @param evalInfo Returns the evalutation information
-     */
-    void go(const string& fen, string goCommand, EvalInfo& evalInfo);
-
-    /**
-     * @brief position Method which is called from the UCI command-line when a new position is described.
-     * This can be a FEN string or the starting position followed by a list of moves
-     * @param pos Position object which will be set
-     * @param is List of command line arguments which describe the position
-     */
-    void position(Node_switching_game* pos, istringstream& is);
-
-    /**
-     * @brief benchmark Runs a list of benchmark position for a given time
-     * @param is Movetime in ms
-     */
-    void benchmark(istringstream& is);
 
     /**
      * @brief export_search_tree Exports the current search tree as a graph in a .gv/.dot-file
@@ -226,11 +205,6 @@ public:
      * @brief stop_search Stops the current search if an mcts agent has been defined
      */
     void stop_search();
-
-    /**
-     * @brief prepare_search_config_structs Prepare search configuration structs for new search
-     */
-    void prepare_search_config_structs();
 
 private:
     /**

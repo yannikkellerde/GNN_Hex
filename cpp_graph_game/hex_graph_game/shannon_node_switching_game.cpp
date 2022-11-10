@@ -1,4 +1,15 @@
+#include <stdlib.h>
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#include <utility>
+#include <numeric>
+#include <algorithm>
+#include <chrono>
+#include <math.h>
 #include "shannon_node_switching_game.h"
+#include "util.h"
+
 
 bool check_if_same(Graph& graph, int v1, int v2){
 	if (graph.fprops[t1connect][v1]!=graph.fprops[t1connect][v2] || graph.fprops[t2connect][v1]!=graph.fprops[t2connect][v2]){
@@ -85,6 +96,7 @@ bool is_fully_connected(Graph& g,Neighbors& neigh){
 }
 
 Node_switching_game::Node_switching_game (int board_size):board_size(board_size),board(board_size){
+	/* info_string("Hello"); */
 	reset();
 };
 Node_switching_game::Node_switching_game (Graph& g){
