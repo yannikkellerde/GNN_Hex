@@ -6,7 +6,7 @@
 #include <vector>
 using namespace std;
 
-int main() {
+int simple_tests() {
 	vector<int> a;
 	vector<int>::iterator it,wit;
 	a.insert(a.begin(),8);

@@ -24,7 +24,7 @@
  */
 
 #include "timemanager.h"
-#include "../util/communication.h"
+#include "../../hex_graph_game/util.cpp"
 #include <cassert>
 
 using namespace std;
@@ -43,11 +43,11 @@ TimeManager::TimeManager(float randomMoveFactor, int expectedGameLength, int thr
     assert(threshMove < expectedGameLength);
 }
 
-inline int get_constant_movetime(const SearchLimits* searchLimits, SideToMove me, int movesToGo, float incrementFactor) {
+inline int get_constant_movetime(const SearchLimits* searchLimits, Onturn me, int movesToGo, float incrementFactor) {
     return searchLimits->get_safe_remaining_time(me) / movesToGo + incrementFactor * searchLimits->inc[me];
 }
 
-int TimeManager::get_time_for_move(const SearchLimits* searchLimits, SideToMove me, int moveNumber)
+int TimeManager::get_time_for_move(const SearchLimits* searchLimits, Onturn me, int moveNumber)
 {
     if (searchLimits->infinite) {
         return 0;

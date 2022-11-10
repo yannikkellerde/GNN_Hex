@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
+set(CMAKE_BUILD_TYPE Debug)
 
 set (CMAKE_CXX_STANDARD 17)
 
+option(WITH_CUDA 								 "Enable CUDA support" 		ON)
 option(USE_PROFILING             "Build with profiling"   OFF)
 option(USE_RL                    "Build with reinforcement learning support"  OFF)
 option(BACKEND_TENSORRT          "Build with TensorRT support"  OFF)
@@ -19,87 +21,17 @@ option(MODE_OPEN_SPIEL           "Build with open_spiel environment support"  OF
 option(MODE_BOARDGAMES           "Build with Fairy-Stockfish environment support for board games"   OFF)
 option(MODE_XIANGQI              "Build with xiangqi only support" OFF)
 option(MODE_STRATEGO             "Build Stratego with open_spiel environment support"  OFF)
+option(MODE_HEX             		 "Build Hex graphs"  ON)
 option(SEARCH_UCT                "Build with UCT instead of PUCT search"  OFF)
 option(MCTS_STORE_STATES         "Build search by storing the state objects in each node. Results in higher memory usage but faster CPU runtime."  OFF)
 
 add_definitions(-DIS_64BIT)
 
-if (MODE_CRAZYHOUSE)
-    project(CrazyAra CXX)
-    add_definitions(-DMODE_CRAZYHOUSE)
-    add_definitions(-DSF_DEPENDENCY)
-    add_definitions(-DCRAZYHOUSE)
-    add_definitions(-DVERSION=1)
-endif()
 
-if (MODE_CHESS)
-    project(ClassicAra CXX)
-    add_definitions(-DMODE_CHESS)
-    add_definitions(-DSF_DEPENDENCY)
-    add_definitions(-DMCTS_TB_SUPPORT)
-#    add_definitions(-DVERSION=1)
-#    add_definitions(-DVERSION=2)
-#    add_definitions(-DSUB_VERSION=8)
-    add_definitions(-DVERSION=3)
-    add_definitions(-DSUPPORT960)
-endif()
-
-if (MODE_LICHESS)
-    project(MultiAra CXX)
-    add_definitions(-DMODE_LICHESS)
-    add_definitions(-DSF_DEPENDENCY)
-    add_definitions(-DCRAZYHOUSE)
-    add_definitions(-DKOTH)
-    add_definitions(-DTHREECHECK)
-    add_definitions(-DANTI)
-    add_definitions(-DATOMIC)
-    add_definitions(-DHORDE)
-    add_definitions(-DRACE)
-    add_definitions(-DSUPPORT960)
-    add_definitions(-DMCTS_TB_SUPPORT)
-    add_definitions(-DVERSION=1)
-endif()
-
-if (MODE_OPEN_SPIEL)
-    project(OpenSpielAra CXX)
-    add_definitions(-DMODE_OPEN_SPIEL)
-    add_definitions(-DACTION_64_BIT)
-endif()
-
-if (MODE_STRATEGO)
-    project(StrategoAra CXX)
-    add_definitions(-DMODE_STRATEGO)
-    add_definitions(-DACTION_64_BIT)
-endif()
-
-if (MODE_XIANGQI)
-    project(XiangqiAra CXX)
-    add_definitions(-DSF_DEPENDENCY)
-    add_definitions(-DNO_THREADS)
-    add_definitions(-DXIANGQI)
-    add_definitions(-DMODE_XIANGQI)
-    add_definitions(-DLARGEBOARDS)
-    add_definitions(-DPRECOMPUTED_MAGICS)
-    add_definitions(-DNNUE_EMBEDDING_OFF)
+if (MODE_HEX)
+		project(HexAra CXX)
+		add_definitions(-DMODE_HEX)
 endif ()
-
-if (MODE_BOARDGAMES)
-    project(BoardAra CXX)
-    add_definitions(-DSF_DEPENDENCY)
-    add_definitions(-DNO_THREADS)
-    add_definitions(-DMODE_BOARDGAMES)
-    add_definitions(-DLARGEBOARDS)
-    add_definitions(-DPRECOMPUTED_MAGICS)
-    add_definitions(-DNNUE_EMBEDDING_OFF)
-endif ()
-
-if (BUILD_TESTS)
-    add_definitions(-DBUILD_TESTS)
-endif()
-
-if (USE_DYNAMIC_NN_ARCH)
-    add_definitions(-DDYNAMIC_NN_ARCH)
-endif()
 
 # -pg performance profiling flags
 if (USE_PROFILING)
@@ -117,10 +49,8 @@ else()
 endif()
 
 find_package( blaze REQUIRED HINTS ${BLAZE_PATH} )
-if( blaze_FOUND )
-     add_library( blaze_target INTERFACE )
-     target_link_libraries( blaze_target INTERFACE blaze::blaze )
-endif()
+add_library( blaze_target INTERFACE )
+target_link_libraries( blaze_target INTERFACE blaze::blaze )
 
 if (SEARCH_UCT)
     add_definitions(-DSEARCH_UCT)
@@ -135,89 +65,35 @@ file(GLOB source_files
     "*.h"
     "*.cpp"
     "*.md"
-    "src/*.h"
-    "src/*.cpp"
-    "src/util/*.h"
-    "src/util/*.cpp"
-    "src/agents/*.cpp"
-    "src/agents/*.h"
-    "src/agents/config/*.cpp"
-    "src/agents/config/*.h"
-    "src/agents/util/*.cpp"
-    "src/agents/util/*.h"
-    "src/nn/*.cpp"
-    "src/nn/*.h"
-    "src/nn/util/*.cpp"
-    "src/nn/util/*.h"
-    "src/manager/*.cpp"
-    "src/manager/*.h"
-    "src/rl/*.cpp"
-    "src/rl/*.h"
-    "tests/*.h"
-    "tests/*.cpp"
+		"CrazyAra/*.h"
+		"CrazyAra/*.cpp"
+    "CrazyAra/util/*.h"
+    "CrazyAra/util/*.cpp"
+    "CrazyAra/agents/*.cpp"
+    "CrazyAra/agents/*.h"
+    "CrazyAra/agents/config/*.cpp"
+    "CrazyAra/agents/config/*.h"
+    "CrazyAra/agents/util/*.cpp"
+    "CrazyAra/agents/util/*.h"
+    "CrazyAra/manager/*.cpp"
+    "CrazyAra/manager/*.h"
+    "CrazyAra/rl/*.cpp"
+    "CrazyAra/rl/*.h"
+    "hex_graph_game/*.h"
+    "hex_graph_game/*.cpp"
 )
 
-set(CPP_PACKAGE_INCLUDE_DIR $ENV{MXNET_PATH}/cpp-package/include)
 file(GLOB_RECURSE CPP_PACKAGE_HEADERS
     "${CPP_PACKAGE_INCLUDE_DIR}/*.h"
     "${CPP_PACKAGE_INCLUDE_DIR}/*.hpp"
     )
 
-find_package (Threads)
+include_directories("CrazyAra")
 
-if (MODE_XIANGQI OR MODE_BOARDGAMES)
-    include_directories("3rdparty/Fairy-Stockfish/src")
-else ()
-    include_directories("3rdparty/Stockfish/src")
-endif ()
-include_directories("src")
-
-file(GLOB sf_related_files
-    "3rdparty/Stockfish/src/syzygy/tbprobe.h"
-    "3rdparty/Stockfish/src/syzygy/tbprobe.cpp"
-    "3rdparty/Stockfish/src/types.h"
-    "3rdparty/Stockfish/src/types.cpp"
-    "3rdparty/Stockfish/src/position.h"
-    "3rdparty/Stockfish/src/position.cpp"
-    "3rdparty/Stockfish/src/uci.h"
-    "3rdparty/Stockfish/src/uci.cpp"
-    "3rdparty/Stockfish/src/bitboard.h"
-    "3rdparty/Stockfish/src/bitboard.cpp"
-    "3rdparty/Stockfish/src/*.cpp"
-    )
 file(GLOB uci_files
-    "src/uci/*.h"
-    "src/uci/*.cpp"
+	"CrazyAra/main/*.h"
+	"CrazyAra/main/*.cpp"
     )
-file(GLOB chess_related_files
-    "src/environments/chess_related/*.h"
-    "src/environments/chess_related/*.cpp"
-    )
-file(GLOB xiangqi_related_files
-    "src/environments/fairy_state/*.h"
-    "src/environments/fairy_state/*.cpp"
-    "src/"
-    )
-file(GLOB fsf_related_files
-    "3rdparty/Fairy-Stockfish/src/*.h"
-    "3rdparty/Fairy-Stockfish/src/*.cpp"
-    "3rdparty/Fairy-Stockfish/src/syzygy/tbprobe.h"
-    "3rdparty/Fairy-Stockfish/src/syzygy/tbprobe.cpp"
-    "3rdparty/Fairy-Stockfish/src/nnue/*.h"
-    "3rdparty/Fairy-Stockfish/src/nnue/*.cpp"
-    "3rdparty/Fairy-Stockfish/src/nnue/layers/*.h"
-    "3rdparty/Fairy-Stockfish/src/nnue/layers/*.cpp"
-    "3rdparty/Fairy-Stockfish/src/nnue/features/*.h"
-    "3rdparty/Fairy-Stockfish/src/nnue/features/*.cpp"
-    "3rdparty/Fairy-Stockfish/src/nnue/architectures/*.h"
-    "3rdparty/Fairy-Stockfish/src/nnue/architectures/*.cpp"
-    )
-file(GLOB boardgames_related_files
-    "3rdparty/Fairy-Stockfish/src/variants.ini"
-    )
-list(REMOVE_ITEM fsf_related_files ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Fairy-Stockfish/src/ffishjs.cpp)
-list(REMOVE_ITEM fsf_related_files ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Fairy-Stockfish/src/pyffish.cpp)
-list(REMOVE_ITEM fsf_related_files ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Fairy-Stockfish/src/main.cpp)
 
 if (NOT MODE_XIANGQI)
     set(source_files
@@ -226,151 +102,6 @@ if (NOT MODE_XIANGQI)
         )
 endif ()
 
-if (MODE_CRAZYHOUSE OR MODE_CHESS OR MODE_LICHESS)
-    set(source_files
-        ${source_files}
-        ${chess_related_files}
-        ${sf_related_files}
-        )
-endif()
-
-if (MODE_XIANGQI)
-    set(source_files
-        ${source_files}
-        ${xiangqi_related_files}
-        ${fsf_related_files}
-        ${uci_files})
-endif ()
-
-if (MODE_BOARDGAMES)
-    set(source_files
-        ${source_files}
-        ${xiangqi_related_files}
-        ${fsf_related_files}
-        ${uci_files}
-        ${boardgames_related_files})
-endif ()
-
-if (MODE_OPEN_SPIEL OR MODE_STRATEGO)
-
-    set (OPEN_SPIEL_CORE_FILES
-      action_view.h
-      action_view.cc
-      canonical_game_strings.cc
-      canonical_game_strings.h
-      game_parameters.cc
-      game_parameters.h
-      matrix_game.cc
-      matrix_game.h
-      normal_form_game.h
-      observer.cc
-      observer.h
-      policy.cc
-      policy.h
-      simultaneous_move_game.cc
-      simultaneous_move_game.h
-      spiel.cc
-      spiel.h
-      spiel_bots.cc
-      spiel_bots.h
-      spiel_globals.h
-      spiel_utils.cc
-      spiel_utils.h
-      tensor_game.cc
-      tensor_game.h
-    )
-
-    file(GLOB open_spiel_abseil_files
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/numeric/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/numeric/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/random/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/random/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/base/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/base/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/base/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/base/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/meta/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/meta/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/random/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/random/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/internal/str_format/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/strings/internal/str_format/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/synchronization/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/synchronization/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/synchronization/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/synchronization/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/types/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/types/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/time/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/time/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/time/internal/cctz/src/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/time/internal/cctz/src/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/debugging/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/debugging/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/debugging/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/debugging/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/hash/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/hash/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/hash/internal/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/hash/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/container/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/container/*.h"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/container/internal/*.cc"
-        "3rdparty/open_spiel/open_spiel/abseil-cpp/absl/container/internal/*.h"
-        )
-
-    if(MODE_OPEN_SPIEL)
-        file(GLOB open_spiel_related_files
-            "src/environments/open_spiel/*.h"
-            "src/environments/open_spiel/*.cpp"
-            "3rdparty/open_spiel/open_spiel/games/chess.h"
-            "3rdparty/open_spiel/open_spiel/games/chess.cc"
-            "3rdparty/open_spiel/open_spiel/games/chess/*.h"
-            "3rdparty/open_spiel/open_spiel/games/chess/*.cc"
-            "3rdparty/open_spiel/open_spiel/games/hex.h"
-            "3rdparty/open_spiel/open_spiel/games/hex.cc"
-            "3rdparty/open_spiel/open_spiel/games/dark_hex.h"
-            "3rdparty/open_spiel/open_spiel/games/dark_hex.cc"
-            )
-    endif()
-
-    if(MODE_STRATEGO)
-        file(GLOB open_spiel_related_files
-            "src/environments/stratego_related/*.h"
-            "src/environments/stratego_related/*.cpp"
-            "3rdparty/open_spiel/open_spiel/games/yorktown.h"
-            "3rdparty/open_spiel/open_spiel/games/yorktown.cc"
-            "3rdparty/open_spiel/open_spiel/games/chess/*.h"
-            "3rdparty/open_spiel/open_spiel/games/chess/*.cc"
-            "3rdparty/open_spiel/open_spiel/games/yorktown/*.h"
-            "3rdparty/open_spiel/open_spiel/games/yorktown/*.cc"
-            )
-    endif()
-
-
-    list(TRANSFORM OPEN_SPIEL_CORE_FILES PREPEND "3rdparty/open_spiel/open_spiel/")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*test.*$")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*benchmark.*$")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*gentables.*$")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*mutex_nonprod.*$")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*chi_square.*$")
-    list(FILTER open_spiel_abseil_files EXCLUDE REGEX "^.*print_hash_of.*$")
-
-    set (BUILD_TESTING OFF)
-    include_directories("3rdparty/open_spiel")
-    include_directories("3rdparty/open_spiel/open_spiel/abseil-cpp")
-    message(STATUS "MODE_OPEN_SPIEL")
-    set(source_files
-        ${source_files}
-        ${open_spiel_related_files}
-        ${open_spiel_abseil_files}
-        ${OPEN_SPIEL_CORE_FILES}
-        )
-endif()
 
 include_directories("3rdparty/catch-2.9.1")
 
@@ -379,49 +110,15 @@ if(MSVC OR MSYS OR MINGW)
     include_directories("3rdparty/dirent")
 endif()
 
-include_directories("src/domain/crazyhouse")
-include_directories("src/agents")
-include_directories("src/agents/config")
-include_directories("src/nn")
+include_directories("CrazyAra/agents")
+include_directories("CrazyAra/agents/config")
 
 
-if (BACKEND_MXNET)
-    IF(DEFINED ENV{MXNET_PATH})
-    MESSAGE(STATUS "MXNET_PATH set to: $ENV{MXNET_PATH}")
-    ELSE()
-    MESSAGE(STATUS "MXNET_PATH not set")
-    ENDIF()
-
-    include_directories("$ENV{MXNET_PATH}/cpp-package/include")
-    include_directories("$ENV{MXNET_PATH}/include/")
-    include_directories("$ENV{MXNET_PATH}/3rdparty/tvm/nnvm/include")
-    include_directories("$ENV{MXNET_PATH}/3rdparty/dmlc-core/include")
-
-    link_directories("$ENV{MXNET_PATH}/lib")
-    link_directories("$ENV{MXNET_PATH}/Release/lib")
-    link_directories("$ENV{MXNET_PATH}/build/lib")
-    link_directories("$ENV{MXNET_PATH}/build/Release")
-    link_directories("$ENV{MXNET_PATH}/build")
-
-    set(CPP_EXAMPLE_LIBS
-        ${BEGIN_WHOLE_ARCHIVE} mxnet_static ${END_WHOLE_ARCHIVE}
-        ${BEGIN_WHOLE_ARCHIVE} dmlc ${END_WHOLE_ARCHIVE}
-        ${mxnet_LINKER_LIBS}
-        )
-
-    add_definitions(-DMXNET)
-endif()
 
 if (BACKEND_TORCH)
     message(STATUS "Enabled Torch Backend")
     find_package(Torch REQUIRED)
     add_definitions(-DTORCH)
-endif()
-
-if (BACKEND_OPENVINO)
-    add_definitions(-DOPENVINO)
-    find_package(OpenVINO REQUIRED COMPONENTS Runtime)
-    set(ov_link_libraries openvino::runtime)
 endif()
 
 if (USE_RL)
@@ -439,50 +136,8 @@ if (USE_RL)
     add_definitions(-DDISABLE_UCI_INFO)
 endif()
 
-if(BACKEND_TENSORRT_7)
-    set(BACKEND_TENSORRT ON)
-    add_definitions(-DTENSORRT7)
-endif()
-
-if (BACKEND_TENSORRT)
-    # build CrazyAra with TensorRT support, requires a working TensorRT-MXNet library package
-    message(STATUS "Enabled TensorRT support")
-    message(STATUS "TensorRT path: $ENV{TENSORRT_PATH}")
-    # add additional source file
-    set(source_files
-        ${source_files}
-        $ENV{TENSORRT_PATH}/samples/common/logger.cpp
-        )
-    find_package(CUDA REQUIRED)
-    message(STATUS "CUDA path: $ENV{CUDA_PATH}")
-    include_directories("$ENV{CUDA_PATH}/include")
-    link_directories("$ENV{CUDA_PATH}/lib64")
-    link_directories("$ENV{CUDA_PATH}/lib/x64")
-    link_directories("$ENV{TENSORRT_PATH}/lib")
-    if(BACKEND_TENSORRT_7)
-        if(WIN32)
-          find_library(TENSORRT_LIBRARY_MYELIN myelin64_1
-            HINTS  ${TENSORRT_PATH}
-            PATH_SUFFIXES lib lib64 lib/x64)
-        endif()
-    endif()
-    include_directories("$ENV{TENSORRT_PATH}/include")
-    include_directories("$ENV{TENSORRT_PATH}/samples/common/")
-    add_definitions(-DTENSORRT)
-endif()
 
 add_executable(${PROJECT_NAME} ${source_files})
-
-if (BACKEND_TENSORRT)
-    target_link_libraries(${PROJECT_NAME} nvonnxparser nvinfer cudart ${CUDART_LIB} ${CUBLAS_LIB} ${CUDNN_LIB})
-    if(BACKEND_TENSORRT_7)
-        target_link_libraries(${PROJECT_NAME} myelin)
-    endif()
-endif()
-
-if (BACKEND_OPENVINO)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${ov_link_libraries})
-endif()
 
 if (USE_RL)
     # include filesystem (needed for z5)
@@ -503,16 +158,23 @@ if(UNIX)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-Wl,-rpath,./")
 endif()
 
-if (BACKEND_MXNET)
-    if(UNIX)
-        target_link_libraries(${PROJECT_NAME} mxnet)
-    else()
-        target_link_libraries(${PROJECT_NAME} libmxnet)
-    endif()
+if (BACKEND_TORCH)
+    target_link_libraries(${PROJECT_NAME} "${TORCH_LIBRARIES}")
 endif()
 
-if (BACKEND_TORCH)
-    # set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
-		set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
-    target_link_libraries(${PROJECT_NAME} "${TORCH_LIBRARIES}")
+if (WITH_CUDA)
+	find_package(CUDAToolkit REQUIRED)
+endif()
+
+list(APPEND CMAKE_PREFIX_PATH "/usr/local/include/libtorch")
+find_package(Torch REQUIRED)
+find_package(TorchScatter REQUIRED)
+find_package(TorchSparse REQUIRED)
+
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_range_for)
+target_link_libraries(${PROJECT_NAME} TorchScatter::TorchScatter)
+target_link_libraries(${PROJECT_NAME} TorchSparse::TorchSparse)
+target_link_libraries(${PROJECT_NAME} "${TORCH_LIBRARIES}")
+if (WITH_CUDA)
+target_link_libraries(${PROJECT_NAME} CUDA::cusparse)
 endif()

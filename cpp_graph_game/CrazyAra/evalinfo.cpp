@@ -24,7 +24,7 @@
  */
 
 #include "evalinfo.h"
-#include "../util/blazeutil.h"
+#include "util/blazeutil.h"
 
 void print_single_pv(std::ostream& os, const EvalInfo& evalInfo, size_t idx, size_t elapsedTimeMS)
 {
@@ -104,7 +104,7 @@ float get_best_move_q(const Node* nextNode)
 
 void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx, vector<size_t>& indices, const SearchSettings* searchSettings)
 {
-    vector<Action> pv;
+    vector<int> pv;
     size_t childIdx;
     if (idx == 0) {
         childIdx = get_best_action_index(rootNode, false, searchSettings->qValueWeight, searchSettings->qVetoDelta);

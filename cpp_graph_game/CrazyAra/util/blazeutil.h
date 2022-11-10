@@ -30,7 +30,7 @@
 
 #include <cfloat>
 #include <blaze/Math.h>
-#include<climits>
+#include <climits>
 #include "randomgen.h"
 
 using namespace std;

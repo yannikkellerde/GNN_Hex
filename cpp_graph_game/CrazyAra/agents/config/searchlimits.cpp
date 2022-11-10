@@ -24,15 +24,14 @@
  */
 
 #include "searchlimits.h"
-#include "state.h"
-#include "constants.h"
+#include "../../constants.h"
 
 std::ostream &operator<<(std::ostream &os, const SearchLimits &searchLimits)
 {
-    os << " wtime " << searchLimits.time[FIRST_PLAYER_IDX]
-          << " btime " << searchLimits.time[FIRST_PLAYER_IDX+1]
-             << " winc "  << searchLimits.inc[FIRST_PLAYER_IDX]
-                << " binc "  << searchLimits.inc[FIRST_PLAYER_IDX+1]
+    os << " wtime " << searchLimits.time[maker]
+          << " btime " << searchLimits.time[maker+1]
+             << " winc "  << searchLimits.inc[maker]
+                << " binc "  << searchLimits.inc[maker+1]
                    << "movestogo " << searchLimits.movestogo;
     return os;
 }
@@ -56,18 +55,18 @@ void SearchLimits::reset()
     moveOverhead = 0;
     infinite = false;
     ponder = false;
-    time[FIRST_PLAYER_IDX] = 0;
-    time[FIRST_PLAYER_IDX+1] = 0;
-    inc[FIRST_PLAYER_IDX] = 0;
-    inc[FIRST_PLAYER_IDX+1] = 0;
+    time[maker] = 0;
+    time[maker+1] = 0;
+    inc[maker] = 0;
+    inc[maker+1] = 0;
 }
 
-int SearchLimits::get_safe_remaining_time(SideToMove sideToMove) const
+int SearchLimits::get_safe_remaining_time(Onturn sideToMove) const
 {
     return max(time[sideToMove] - moveOverhead * TIME_BUFFER_FACTOR, 1);
 }
 
 bool is_game_sceneario(const SearchLimits* searchLimits)
 {
-    return searchLimits->movestogo != 0 || searchLimits->time[FIRST_PLAYER_IDX] != 0 || searchLimits->time[FIRST_PLAYER_IDX+1] != 0;
+    return searchLimits->movestogo != 0 || searchLimits->time[maker] != 0 || searchLimits->time[maker+1] != 0;
 }

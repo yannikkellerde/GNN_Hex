@@ -1,8 +1,4 @@
-/* #include "shannon_node_switching_game.cpp" */
-#include "../shannon_node_switching_game.cpp"
-#include <iostream>
-#include <unistd.h>
-#include <chrono>
+#include "speedtest.h"
 
 void speedtest(){
 	torch::Device device(torch::kCPU,0);

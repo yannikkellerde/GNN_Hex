@@ -26,7 +26,7 @@
 #include "treemanager.h"
 #include "../node.h"
 
-shared_ptr<Node> pick_next_node(Action move, const Node* parentNode)
+shared_ptr<Node> pick_next_node(int move, const Node* parentNode)
 {
     if (parentNode != nullptr) {
         for (size_t idx = 0; idx < parentNode->get_no_visit_idx(); ++idx) {
@@ -38,9 +38,9 @@ shared_ptr<Node> pick_next_node(Action move, const Node* parentNode)
     return nullptr;
 }
 
-bool same_hash_key(Node* node, StateObj* state)
+bool same_hash_key(Node* node, Node_switching_game* state)
 {
     return node != nullptr &&
             node->hash_key() == state->hash_key() &&
-            node->plies_from_null() == state->steps_from_null();
+            node->plies_from_null() == state->move_num;
 }

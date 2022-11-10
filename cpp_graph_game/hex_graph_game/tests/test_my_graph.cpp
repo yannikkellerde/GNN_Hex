@@ -1,7 +1,4 @@
-#include "../shannon_node_switching_game.cpp"
-#include <unistd.h>
-#include <iostream>
-#include <boost/algorithm/string.hpp>
+#include "test_my_graph.h"
 
 void play_around_with_graph(){
 	string user_command;

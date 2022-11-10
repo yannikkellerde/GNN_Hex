@@ -67,8 +67,5 @@ void init(OptionsMap&);
 
 } // namespace CUSTOM_UCI
 
-#ifndef SF_DEPENDENCY
-extern CUSTOM_UCI::OptionsMap Options;
-#endif
 
 #endif // #ifndef CUSTOMUCI_H_INCLUDED

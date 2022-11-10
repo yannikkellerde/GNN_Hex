@@ -381,7 +381,7 @@ void print_child_nodes_to_file(const Node* parentNode, Node_switching_game* stat
         if (node != nullptr) {
             int action = parentNode->get_action(childIdx);
             outFile << "N" << ++nodeId << " [label = \""
-                    <<  state->action_to_san(action, state->legal_actions(), false, false)
+                    <<  state->get_actions()
                      << "\"]" << endl;
             int perc = (float(parentNode->get_child_number_visits()[childIdx++]) / parentNode->get_visits()) * 100 + 0.5;
             perc = min(perc+10, 100);
@@ -428,7 +428,7 @@ void MCTSAgent::export_search_tree(size_t maxDepth, const string& filename)
             << "color = grey" << endl
             << "]" << endl << endl;
 
-    outFile << "N0 [label = \"root\", xlabel=\"fen: " << rootState->fen() << "\"]" << endl << endl;
+    outFile << "N0 [label = \"root\"]" << endl << endl;
     print_child_nodes_to_file(rootNode.get(), rootState.get(), 0, nodeId, outFile, 1, maxDepth);
     outFile << "}" << endl;
     outFile.close();

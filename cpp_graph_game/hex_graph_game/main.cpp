@@ -1,9 +1,4 @@
-#include "tests/speedtest.cpp"
-#include "tests/test_env.cpp"
-#include "tests/consistency_test.cpp"
-#include "tests/test_my_graph.cpp"
-#include "tests/test_torch_script.cpp"
-#include "tests/test_copy.cpp"
+#include "main.h"
 
 int main(int argc, char * argv[]){
 	assert (argc>1);

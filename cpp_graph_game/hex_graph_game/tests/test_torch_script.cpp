@@ -1,16 +1,6 @@
-/* #include <torch/script.h> // One-stop header. */
-#include <torch/script.h>
-/* #include <torchscatter/scatter.h> */
-#include <ATen/ATen.h>
-#include <torch/csrc/autograd/variable.h>
-#include <torch/csrc/autograd/function.h>
-#include "../shannon_node_switching_game.cpp"
-#include "../util.cpp"
-#include "../nn_api.cpp"
+#include "test_torch_script.h"
 
-#include <iostream>
-#include <memory>
-
+using blaze::DynamicVector;
 torch::Device device(torch::kCUDA,0);
 
 /* TORCH_LIBRARY(my_ops, m) { */
@@ -75,7 +65,8 @@ void test_torch_script(string fname) {
 	cout << vi[0].toTensor().sizes() << endl << vi[1].toTensor().sizes() << endl << vi[2].toTensor().sizes();
 
 	vector<at::Tensor> out = net.predict(vi);
-	blaze::DynamicVector<double> probvec = torch_to_blaze(out[0]);
-	std::cout << res << endl;
-	std::cout << probvec << endl << probvec.size() << endl;
+
+	/* DynamicVector<double> probvec = torch_to_blaze<double>(out[0]); */
+	/* std::cout << res << endl; */
+	/* std::cout << probvec << endl << probvec.size() << endl; */
 }

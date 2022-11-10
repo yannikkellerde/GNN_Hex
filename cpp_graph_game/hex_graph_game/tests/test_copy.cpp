@@ -1,5 +1,4 @@
-#include "../graph.cpp"
-#include "../shannon_node_switching_game.cpp"
+#include "test_copy.h"
 
 void test_copy(){
 	Graph g(10);

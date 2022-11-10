@@ -1,35 +1,17 @@
-#include <iostream>
-#include <fstream>
-#include <iterator>
-#include <utility>
-#include <vector>
-
-#if !defined(HEX_BOARD)
-#define HEX_BOARD
+#include "hex_board_game.h"
 
 using namespace std;
 
-enum Hex_color{empty_square,red,blue};
-
-class Hex_board {
-	private:
-		Hex_color onturn;
-		vector<Hex_color> position;
-	public:
-		int size;
-		int num_squares;
-		Hex_board(int size=11, Hex_color c=red):onturn(c),size(size),num_squares(size*size){
-			position = vector<Hex_color>(num_squares,empty_square);
-		};
-		vector<int> get_actions(){
-			vector <int> actions = {};
-			for (int i=0; i<position.size(); ++i){
-				if (position[i]==empty_square){
-					actions.push_back(i);
-				}
-			}
-			return actions;
-		};
-
+Hex_board::Hex_board(int size, Hex_color c):onturn(c),size(size),num_squares(size*size){
+	position = vector<Hex_color>(num_squares,empty_square);
 };
-#endif
+vector<int> Hex_board::get_actions(){
+	vector <int> actions = {};
+	for (int i=0; i<position.size(); ++i){
+		if (position[i]==empty_square){
+			actions.push_back(i);
+		}
+	}
+	return actions;
+};
+

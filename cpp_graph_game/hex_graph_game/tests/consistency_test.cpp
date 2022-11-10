@@ -1,6 +1,4 @@
-#include "../shannon_node_switching_game.cpp"
-#include<iostream>
-#include <unistd.h>
+#include "consistency_test.h"
 
 void test_dead_and_captured_consistency(){
 	Node_switching_game simple_game(11);

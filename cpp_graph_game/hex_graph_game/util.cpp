@@ -1,21 +1,11 @@
-#include <iterator>
-#include <utility>
-#include <vector>
-#include <map>
-#include <random>
-#include <blaze/Math.h>
-#include <torch/script.h>
-#include <ATen/ATen.h>
-#include <torch/csrc/autograd/variable.h>
-#include <torch/csrc/autograd/function.h>
-
+#include "util.h"
 
 using namespace std;
 using namespace torch::indexing;
 using blaze::DynamicVector;
 
-#if !defined(UTIL)
-#define UTIL
+#if !defined(UTIL_H)
+#define UTIL_H
 
 template<typename Iter, typename RandomGenerator>
 Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {

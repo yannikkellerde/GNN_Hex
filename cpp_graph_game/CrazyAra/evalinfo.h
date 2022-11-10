@@ -34,6 +34,7 @@
 
 #include <blaze/Math.h>
 #include "node.h"
+#include "constants.h"
 
 using blaze::HybridVector;
 using blaze::DynamicVector;

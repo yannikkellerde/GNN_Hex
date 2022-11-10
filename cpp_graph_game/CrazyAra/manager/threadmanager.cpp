@@ -40,7 +40,7 @@ void ThreadManager::print_info()
 {
     tData->evalInfo->end = chrono::steady_clock::now();
     update_eval_info(*tData->evalInfo, tData->rootNode, get_tb_hits(tData->searchThreads), get_max_depth(tData->searchThreads), tInfo->searchSettings);
-    info_msg(*tData->evalInfo);
+    info_string(*tData->evalInfo);
 }
 
 void ThreadManager::await_kill_signal()

@@ -1,7 +1,4 @@
-/* #include "shannon_node_switching_game.cpp" */
-#include "../shannon_node_switching_game.cpp"
-#include<iostream>
-#include <unistd.h>
+#include "test_env.h"
 
 void interactive_env(){
 	torch::Device device(torch::kCPU,0);
