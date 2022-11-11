@@ -67,7 +67,12 @@ void CrazyAra::welcome()
 
 void CrazyAra::uci_loop(int argc, char *argv[])
 {
-    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>();
+		init();
+    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+		cout << state->graph.num_vertices << endl;
+		cout << Options["Hex_Size"] << endl;
+		Node_switching_game test(5);
+		cout << test.graph.num_vertices << endl;
     string token, cmd;
     EvalInfo evalInfo;
     state->reset();
@@ -153,11 +158,13 @@ void CrazyAra::go(Node_switching_game* state, istringstream &is,  EvalInfo& eval
     }
 
     if (useRawNetwork) {
+				cout << state->graph.num_vertices << endl;
         rawAgent->set_search_settings(state, &searchLimits, &evalInfo);
         rawAgent->lock();  // lock() rawAgent to avoid calling stop() immediatly
         mainSearchThread = thread(run_agent_thread, rawAgent.get());
     }
     else {
+				cout << state->graph.num_vertices << endl;
         mctsAgent->set_search_settings(state, &searchLimits, &evalInfo);
         mctsAgent->lock(); // lock() mctsAgent to avoid calling stop() immediatly
         mainSearchThread = thread(run_agent_thread, mctsAgent.get());
@@ -389,8 +396,8 @@ bool CrazyAra::is_ready()
 #ifdef USE_RL
         init_rl_settings();
 #endif
-        netSingle = create_new_net_single(string(Options["Model_Directory"]));
-        netBatches = create_new_net_batches(string(Options["Model_Directory"]));
+        netSingle = create_new_net_single(string(Options["Model_Path"]));
+        netBatches = create_new_net_batches(string(Options["Model_Path"]));
         mctsAgent = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings);
         rawAgent = make_unique<RawNetAgent>(netSingle.get(), &playSettings, false);
         /* StateConstants::init(mctsAgent->is_policy_map()); */
@@ -505,12 +512,7 @@ void CrazyAra::init_search_settings()
     searchSettings.allowEarlyStopping = Options["Allow_Early_Stopping"];
     useRawNetwork = Options["Use_Raw_Network"];
     searchSettings.useNPSTimemanager = Options["Use_NPS_Time_Manager"];
-    if (string(Options["SyzygyPath"]).empty() || string(Options["SyzygyPath"]) == "<empty>") {
-        searchSettings.useTablebase = false;
-    }
-    else {
-        searchSettings.useTablebase = true;
-    }
+		searchSettings.useTablebase = false;
     searchSettings.reuseTree = Options["Reuse_Tree"];
     searchSettings.mctsSolver = Options["MCTS_Solver"];
 }

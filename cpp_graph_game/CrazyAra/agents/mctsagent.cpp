@@ -401,7 +401,7 @@ void print_child_nodes_to_file(const Node* parentNode, Node_switching_game* stat
         if (node != nullptr && node->is_playout_node()) {
             unique_ptr<Node_switching_game> state2 = unique_ptr<Node_switching_game>(state->clone());
             int action = parentNode->get_action(childIdx);
-            state2->make_move(action);
+            state2->make_move(action,false,noplayer,true);
             print_child_nodes_to_file(node, state2.get(), ++initialId, nodeId, outFile, depth+1, maxDepth);
         }
     }

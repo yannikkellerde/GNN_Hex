@@ -72,11 +72,22 @@ void test_torch_script(string fname) {
 	node_feat.push_back(inputs[0]);
 	vector<int> batch_ptr;
 	tie(vi, batch_ptr) = collate_batch(node_feat,ei);
-	cout << vi[0].toTensor().sizes() << endl << vi[1].toTensor().sizes() << endl << vi[2].toTensor().sizes();
 
-	vector<at::Tensor> out = net.predict(vi);
+	cout << vi[0].toTensor().sizes() << endl;
+	cout << vi[1].toTensor().sizes() << endl;
+	cout << vi[2].toTensor().sizes() << endl;
+	cout << vi[0].toTensor().dtype() << endl;
+	cout << vi[1].toTensor().dtype() << endl;
+	cout << vi[2].toTensor().dtype() << endl;
+	cout << vi[0].toTensor().max() << endl;
+	cout << vi[1].toTensor().max() << endl;
+	cout << vi[2].toTensor().max() << endl;
+	cout << vi[1] << endl;
+	cout << batch_ptr << endl;
 
-	blaze::DynamicVector<double> probvec = torch_to_blaze<double>(out[0]);
-	std::cout << res << endl;
-	std::cout << probvec << endl << probvec.size() << endl;
+	/* vector<at::Tensor> out = net.predict(vi); */
+
+	/* blaze::DynamicVector<double> probvec = torch_to_blaze<double>(out[0]); */
+	/* std::cout << res << endl; */
+	/* std::cout << probvec << endl << probvec.size() << endl; */
 }

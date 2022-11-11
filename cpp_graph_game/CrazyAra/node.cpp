@@ -580,9 +580,6 @@ void Node::prepare_node_for_visits()
     if (d == nullptr) {  // mark_tablebase() initializes the NodeData
         init_node_data();
     }
-#ifdef MCTS_STORE_STATES
-    state->prepare_action();
-#endif
 }
 
 uint32_t Node::get_visits() const

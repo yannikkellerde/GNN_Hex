@@ -56,18 +56,18 @@ private:
                     string("              /   '-(-.)/      | |  | |  __/>  <  / ____ \\| | | (_| |            \n") +
                     string("            .'--.   \\  `       |_|  |_|\\___/_/\\_\\/_/    \\_\\_|  \\__,_|      \n") +
                     string("           /    `\\   |                 																	        \n") +
-                    string("         /`       |  / /`\\.-.             _    _    _	                		      \n") +
-                    string("       .'        ;  /  \\_/__/       ,----|2|--|5|--|8|                           \n") +
-                    string("     .'`-'_     /_.'))).-` \\        ⬤---⹁_ ‾ \\_/‾ \\_ ‾\\                      \n") +
+                    string("         /`       |  / /`\\.-.              _    _    _	                		      \n") +
+                    string("       .'        ;  /  \\_/__/        ,----|2|--|5|--|8|                           \n") +
+                    string("     .'`-'_     /_.'))).-` \\        ⬤---⹁_ ‾‾\\_/‾‾\\_ ‾\\                      \n") +
                     string("    / -'_.'---;`'-))).-'`\\_/        \\   |1|--|4|--|7|  \\                      \n") +
-                    string("   (__.'/   /` .'`                    \\ _ ‾ \\_/‾ \\_ ‾`---◯   						   \n") +
-                    string("    (_.'/ /` /`                        |0|--|3|--|6|----´       						  \n") +
-                    string("      _|.' /`                           ‾    ‾    ‾                           \n") +
+                    string("   (__.'/   /` .'`                   \\ _ ‾‾\\_/‾‾\\_ ‾`---◯   						   \n") +
+                    string("    (_.'/ /` /`                       |0|--|3|--|6|----´       						  \n") +
+                    string("      _|.' /`                          ‾    ‾    ‾                           \n") +
                     string("   .-` __.'|   Developer: Yannik Keller																				\n") +
                     string("    .-'||  |   Based on CrazyAra by Johannes Czech, Moritz Willig, Alena Beyer\n") +
                     string("       \\_`/    Source-Code: QueensGambit/CrazyAra (GPLv3-License)             \n") +
                     string("               Inspiration: A0-paper by Silver, Hubert, Schrittwieser et al.  \n")+
-                    string("               ASCII-Art: Joan G. Stark, Chappell, Burton                     \n");
+                    string("               ASCII-Art (Parrot): Joan G. Stark, Chappell, Burton            \n");
     unique_ptr<RawNetAgent> rawAgent;      
     unique_ptr<MCTSAgent> mctsAgent;
     unique_ptr<NN_api> netSingle;

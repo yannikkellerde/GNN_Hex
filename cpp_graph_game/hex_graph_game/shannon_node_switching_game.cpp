@@ -176,6 +176,7 @@ void Node_switching_game::reset(){
 		}
 	}
 }
+
 uint16_t Node_switching_game::hash_key() { // https://stackoverflow.com/a/27216842
 	std::size_t seed = graph.sources.size();
 	for(int& i : graph.sources) {
@@ -541,6 +542,7 @@ void Node_switching_game::graphviz_me (string fname){
 std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &device){
 	Neighbors neigh;
 	int n = graph.num_vertices;
+	assert(n>0);  // This position is won for some player. Check it first.
 	torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(device);
 	torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
 	torch::Tensor node_features = torch::zeros({n,3},options_float);

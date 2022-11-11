@@ -181,10 +181,10 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
             newState = unique_ptr<Node_switching_game>(rootState->clone());
             assert(actionsBuffer.size() == description.depth-1);
             for (int action : actionsBuffer) {
-                newState->make_move(action);
+                newState->make_move(action,false,noplayer,true);
             }
 #endif
-            newState->make_move(currentNode->get_action(childIdx));
+            newState->make_move(currentNode->get_action(childIdx),false,noplayer,true);
             currentNode->increment_no_visit_idx();
 #ifdef MCTS_STORE_STATES
             nextNode = add_new_node_to_tree(newState, currentNode, childIdx, description.type);
@@ -264,6 +264,7 @@ void SearchThread::reset_stats()
 
 void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB)
 {
+		cout << "Filling policyProbSmall" << endl;
 		node->policyProbSmall = torch_to_blaze<float>(probOutputs.index({Slice(batch_ptr[batchIdx],batch_ptr[batchIdx+1])}));
     node_post_process_policy(node, searchSettings->nodePolicyTemperature, searchSettings);
     node_assign_value(node, valueOutputs, tbHits, batchIdx, isRootNodeTB);
@@ -360,6 +361,16 @@ void SearchThread::thread_iteration()
 				std::vector<torch::jit::IValue> inputs;
 
 				tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+				cout << inputs[0].toTensor().sizes() << endl;
+				cout << inputs[1].toTensor().sizes() << endl;
+				cout << inputs[2].toTensor().sizes() << endl;
+				cout << inputs[0].toTensor().dtype() << endl;
+				cout << inputs[1].toTensor().dtype() << endl;
+				cout << inputs[2].toTensor().dtype() << endl;
+				cout << inputs[0].toTensor().max() << endl;
+				cout << inputs[1].toTensor().max() << endl;
+				cout << inputs[2].toTensor().max() << endl;
+				cout << node_features.size() << endl;
 
         vector<at::Tensor> tvec = net->predict(inputs);
 				probOutputs = tvec[0].exp();
@@ -406,17 +417,6 @@ void SearchThread::backup_values(FixedVector<float>* values, vector<Trajectory>&
 
 void node_assign_value(Node *node, const torch::Tensor valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB)
 {
-#ifdef MCTS_TB_SUPPORT
-    if (node->is_tablebase()) {
-        ++tbHits;
-        // TODO: Improvement the value assignment for table bases
-        if (node->get_value() != 0 && isRootNodeTB) {
-            // use the average of the TB entry and NN eval for non-draws
-            node->set_value((valueOutputs[batchIdx] + node->get_value()) * 0.5f);
-        }
-        return;
-    }
-#endif
     node->set_value(valueOutputs[batchIdx].item<float>());
 }
 

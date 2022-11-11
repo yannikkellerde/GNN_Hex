@@ -31,7 +31,7 @@ blaze::DynamicVector<T> torch_to_blaze(const at::Tensor& t){
 		throw std::logic_error("Not Implemented");
 	}
 	m = t.cpu().to(torch_type).contiguous();
-	blaze::DynamicVector<T> v(m.numel(),m.data_ptr<double>());
+	blaze::DynamicVector<T> v(m.numel(),m.data_ptr<T>());
 	return v;
 }
 

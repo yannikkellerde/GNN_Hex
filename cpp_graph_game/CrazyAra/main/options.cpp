@@ -41,7 +41,7 @@ inline TimePoint current_time() {
 
 void OptionsUCI::init(OptionsMap &o)
 {
-		o["Hex_Size"]											 << Option(5);
+		o["Hex_Size"]											 << Option(5,1,21);
     o["Allow_Early_Stopping"]          << Option(true);
 #ifdef USE_RL
     o["Batch_Size"]                    << Option(8, 1, 8192);
@@ -129,7 +129,6 @@ void OptionsUCI::init(OptionsMap &o)
     o["EPD_File_Path"]                 << Option("<empty>");
     o["MaxInitPly"]                    << Option(30, 0, 99999);
     o["MeanInitPly"]                   << Option(15, 0, 99999);
-    o["Model_Directory_Contender"]     << Option(string("model_contender/" + engineName + "/" + StateConstants::DEFAULT_UCI_VARIANT()).c_str());
     o["Selfplay_Number_Chunks"]        << Option(640, 1, 99999);
     o["Selfplay_Chunk_Size"]           << Option(128, 1, 99999);
     o["Milli_Policy_Clip_Thresh"]      << Option(0, 0, 100);
