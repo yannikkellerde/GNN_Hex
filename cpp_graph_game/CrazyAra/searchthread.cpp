@@ -24,6 +24,7 @@
  */
 
 #include "searchthread.h"
+#include <unistd.h>
 #include "../hex_graph_game/util.h"
 
 #include <stdlib.h>
@@ -85,13 +86,12 @@ Node* SearchThread::add_new_node_to_tree(Node_switching_game* newState, Node* pa
 {
     bool transposition;
     Node* newNode = parentNode->add_new_node_to_tree(mapWithMutex, newState, childIdx, searchSettings, transposition);
-    if (transposition) {
-        const float qValue =  parentNode->get_child_node(childIdx)->get_value();
-        transpositionValues->add_element(qValue);
-        nodeBackup = NODE_TRANSPOSITION;
-        return newNode;
-    }
-    nodeBackup = NODE_NEW_NODE;
+		if (newNode->is_terminal()){
+			nodeBackup = NODE_TERMINAL;
+		}
+		else{
+			nodeBackup = NODE_NEW_NODE;
+		}
     return newNode;
 }
 
@@ -175,22 +175,15 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
         nextNode = currentNode->get_child_node(childIdx);
         description.depth++;
         if (nextNode == nullptr) {
-#ifdef MCTS_STORE_STATES
-            Node_switching_game* newState = currentNode->get_state()->clone();
-#else
             newState = unique_ptr<Node_switching_game>(rootState->clone());
             assert(actionsBuffer.size() == description.depth-1);
             for (int action : actionsBuffer) {
                 newState->make_move(action,false,noplayer,true);
             }
-#endif
+						/* cout << "ab  " << actionsBuffer.size() << "  " << childIdx << endl; */
             newState->make_move(currentNode->get_action(childIdx),false,noplayer,true);
             currentNode->increment_no_visit_idx();
-#ifdef MCTS_STORE_STATES
-            nextNode = add_new_node_to_tree(newState, currentNode, childIdx, description.type);
-#else
             nextNode = add_new_node_to_tree(newState.get(), currentNode, childIdx, description.type);
-#endif
             currentNode->unlock();
 
             if (description.type == NODE_NEW_NODE) {
@@ -204,6 +197,9 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
 								vector<torch::Tensor> tens = newState->convert_graph(net->device);
 								node_features.push_back(tens[0]);
 								edge_indices.push_back(tens[1]);
+								/* cout << "Created new node with key: " << nextNode->hash_key() << endl; */
+								/* cout << "Num legal actions: " << nextNode->get_legal_actions().size() << endl; */
+								/* cout << "Node_features size: " << tens[0].sizes() << endl; */
 
                 // save a reference newly created list in the temporary list for node creation
                 // it will later be updated with the evaluation of the NN
@@ -264,8 +260,16 @@ void SearchThread::reset_stats()
 
 void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB)
 {
-		cout << "Filling policyProbSmall" << endl;
 		node->policyProbSmall = torch_to_blaze<float>(probOutputs.index({Slice(batch_ptr[batchIdx],batch_ptr[batchIdx+1])}));
+		/* cout << "Filling policyProbSmall PID:" << getpid() << endl; */
+		/* cout << "Key:" << node->hash_key() << endl; */
+		/* cout << "prob_Outputs size:" << probOutputs.sizes() << endl; */
+		/* cout << "batch_ptr size:" << batch_ptr.size() << endl; */
+		/* cout << "batch_idx:" << batchIdx << endl; */
+		/* cout << "legal actions:" << node->get_legal_actions().size() << endl; */
+		/* cout << "range:" << batch_ptr[batchIdx] << ", " << batch_ptr[batchIdx+1] << endl; */
+		/* cout << "Size:" << node->policyProbSmall.size() << endl; */
+		assert(node->policyProbSmall.size()==node->get_legal_actions().size());
     node_post_process_policy(node, searchSettings->nodePolicyTemperature, searchSettings);
     node_assign_value(node, valueOutputs, tbHits, batchIdx, isRootNodeTB);
     node->enable_has_nn_results();
@@ -361,16 +365,18 @@ void SearchThread::thread_iteration()
 				std::vector<torch::jit::IValue> inputs;
 
 				tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
-				cout << inputs[0].toTensor().sizes() << endl;
-				cout << inputs[1].toTensor().sizes() << endl;
-				cout << inputs[2].toTensor().sizes() << endl;
-				cout << inputs[0].toTensor().dtype() << endl;
-				cout << inputs[1].toTensor().dtype() << endl;
-				cout << inputs[2].toTensor().dtype() << endl;
-				cout << inputs[0].toTensor().max() << endl;
-				cout << inputs[1].toTensor().max() << endl;
-				cout << inputs[2].toTensor().max() << endl;
-				cout << node_features.size() << endl;
+				node_features.clear();
+				edge_indices.clear();
+				/* cout << inputs[0].toTensor().sizes() << endl; */
+				/* cout << inputs[1].toTensor().sizes() << endl; */
+				/* cout << inputs[2].toTensor().sizes() << endl; */
+				/* cout << inputs[0].toTensor().dtype() << endl; */
+				/* cout << inputs[1].toTensor().dtype() << endl; */
+				/* cout << inputs[2].toTensor().dtype() << endl; */
+				/* cout << inputs[0].toTensor().max() << endl; */
+				/* cout << inputs[1].toTensor().max() << endl; */
+				/* cout << inputs[2].toTensor().max() << endl; */
+				/* cout << node_features.size() << endl; */
 
         vector<at::Tensor> tvec = net->predict(inputs);
 				probOutputs = tvec[0].exp();

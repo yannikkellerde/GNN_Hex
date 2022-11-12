@@ -23,6 +23,7 @@
  * @author: queensgambit
  */
 #include "node.h"
+#include <unistd.h>
 #include <limits.h>
 #include "util/blazeutil.h" // get_dirichlet_noise()
 #include "constants.h"
@@ -94,12 +95,9 @@ Node::Node(Node_switching_game* state, const SearchSettings* searchSettings):
 {
     // specify the number of direct child nodes of this node
     check_for_terminal(state);
-#ifdef MCTS_TB_SUPPORT
-    if (searchSettings->useTablebase && !isTerminal) {
-        check_for_tablebase_wdl(state);
-    }
-#endif
-    policyProbSmall.resize(legalActions.size());
+		if (!is_terminal()){
+			policyProbSmall.resize(legalActions.size());
+		}
 }
 
 bool Node::solved_win(const Node* childNode) const
@@ -416,6 +414,9 @@ Node::~Node()
 
 void Node::sort_moves_by_probabilities()
 {
+		/* cout << "Key: " << this->hash_key() << endl; */
+		/* cout << "Sorting by probabilities. Legal actions: " << legalActions.size() << " Probabilities: " << policyProbSmall.size() << endl; */
+		assert(legalActions.size() == policyProbSmall.size());
     auto p = sort_permutation(policyProbSmall, std::greater<float>());
     apply_permutation_in_place(policyProbSmall, p);
     apply_permutation_in_place(legalActions, p);
@@ -655,7 +656,6 @@ Node* Node::add_new_node_to_tree(MapWithMutex* mapWithMutex, Node_switching_game
     // connect the Node to the parent
     shared_ptr<Node> newNode = make_shared<Node>(newState, searchSettings);
     atomic_store(&d->childNodes[childIdx], newNode);
-    transposition = false;
     return d->childNodes[childIdx].get();
 }
 
@@ -1080,11 +1080,7 @@ void Node::print_node_statistics(const Node_switching_game* state, const vector<
              << setw(5) << value_to_centipawn(q) << " | ";
         if (childIdx < get_no_visit_idx() && d->childNodes[childIdx] != nullptr && d->childNodes[childIdx]->d != nullptr && d->childNodes[childIdx]->get_node_type() != UNSOLVED) {
             cout << setfill(' ') << setw(4) <<
-        #ifndef MCTS_SINGLE_PLAYER
-                    node_type_to_string(flip_node_type(NodeType(d->childNodes[childIdx]->d->nodeType)))
-        #else
-                    node_type_to_string(NodeType(d->childNodes[childIdx]->d->nodeType))
-        #endif
+									node_type_to_string(flip_node_type(NodeType(d->childNodes[childIdx]->d->nodeType)))
                  << " in " << setfill('0') << setw(2) << d->childNodes[childIdx]->d->endInPly+1;
         }
         else {

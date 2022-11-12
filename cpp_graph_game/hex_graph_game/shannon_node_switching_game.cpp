@@ -185,6 +185,12 @@ uint16_t Node_switching_game::hash_key() { // https://stackoverflow.com/a/272168
 	for(int& i : graph.targets) {
 		seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
+	for(float& i : graph.fprops[t1connect]) {
+		seed ^= (int)i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
+	for(float& i : graph.fprops[t2connect]) {
+		seed ^= (int)i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
 	return seed;
 }
 

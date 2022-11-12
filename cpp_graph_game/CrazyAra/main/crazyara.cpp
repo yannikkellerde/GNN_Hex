@@ -158,13 +158,13 @@ void CrazyAra::go(Node_switching_game* state, istringstream &is,  EvalInfo& eval
     }
 
     if (useRawNetwork) {
-				cout << state->graph.num_vertices << endl;
+				cout << "Using raw network" << endl;
         rawAgent->set_search_settings(state, &searchLimits, &evalInfo);
         rawAgent->lock();  // lock() rawAgent to avoid calling stop() immediatly
         mainSearchThread = thread(run_agent_thread, rawAgent.get());
     }
     else {
-				cout << state->graph.num_vertices << endl;
+				cout << "Using MCTS" << endl;
         mctsAgent->set_search_settings(state, &searchLimits, &evalInfo);
         mctsAgent->lock(); // lock() mctsAgent to avoid calling stop() immediatly
         mainSearchThread = thread(run_agent_thread, mctsAgent.get());

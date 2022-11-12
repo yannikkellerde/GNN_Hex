@@ -74,6 +74,7 @@ void RawNetAgent::evaluate_board_state()
     evalInfo->selDepth = 1;
     evalInfo->nodes = 1;
     evalInfo->pv[0] = { bestmove };
+		cout << "Raw net evaluated board state " << valueOutputs[0] << endl;
 }
 
 void RawNetAgent::stop()

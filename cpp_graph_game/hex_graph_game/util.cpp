@@ -24,7 +24,7 @@ tuple<vector<torch::jit::IValue>,vector<int>> collate_batch(std::vector<torch::T
 		big_ei.index_put_({Ellipsis,Slice(starting_ei,next_ei)},big_ei.index({Ellipsis,Slice(starting_ei,next_ei)})+starting_vi);
 		starting_ei = next_ei;
 		starting_vi = next_vi;
-		batch_ptr.push_back(next_ei);
+		batch_ptr.push_back(next_vi);
 	}
 	return {vector<c10::IValue>({big_features,big_ei,graph_indices}),batch_ptr};
 }
