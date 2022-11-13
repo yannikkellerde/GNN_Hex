@@ -75,7 +75,7 @@ private:
      * @param policyProbSmall Probability for each move
      * @param mirrorPolicy Decides if the policy should be mirrored
      */
-    void save_policy(const vector<int>& legalMoves, const DynamicVector<float>& policyProbSmall, bool mirrorPolicy);
+    void save_policy(const vector<int>& legalMoves, const DynamicVector<float>& policyProbSmall);
 
     /**
      * @brief save_best_move_q Saves the Q-value of the move which was selected after MCTS search(Optional training sample feature)
@@ -119,7 +119,7 @@ private:
      * In the case of a draw, all entries are set to 0.
      * @param result Possible values DRAWN, WHITE_WIN, BLACK_WIN,
      */
-    void apply_result_to_value(Onturn result);
+    void apply_result_to_value(Onturn result, int startIdx);
 
     /**
      * @brief apply_result_to_plys_to_end Converts the ply index information into plys-to-end
@@ -149,7 +149,7 @@ public:
      * The value is inversed after each step and export all training samples of a single game.
      * @param result Game match result: LOST, DRAW, WON
      */
-    void export_game_samples(Onturn result);
+    void export_game_samples();
 
     size_t get_number_samples() const;
 
@@ -162,7 +162,7 @@ public:
     /**
      * @brief new_game Sets firstMove to true
      */
-    void new_game();
+    void new_game(Onturn last_result);
 };
 
 #endif // TRAINDATAEXPORTER_H
