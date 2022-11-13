@@ -24,83 +24,37 @@
  *
  */
 
-#ifdef USE_RL
 #include "selfplay.h"
 
+#include "config/searchlimits.h"
 #include "thread.h"
 #include <iostream>
 #include <fstream>
 #include "state.h"
 #include "util/blazeutil.h"
 #include "util/randomgen.h"
+#include "rl/gamepgn.h"
 
 
-void play_move_and_update(const EvalInfo& evalInfo, StateObj* state, GamePGN& gamePGN, Result& gameResult)
+void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult)
 {
-    string sanMove = state->action_to_san(evalInfo.bestMove, evalInfo.legalMoves, false, false);
-    state->do_action(evalInfo.bestMove);
-    gameResult = state->check_result();
+    string sanMove = state->format_action(evalInfo.bestMove);
+    state->make_move(evalInfo.bestMove);
+    gameResult = state->who_won();
 
-    if (is_win(gameResult)) {
-        // replace '+' by '#'
-        if (sanMove[sanMove.size()-1] == '+') {
-            sanMove[sanMove.size()-1] = '#';
-        }
-        // add '#'
-        else {
-            sanMove += "#";
-        }
+    if (gameResult!=noplayer) {
+			sanMove += "#";
     }
     gamePGN.gameMoves.emplace_back(sanMove);
 }
-
-
-string load_random_fen(string filepath)
-{
-    if (filepath == "<empty>" or filepath == "") {
-        return "";
-    }
-    std::ifstream myfile (filepath);
-    // https://stackoverflow.com/questions/33532108/pick-a-random-line-from-text-file-in-c
-    std::random_device seed;
-    std::mt19937 prng(seed());
-    std::string line;
-    std::string result;
-    for(std::size_t n = 0; std::getline(myfile, line); n++) {
-        std::uniform_int_distribution<> dist(0, n);
-        if (dist(prng) < 1)
-            result = line;
-    }
-    // remove last ";"
-    if (result.back() == ';') {
-        result.pop_back();
-    }
-    return result;
-}
-
 
 SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* searchLimits, PlaySettings* playSettings,
                    RLSettings* rlSettings, OptionsMap& options):
     rawAgent(rawAgent), mctsAgent(mctsAgent), searchLimits(searchLimits), playSettings(playSettings),
     rlSettings(rlSettings), gameIdx(0), gamesPerMin(0), samplesPerMin(0), options(options)
 {
-    is960 = options["UCI_Chess960"];
-    string suffix960 = "";
-    if (is960) {
-        suffix960 = "960";
-    }
       
-    #ifndef MODE_STRATEGO
-    if (not is960 && string(options["UCI_Variant"]) == "chess") {
-        // TODO: do we want standard instead of chess ?
-        gamePGN.variant = "standard";
-    } else {
-        gamePGN.variant = string(options["UCI_Variant"]) + suffix960;
-    }
-    #else
-        gamePGN.variant = "stratego";
-    #endif
-
+		gamePGN.variant = "hex";
     time_t     now = time(0);
     struct tm  tstruct;
     char       date[80];
@@ -111,7 +65,6 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
     gamePGN.event = "SelfPlay";
     gamePGN.site = "Darmstadt, GER";
     gamePGN.round = "?";
-    gamePGN.is960 = is960;
     this->exporter = new TrainDataExporter(string("data_") + mctsAgent->get_device_name() + string(".zarr"),
                                            rlSettings->numberChunks, rlSettings->chunkSize);
     filenamePGNSelfplay = string("games_") + mctsAgent->get_device_name() + string(".pgn");
@@ -158,17 +111,17 @@ bool SelfPlay::is_resignation_allowed() {
     return float(rand()) / RAND_MAX < rlSettings->resignProbability;
 }
 
-void SelfPlay::check_for_resignation(const bool allowResingation, const EvalInfo &evalInfo, const StateObj* state, Result &gameResult)
+void SelfPlay::check_for_resignation(const bool allowResingation, const EvalInfo &evalInfo, const Node_switching_game* state, Onturn &gameResult)
 {
     if (!allowResingation) {
         return;
     }
     if (evalInfo.bestMoveQ[0] < rlSettings->resignThreshold) {
-        if (state->side_to_move() == WHITE) {
-            gameResult = WHITE_WIN;
+        if (state->onturn == maker) {
+            gameResult = maker;
         }
         else {
-            gameResult = BLACK_WIN;
+            gameResult = breaker;
         }
     }
 }
@@ -191,16 +144,16 @@ void SelfPlay::generate_game(int variant, bool verbose)
 
     srand(unsigned(int(time(nullptr))));
     // load position from file if epd filepath was set
-    string startingFen = load_random_fen(rlSettings->epdFilePath);
-    unique_ptr<StateObj> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, variant, is960, rlSettings->rawPolicyProbabilityTemperature, startingFen);
+    unique_ptr<Node_switching_game> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, rlSettings->rawPolicyProbabilityTemperature);
+		assert (state->who_won()==noplayer); // If this fails, ply is to high.
     EvalInfo evalInfo;
-    Result gameResult;
+    Onturn gameResult;
     exporter->new_game();
 
     size_t generatedSamples = 0;
     const bool allowResignation = is_resignation_allowed();
     do {
-        searchLimits->startTime = now();
+        searchLimits->startTime = chrono::steady_clock::now();
         const int randInt = rand();
         const bool isQuickSearch = is_quick_search();
 
@@ -227,7 +180,7 @@ void SelfPlay::generate_game(int variant, bool verbose)
         reset_search_params(isQuickSearch);
         check_for_resignation(allowResignation, evalInfo, state.get(), gameResult);
     }
-    while(gameResult == NO_RESULT);
+    while(gameResult == noplayer);
 
     // export all training samples of the generated game
     exporter->export_game_samples(gameResult);
@@ -244,50 +197,40 @@ void SelfPlay::generate_game(int variant, bool verbose)
     ++gameIdx;
 }
 
-Result SelfPlay::generate_arena_game(MCTSAgent* whitePlayer, MCTSAgent* blackPlayer, int variant, bool verbose, const string& fen)
+Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, int variant, bool verbose)
 {
-    gamePGN.white = whitePlayer->get_name();
-    gamePGN.black = blackPlayer->get_name();
-    unique_ptr<StateObj> state = make_unique<StateObj>();
-    //unique_ptr<StateObj> state = init_starting_state_from_raw_policy(*rawAgent, 0, gamePGN, variant, is960, rlSettings->rawPolicyProbabilityTemperature);
-    
-    if (fen != "") {
-        // set starting fen
-        state->set(fen, is960, variant);
-    } else {
-        // create new starting fen and return it
-        state->init(variant, is960);
-    }
-    gamePGN.fen = state->fen();
+    gamePGN.white = "Maker";
+    gamePGN.black = "Breaker";
+    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
     EvalInfo evalInfo;
 
     MCTSAgent* activePlayer;
     MCTSAgent* passivePlayer;
     // preserve the current active states
-    Result gameResult;
+    Onturn gameResult;
     do {
-        searchLimits->startTime = now();
-        if (state->side_to_move() == WHITE) {
-            activePlayer = whitePlayer;
-            passivePlayer = blackPlayer;
+        searchLimits->startTime = chrono::steady_clock::now();
+        if (state->onturn == maker) {
+            activePlayer = makerPlayer;
+            passivePlayer = breakerPlayer;
         }
         else {
-            activePlayer = blackPlayer;
-            passivePlayer = whitePlayer;
+            activePlayer = breakerPlayer;
+            passivePlayer = makerPlayer;
         }
         activePlayer->set_search_settings(state.get(), searchLimits, &evalInfo);
         activePlayer->perform_action();
         activePlayer->apply_move_to_tree(evalInfo.bestMove, true);
-        if (state->steps_from_null() != 0) {
+        if (state->move_num != 0) {
             passivePlayer->apply_move_to_tree(evalInfo.bestMove, false);
         }
         play_move_and_update(evalInfo, state.get(), gamePGN, gameResult);
     }
-    while(gameResult == NO_RESULT);
+    while(gameResult == noplayer);
     set_game_result_to_pgn(gameResult);
     write_game_to_pgn(filenamePGNArena, verbose);
-    clean_up(gamePGN, whitePlayer);
-    blackPlayer->clear_game_history();
+    clean_up(gamePGN, makerPlayer);
+    breakerPlayer->clear_game_history();
     return gameResult;
 }
 
@@ -308,7 +251,7 @@ void SelfPlay::write_game_to_pgn(const std::string& pgnFileName, bool verbose)
     pgnFile.close();
 }
 
-void SelfPlay::set_game_result_to_pgn(Result res)
+void SelfPlay::set_game_result_to_pgn(Onturn res)
 {
     gamePGN.result = result[res];
 }
@@ -367,48 +310,37 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
     TournamentResult tournamentResult;
     tournamentResult.playerA = mctsContender->get_name();
     tournamentResult.playerB = mctsAgent->get_name();
-    Result gameResult;
+    Onturn gameResult;
 
     for (size_t idx = 0; idx < numberOfGames; ++idx) {
         if (idx % 2 == 0) {
-            string startFen = load_random_fen(rlSettings->epdFilePath);
             // use default or in case of chess960 a random starting position
-            gameResult = generate_arena_game(mctsContender, mctsAgent, variant, true, startFen);
-            if (gameResult == WHITE_WIN) {
+            gameResult = generate_arena_game(mctsContender, mctsAgent, variant, true);
+            if (gameResult == maker) {
                 ++tournamentResult.numberWins;
             }
-            else if (gameResult == BLACK_WIN){
+            else if (gameResult == breaker){
                 ++tournamentResult.numberLosses;
             }
         }
         else {
             // use same starting position as before stored via gamePGN.fen
-            gameResult = generate_arena_game(mctsAgent, mctsContender, variant, true, gamePGN.fen);
-            if (gameResult == BLACK_WIN) {
+            gameResult = generate_arena_game(mctsAgent, mctsContender, variant, true);
+            if (gameResult == breaker) {
                 ++tournamentResult.numberWins;
             }
-            else if (gameResult == WHITE_WIN){
+            else if (gameResult == maker){
                 ++tournamentResult.numberLosses;
             }
         }
-        if (gameResult == DRAWN) {
-            ++tournamentResult.numberDraws;
-        }
+				assert (gameResult!=noplayer);
     }
     return tournamentResult;
 }
 
-unique_ptr<StateObj> init_starting_state_from_raw_policy(RawNetAgent &rawAgent, size_t plys, GamePGN &gamePGN, int variant, bool is960, float rawPolicyProbTemp, const string& fen)
+unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent &rawAgent, size_t plys, GamePGN &gamePGN, float rawPolicyProbTemp)
 {
-    unique_ptr<StateObj> state= make_unique<StateObj>();
-    if (fen != "") {
-        // set starting fen
-        state->set(fen, is960, variant);
-    } else {
-        // create new starting fen and return it
-        state->init(variant, is960);
-    }
-    gamePGN.fen = state->fen();
+    unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
     
     for (size_t ply = 0; ply < plys; ++ply) {
         EvalInfo eval;
@@ -418,25 +350,18 @@ unique_ptr<StateObj> init_starting_state_from_raw_policy(RawNetAgent &rawAgent, 
         const size_t moveIdx = random_choice(eval.policyProbSmall);
         eval.bestMove = eval.legalMoves[moveIdx];
 
-        if (state->leads_to_terminal(eval.bestMove)) {
-            break;
-        }
-        else {
-            gamePGN.gameMoves.push_back(state->action_to_san(eval.legalMoves[moveIdx], eval.legalMoves, false, true));
-            state->do_action(eval.bestMove);
-        }
+				gamePGN.gameMoves.push_back(state->format_action(eval.legalMoves[moveIdx]));
+				state->make_move(eval.bestMove);
     }
     return state;
 }
 
-unique_ptr<StateObj> init_starting_state_from_fixed_move(GamePGN &gamePGN, int variant, bool is960, const vector<Action>& actions)
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN &gamePGN, int variant, bool is960, const vector<int>& actions)
 {
-    unique_ptr<StateObj> state= make_unique<StateObj>();
-    state->init(variant, is960);
-    gamePGN.fen = state->fen();
-    for (Action action : actions) {
-        gamePGN.gameMoves.push_back(state->action_to_san(action, {}, false, true));
-        state->do_action(action);
+    unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
+    for (int action : actions) {
+        gamePGN.gameMoves.push_back(state->format_action(action));
+        state->make_move(action);
     }
     return state;
 }
@@ -463,4 +388,3 @@ void apply_raw_policy_temp(EvalInfo &eval, float rawPolicyProbTemp)
         apply_temperature(eval.policyProbSmall, temp);
     }
 }
-#endif

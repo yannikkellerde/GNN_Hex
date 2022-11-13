@@ -4,7 +4,7 @@
 #if !defined(GRAPH_H)
 #define GRAPH_H
 
-typedef std::pair<std::vector<int>::iterator,std::vector<int>::iterator> Neighbors;
+typedef std::pair<std::vector<int>::const_iterator,std::vector<int>::const_iterator> Neighbors;
 
 class Graph{
 	public:
@@ -23,9 +23,9 @@ class Graph{
 
 		bool add_edge(int v1, int v2);
 
-		Neighbors adjacent_vertices(int vertex);
+		Neighbors adjacent_vertices(int vertex) const;
 
-		int num_neighbors(int vertex);
+		int num_neighbors(int vertex) const;
 
 		bool delete_edge(int v1, int v2);
 
@@ -37,17 +37,17 @@ class Graph{
 
 		void add_fprop(float init);
 
-		bool edge_exists(int source, int target);
+		bool edge_exists(int source, int target) const;
 
 		void remove_vertex(int vertex);
 
 		void clear_vertex(int vertex);
 
-		void do_complete_dump(std::string fname="graph_dump.txt");
+		void do_complete_dump(std::string fname="graph_dump.txt") const;
 
-		void graphviz_me(std::vector<std::pair<std::string,std::vector<std::string>>> props, std::string fname="my_graph.dot", bool undirected=true);
+		void graphviz_me(std::vector<std::pair<std::string,std::vector<std::string>>> props, std::string fname="my_graph.dot", bool undirected=true) const;
 
-		void graphviz_me(std::string fname="my_graph.dot",bool undirected=true);
+		void graphviz_me(std::string fname="my_graph.dot",bool undirected=true) const;
 };
 
 #endif

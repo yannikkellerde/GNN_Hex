@@ -23,7 +23,7 @@ bool check_if_same(Graph& graph, int v1, int v2){
 	for (;neigh1.first!=neigh1.second;++neigh1.first){
 		int n1 = *neigh1.first;
 		if (n1 != v2){
-			vector<int>::iterator pi = neigh2.first;
+			vector<int>::const_iterator pi = neigh2.first;
 			bool found = false;
 			for (;pi!=neigh2.second;++pi){
 				if (*pi==n1){
@@ -58,7 +58,7 @@ bool is_fully_connected(Graph& g,int vert, int ignore){
 	for (;neigh.first!=neigh.second;++neigh.first){
 		int v1 = *neigh.first;
 		if (v1!=ignore){
-			for (vector<int>::iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
+			for (vector<int>::const_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
 				int v2 = *it2;
 				if (v2!=ignore && !g.edge_exists(v1,v2)){
 					return false;
@@ -73,7 +73,7 @@ bool is_fully_connected(Graph& g,Neighbors& neigh, int ignore){
 	for (;neigh.first!=neigh.second;++neigh.first){
 		int v1 = *neigh.first;
 		if (v1!=ignore){
-			for (vector<int>::iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
+			for (vector<int>::const_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
 				int v2 = *it2;
 				if (v2!=ignore && !g.edge_exists(v1,v2)){
 					return false;
@@ -86,7 +86,7 @@ bool is_fully_connected(Graph& g,Neighbors& neigh, int ignore){
 
 bool is_fully_connected(Graph& g,Neighbors& neigh){
 	for (;neigh.first!=neigh.second;++neigh.first){
-		for (vector<int>::iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
+		for (vector<int>::const_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
 			if (!g.edge_exists(*neigh.first,*it2)){
 				return false;
 			}
@@ -177,26 +177,26 @@ void Node_switching_game::reset(){
 	}
 }
 
-uint16_t Node_switching_game::hash_key() { // https://stackoverflow.com/a/27216842
+uint32_t Node_switching_game::hash_key() const { // https://stackoverflow.com/a/27216842
 	std::size_t seed = graph.sources.size();
-	for(int& i : graph.sources) {
+	for(const int& i : graph.sources) {
 		seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
-	for(int& i : graph.targets) {
+	for(const int& i : graph.targets) {
 		seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
-	for(float& i : graph.fprops[t1connect]) {
+	for(const float& i : graph.fprops[t1connect]) {
 		seed ^= (int)i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
-	for(float& i : graph.fprops[t2connect]) {
+	for(const float& i : graph.fprops[t2connect]) {
 		seed ^= (int)i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 	return seed;
 }
 
-int Node_switching_game::vertex_from_board_location(int bl){
+int Node_switching_game::vertex_from_board_location(int bl) const{
 	int i=0;
-	for (vector<int>::iterator vs = graph.lprops[board_location].begin();vs!=graph.lprops[board_location].end();++vs,++i){
+	for (vector<int>::const_iterator vs = graph.lprops[board_location].begin();vs!=graph.lprops[board_location].end();++vs,++i){
 		int v = *vs;
 		if (v == bl){
 			return i;
@@ -264,13 +264,13 @@ void Node_switching_game::remove_marked_nodes(){
 	}
 }
 
-int Node_switching_game::get_random_action(){
+int Node_switching_game::get_random_action() const{
 	vector<int> actions = get_actions();
 	/* return *select_randomly(actions.begin(),actions.end()); // unbiased, non-repeatable*/
 	return repeatable_random_choice(actions);
 }
 
-vector<int> Node_switching_game::get_actions(){
+vector<int> Node_switching_game::get_actions() const{
 	vector <int> res(graph.num_vertices);
 	iota(res.begin(),res.end(),0);
 	return res;
@@ -302,7 +302,7 @@ set<int> Node_switching_game::make_move(int vertex, bool do_force_color, Onturn 
 				graph.fprops[t2connect][v1] = 1.;
 			}
 			else{
-				for (vector<int>::iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
+				for (vector<int>::const_iterator it2 = neigh.first+1;it2!=neigh.second;++it2){
 					int v2 = *it2;
 					if (!((graph.fprops[t1connect][v1])&&(graph.fprops[t1connect][v2])||
 								(graph.fprops[t2connect][v1])&&(graph.fprops[t2connect][v2]))){
@@ -391,7 +391,7 @@ void Node_switching_game::remove_dead_and_captured(set<int> &consider_set){
 
 		for (neighbors = graph.adjacent_vertices(vertex);neighbors.first!=neighbors.second;++neighbors.first){
 			v1 = *neighbors.first;
-			for (vector<int>::iterator it2 = neighbors.first+1;it2!=neighbors.second;++it2){
+			for (vector<int>::const_iterator it2 = neighbors.first+1;it2!=neighbors.second;++it2){
 				if (is_dead&&!graph.edge_exists(*neighbors.first,*it2)){
 					is_dead = false;
 				}
@@ -426,7 +426,7 @@ void Node_switching_game::remove_dead_and_captured(set<int> &consider_set){
 	}
 }
 
-TerminalType Node_switching_game::get_winner(){
+TerminalType Node_switching_game::get_winner() const{
 	Onturn res = who_won();
 	if (res==onturn){ // This is from perspective of current onturn player
 		return TERMINAL_WIN;
@@ -440,7 +440,7 @@ TerminalType Node_switching_game::get_winner(){
 
 }
 
-Onturn Node_switching_game::who_won(){
+Onturn Node_switching_game::who_won() const{
 	int src=0;
 	bool found1,found2,not_again;
 	if (maker_won){
@@ -497,7 +497,7 @@ Onturn Node_switching_game::who_won(){
 	}
 }
 
-vector<string> Node_switching_game::get_grid_layout(){
+vector<string> Node_switching_game::get_grid_layout() const{
 	double scale;
 	vector<string> position_array(graph.num_vertices);
 	scale = 1.;
@@ -514,7 +514,7 @@ vector<string> Node_switching_game::get_grid_layout(){
 	return position_array;
 }
 
-vector<string> Node_switching_game::get_colors(){
+vector<string> Node_switching_game::get_colors() const{
 	vector<string> color_array(graph.num_vertices);
 	for (int i=0;i<graph.num_vertices;i++){
 		if (graph.fprops[t1connect][i]){
@@ -535,7 +535,11 @@ vector<string> Node_switching_game::get_colors(){
 	return color_array;
 }
 
-void Node_switching_game::graphviz_me (string fname){
+string Node_switching_game::format_action(int action) const{
+	return to_string(action)+"("+to_string(graph.lprops[board_location][action])+")";
+}
+
+void Node_switching_game::graphviz_me (string fname) const{
 	vector<string> color_map = get_colors();
 	vector<string> pos_map = get_grid_layout();
 	vector<pair<string,vector<string>>> props;
@@ -545,7 +549,7 @@ void Node_switching_game::graphviz_me (string fname){
 	graph.graphviz_me(props,fname,true);
 };
 
-std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &device){
+std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &device) const{
 	Neighbors neigh;
 	int n = graph.num_vertices;
 	assert(n>0);  // This position is won for some player. Check it first.

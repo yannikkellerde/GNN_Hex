@@ -42,13 +42,13 @@ bool Graph::add_edge(int v1, int v2){
 	return false;
 }
 
-Neighbors Graph::adjacent_vertices(int vertex){
-	vector<int>::iterator edge_start = edge_starts.begin()+vertex;
+Neighbors Graph::adjacent_vertices(int vertex) const{
+	vector<int>::const_iterator edge_start = edge_starts.begin()+vertex;
 	return Neighbors(targets.begin()+(*edge_start),targets.begin()+*(edge_start+1));
 }
 
-int Graph::num_neighbors(int vertex){
-	vector<int>::iterator edge_start = edge_starts.begin()+vertex;
+int Graph::num_neighbors(int vertex) const{
+	vector<int>::const_iterator edge_start = edge_starts.begin()+vertex;
 	return *(edge_start+1)-*edge_start;
 
 }
@@ -110,11 +110,11 @@ void Graph::add_fprop(float init){
 	fprops.push_back(vector<float>(num_vertices,init));
 }
 
-bool Graph::edge_exists(int source, int target){
-	vector<int>::iterator p = edge_starts.begin()+source;
+bool Graph::edge_exists(int source, int target) const{
+	vector<int>::const_iterator p = edge_starts.begin()+source;
 	int begin = *p;
-	vector<int>::iterator next = targets.begin()+*(p+1);
-	for (vector<int>::iterator t = targets.begin()+begin;t!=next;++t){
+	vector<int>::const_iterator next = targets.begin()+*(p+1);
+	for (vector<int>::const_iterator t = targets.begin()+begin;t!=next;++t){
 		if (*t==target){
 			return true;
 		}
@@ -183,12 +183,12 @@ void Graph::clear_vertex(int vertex){
 	}
 }
 
-void Graph::do_complete_dump(string fname){
-	vector<int>::iterator s,t,v;
-	vector<float>::iterator f;
-	vector<int>::iterator p;
-	vector<vector<int>>::iterator lp;
-	vector<vector<float>>::iterator fp;
+void Graph::do_complete_dump(string fname) const{
+	vector<int>::const_iterator s,t,v;
+	vector<float>::const_iterator f;
+	vector<int>::const_iterator p;
+	vector<vector<int>>::const_iterator lp;
+	vector<vector<float>>::const_iterator fp;
 	ofstream my_file;
 	my_file.open(fname);
 	my_file << "num vertices: " << num_vertices << endl << endl;
@@ -219,9 +219,9 @@ void Graph::do_complete_dump(string fname){
 	my_file.close();
 }
 
-void Graph::graphviz_me(vector<pair<string,vector<string>>> props, string fname, bool undirected){
+void Graph::graphviz_me(vector<pair<string,vector<string>>> props, string fname, bool undirected) const{
 	ofstream my_file;
-	vector<int>::iterator s,t;
+	vector<int>::const_iterator s,t;
 	my_file.open(fname);
 	my_file << "graph G {" << endl;
 	for (int i=0;i<num_vertices;i++){
@@ -244,9 +244,9 @@ void Graph::graphviz_me(vector<pair<string,vector<string>>> props, string fname,
 	my_file.close();
 }
 
-void Graph::graphviz_me(string fname, bool undirected){
+void Graph::graphviz_me(string fname, bool undirected) const{
 	ofstream my_file;
-	vector<int>::iterator s,t;
+	vector<int>::const_iterator s,t;
 	my_file.open(fname);
 	my_file << "graph G {" << endl;
 	for (int i=0;i<num_vertices;i++){

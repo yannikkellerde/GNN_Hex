@@ -23,22 +23,41 @@
  * @author: queensgambit
  */
 
-#ifdef USE_RL
+#include "util.h"
 #include "traindataexporter.h"
+#include <filesystem>
 #include <inttypes.h>
-#include "../util/communication.h"
-#include "stateobj.h"
+#include <torch/script.h>
+#include <torch/csrc/autograd/variable.h>
+#include <torch/csrc/autograd/function.h>
+#include <torch/csrc/api/include/torch/serialize.h>
 
-void TrainDataExporter::save_sample(const StateObj* pos, const EvalInfo& eval)
+TrainDataExporter::TrainDataExporter(const string& output_folder, size_t numberChunks, size_t chunkSize):
+    numberChunks(numberChunks),
+    chunkSize(chunkSize),
+    numberSamples(numberChunks * chunkSize),
+    firstMove(true),
+    gameIdx(0),
+    startIdx(0),
+    curSampleIdx(0),
+		device(torch::kCPU),
+		output_folder(output_folder)
+{
+    if (std::filesystem::is_directory(output_folder)) {
+        info_string("Warning: Export folder already exists. Contents will be overwritten");
+    }
+}
+
+void TrainDataExporter::save_sample(const Node_switching_game* pos, const EvalInfo& eval)
 {
     if (startIdx+curSampleIdx >= numberSamples) {
         info_string("Extended number of maximum samples");
         return;
     }
     save_planes(pos);
-    save_policy(eval.legalMoves, eval.policyProbSmall, pos->mirror_policy(pos->side_to_move()));
+    save_policy(eval.legalMoves, eval.policyProbSmall, false);
     save_best_move_q(eval);
-    save_side_to_move(Color(pos->side_to_move()));
+    save_side_to_move(pos->onturn);
     save_cur_sample_index();
     ++curSampleIdx;
     // value will be set later in export_game_result()
@@ -48,29 +67,12 @@ void TrainDataExporter::save_sample(const StateObj* pos, const EvalInfo& eval)
 void TrainDataExporter::save_best_move_q(const EvalInfo &eval)
 {
     // Q value of "best" move (a.k.a selected move after mcts search)
-    xt::xarray<float> qArray({ 1 }, eval.bestMoveQ[0]);
-
-    if (firstMove) {
-        gameBestMoveQ = qArray;
-    }
-    else {
-        // concatenate the sample to array for the current game
-        gameBestMoveQ = xt::concatenate(xtuple(gameBestMoveQ, qArray));
-    }
+		gameBestMoveQ[curSampleIdx] = eval.bestMoveQ[0];
 }
 
-void TrainDataExporter::save_side_to_move(Color col)
+void TrainDataExporter::save_side_to_move(Onturn col)
 {
-    // in the case of WHITE a +1 is saved else -1 for BLACK
-    xt::xarray<int16_t> valueArray({ 1 }, -(col * 2 - 1));
-
-    if (firstMove) {
-        gameValue = valueArray;
-    }
-    else {
-        // concatenate the sample to array for the current game
-        gameValue = xt::concatenate(xtuple(gameValue, valueArray));
-    }
+		gameValue[curSampleIdx] = -(col * 2 - 1);
 }
 
 void TrainDataExporter::save_cur_sample_index()
@@ -87,15 +89,18 @@ void TrainDataExporter::save_cur_sample_index()
     }
 }
 
-void TrainDataExporter::export_game_samples(Result result) {
+void TrainDataExporter::export_game_samples(Onturn result) {
     if (startIdx >= numberSamples) {
-        info_string("Extended number of maximum samples");
+        info_string("Exceeded number of maximum samples");
         return;
     }
-
-    // game value update
-    apply_result_to_value(result);
-    apply_result_to_plys_to_end();
+		torch::save(node_features,output_folder+"/node_features.pt");
+		torch::save(edge_indices,output_folder+"/edge_indices.pt");
+		torch::save(gamePolicy,output_folder+"/policy.pt");
+		torch::save(torch::from_blob(gameValue.data(),gameValue.size()),output_folder+"/value.pt");
+		torch::save(torch::from_blob(gameBestMoveQ.data(),gameValue.size()),output_folder+"/best_q.pt");
+		torch::save(torch::from_blob(gamePlysToEnd.data(),gamePlysToEnd.size()),output_folder+"/plys.pt");
+		torch::save(torch::from_blob(gameStartPtr.data(),gameStartPtr.size()),output_folder+"/game_start_ptr.pt");
 
     // write value to roi
     z5::types::ShapeType offset = { startIdx };
@@ -112,26 +117,6 @@ void TrainDataExporter::export_game_samples(Result result) {
     save_start_idx();
 }
 
-TrainDataExporter::TrainDataExporter(const string& fileName, size_t numberChunks, size_t chunkSize):
-    numberChunks(numberChunks),
-    chunkSize(chunkSize),
-    numberSamples(numberChunks * chunkSize),
-    firstMove(true),
-    gameIdx(0),
-    startIdx(0),
-    curSampleIdx(0)
-{
-    // get handle to a File on the filesystem
-    z5::filesystem::handle::File file(fileName);
-
-    if (file.exists()) {
-        info_string_important("Warning: Export file already exists. It will be overwritten");
-        open_dataset_from_file(file);
-    }
-    else {
-        create_new_dataset_file(file);
-    }
-}
 
 size_t TrainDataExporter::get_number_samples() const
 {
@@ -149,11 +134,9 @@ void TrainDataExporter::new_game()
     curSampleIdx = 0;
 }
 
-void TrainDataExporter::save_planes(const StateObj *pos)
+void TrainDataExporter::save_planes(const Node_switching_game *pos)
 {
-    // x / plane representation
-    float inputPlanes[StateConstants::NB_VALUES_TOTAL()];
-    pos->get_state_planes(false, inputPlanes, StateConstants::CURRENT_VERSION());
+		vector<torch::Tensor> tens = pos->convert_graph(device);
     // write array to roi
     xt::xarray<int16_t>::shape_type planesShape = { 1, StateConstants::NB_CHANNELS_TOTAL(), StateConstants::BOARD_HEIGHT(), StateConstants::BOARD_WIDTH()};
     xt::xarray<int16_t> planes(planesShape);
@@ -251,5 +234,3 @@ void TrainDataExporter::apply_result_to_plys_to_end()
     gamePlysToEnd -= curSampleIdx;
     gamePlysToEnd *= -1;
 }
-
-#endif

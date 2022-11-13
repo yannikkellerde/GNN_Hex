@@ -28,19 +28,12 @@
 #ifndef TRAINDATAEXPORTER_H
 #define TRAINDATAEXPORTER_H
 
-#ifdef USE_RL
 #include <string>
 
 #include "nlohmann/json.hpp"
-#include "xtensor/xarray.hpp"
-#include "z5/factory.hxx"
-#include "z5/filesystem/handle.hxx"
-#include "z5/multiarray/xtensor_access.hxx"
-#include "z5/attributes.hxx"
-#include "z5/dataset.hxx"
 
-#include "environments/chess_related/inputrepresentation.h"
-#include "environments/chess_related/board.h"
+#include <torch/csrc/autograd/variable.h>
+#include <torch/csrc/autograd/function.h>
 #include "constants.h"
 #include "node.h"
 #include "evalinfo.h"
@@ -48,22 +41,20 @@
 class TrainDataExporter
 {
 private:
+		torch::Device device;
     size_t numberChunks;
     size_t chunkSize;
     size_t numberSamples;
-    std::unique_ptr<z5::Dataset> dStartIndex;
-    std::unique_ptr<z5::Dataset> dx;
-    std::unique_ptr<z5::Dataset> dValue;
-    std::unique_ptr<z5::Dataset> dPolicy;
-    std::unique_ptr<z5::Dataset> dbestMoveQ;
-    std::unique_ptr<z5::Dataset> dPlysToEnd;
 
-    xt::xarray<int16_t> gameX;
-    xt::xarray<int16_t> gameValue;
-    xt::xarray<float> gamePolicy;
-    xt::xarray<float> gameBestMoveQ;
-    xt::xarray<int16_t> gamePlysToEnd;
+		vector<torch::Tensor> node_features;
+		vector<torch::Tensor> edge_indices;
+		vector<torch::Tensor> gamePolicy;
+		vector<int8_t> gameValue;
+		vector<float> gameBestMoveQ;
+		vector<int> gamePlysToEnd;
+		vector<int> gameStartPtr;
     bool firstMove;
+		string output_folder;
 
     // current number of games - 1
     size_t gameIdx;
@@ -76,7 +67,7 @@ private:
      * @brief export_planes Exports the board in plane representation (x)
      * @param pos Board position to export
      */
-    void save_planes(const StateObj* pos);
+    void save_planes(const Node_switching_game* pos);
 
     /**
      * @brief save_policy Saves the policy (e.g. mctsPolicy) to the matrix
@@ -84,7 +75,7 @@ private:
      * @param policyProbSmall Probability for each move
      * @param mirrorPolicy Decides if the policy should be mirrored
      */
-    void save_policy(const vector<Action>& legalMoves, const DynamicVector<float>& policyProbSmall, bool mirrorPolicy);
+    void save_policy(const vector<int>& legalMoves, const DynamicVector<float>& policyProbSmall, bool mirrorPolicy);
 
     /**
      * @brief save_best_move_q Saves the Q-value of the move which was selected after MCTS search(Optional training sample feature)
@@ -99,7 +90,7 @@ private:
      * For a draw it will be multiplied by 0.
      * @param col current side to move
      */
-    void save_side_to_move(Color col);
+    void save_side_to_move(Onturn col);
 
     /**
      * @brief save_cur_sample_index Saves the current sample index, i.e. the ply index which is resetted to 0 before each game.
@@ -115,20 +106,20 @@ private:
      * @brief open_dataset_from_file Reads a previously exported training set back into memory
      * @param file filesystem handle
      */
-    void open_dataset_from_file(const z5::filesystem::handle::File& file);
+    void open_dataset_from_file(const string& file);
 
     /**
      * @brief open_dataset_from_file Creates a new zarr data set given a filesystem handle
      * @param file filesystem handle
      */
-    void create_new_dataset_file(const z5::filesystem::handle::File& file);
+    void create_new_dataset_file(const string& file);
 
     /**
      * @brief apply_result_to_value Inverts the gameValue array if WHITE lost the game.
      * In the case of a draw, all entries are set to 0.
      * @param result Possible values DRAWN, WHITE_WIN, BLACK_WIN,
      */
-    void apply_result_to_value(Result result);
+    void apply_result_to_value(Onturn result);
 
     /**
      * @brief apply_result_to_plys_to_end Converts the ply index information into plys-to-end
@@ -151,14 +142,14 @@ public:
      * @param pos Current board position
      * @param eval Filled EvalInfo struct after mcts search
      */
-    void save_sample(const StateObj* pos, const EvalInfo& eval);
+    void save_sample(const Node_switching_game* pos, const EvalInfo& eval);
 
     /**
      * @brief export_game_samples Assigns the game result, (Monte-Carlo value result) to every training sample.
      * The value is inversed after each step and export all training samples of a single game.
      * @param result Game match result: LOST, DRAW, WON
      */
-    void export_game_samples(Result result);
+    void export_game_samples(Onturn result);
 
     size_t get_number_samples() const;
 
@@ -173,6 +164,5 @@ public:
      */
     void new_game();
 };
-#endif
 
 #endif // TRAINDATAEXPORTER_H

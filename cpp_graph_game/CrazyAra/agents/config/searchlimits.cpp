@@ -24,7 +24,7 @@
  */
 
 #include "searchlimits.h"
-#include "../../constants.h"
+#include "constants.h"
 
 std::ostream &operator<<(std::ostream &os, const SearchLimits &searchLimits)
 {

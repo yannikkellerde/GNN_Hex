@@ -29,7 +29,7 @@
 #include <string>
 #include <algorithm>
 #include <cstring>
-#include "../../hex_graph_game/util.h"
+#include "util.h"
 
 using namespace std;
 

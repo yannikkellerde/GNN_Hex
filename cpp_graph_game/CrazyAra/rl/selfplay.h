@@ -28,21 +28,15 @@
 #ifndef SELFPLAY_H
 #define SELFPLAY_H
 
-#include "../agents/mctsagent.h"
-#include "../agents/rawnetagent.h"
+#include "mctsagent.h"
+#include "rawnetagent.h"
 #include "gamepgn.h"
 #include "tournamentresult.h"
-#include "../agents/config/rlsettings.h"
-#include "../stateobj.h"
-#ifdef SF_DEPENDENCY
-#include "uci.h"
-using namespace UCI;
-#else
-#include "uci/customuci.h"
+#include "config/rlsettings.h"
+#include "shannon_node_switching_game.h"
+#include "main/customuci.h"
 using namespace CUSTOM_UCI;
-#endif
 
-#ifdef USE_RL
 /**
  * @brief update_states_after_move Plays the best move of evalInfo and updates the relevant set of variables
  * @param evalInfo Struct which contains the best move and all legal moves
@@ -51,16 +45,7 @@ using namespace CUSTOM_UCI;
  * @param gamePGN PGN of the current game
  * @param gameResult Current game result (usually NO_RESULT after move was played)
  */
-void play_move_and_update(const EvalInfo& evalInfo, StateObj* state, GamePGN& gamePGN, Result& gameResult);
-
-
-/**
- * @brief load_random_fen Returns a random fen string from a epd file defined by its file path.
- * If the filepath is "" or "<empty>" an empty string will be returned.
- * @param filepath Points to the location of the epd file.
- * @return fen string
- */
-string load_random_fen(string filepath);
+void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult);
 
 
 class SelfPlay
@@ -133,7 +118,7 @@ private:
      * The fen will be stored in gamePGN.fen.
      * @param verbose If true the games will printed to stdout
      */
-    Result generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, int variant, bool verbose, const string& fen);
+    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, int variant, bool verbose);
 
     /**
      * @brief write_game_to_pgn Writes the game log to a pgn file
@@ -146,7 +131,7 @@ private:
      * @brief set_game_result Sets the game result to the gamePGN object
      * @param res Game result
      */
-    void set_game_result_to_pgn(Result res);
+    void set_game_result_to_pgn(Onturn res);
 
     /**
      * @brief reset_speed_statistics Resets the interal measurements for gameIdx, gamesPerMin and samplesPerMin
@@ -189,7 +174,7 @@ private:
      * @param position Board position. It is expected that the evalBestMove has already been applied.
      * @param gameResult Game result which may be modified
      */
-    void check_for_resignation(const bool allowResignation, const EvalInfo& evalInfo, const StateObj* position, Result& gameResult);
+    void check_for_resignation(const bool allowResignation, const EvalInfo& evalInfo, const Node_switching_game* position, Onturn& gameResult);
 
     /**
      * @brief reset_search_params Resets all search parameters to their initial values
@@ -197,7 +182,6 @@ private:
      */
     void reset_search_params(bool isQuickSearch);
 };
-#endif
 
 /**
  * @brief clean_up Applies a clean-up operation after a generated game.
@@ -221,7 +205,7 @@ void clean_up(GamePGN& gamePGN, MCTSAgent* mctsAgent);
  * @param fen Starting fen. If "" then standard starting position will be used.
  * @return New state object
  */
-unique_ptr<StateObj> init_starting_state_from_raw_policy(RawNetAgent& rawAgent, size_t plys, GamePGN& gamePGN, int variant, bool is960, float rawPolicyProbTemp, const string& fen);
+unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent& rawAgent, size_t plys, GamePGN& gamePGN, float rawPolicyProbTemp);
 
 /**
  * @brief init_starting_state_from_fixed_move Initializes a starting position using a vector of actions
@@ -231,7 +215,7 @@ unique_ptr<StateObj> init_starting_state_from_raw_policy(RawNetAgent& rawAgent, 
  * @param actions Vector of actions
  * @return New state object
  */
-unique_ptr<StateObj> init_starting_state_from_fixed_move(GamePGN& gamePGN, int variant, bool is960, const vector<Action>& actions);
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN& gamePGN, int variant, bool is960, const vector<int>& actions);
 
 /**
  * @brief apply_raw_policy_temp Applies a temperature scaling to the policyProbSmall of the eval struct.
@@ -251,5 +235,4 @@ void apply_raw_policy_temp(EvalInfo& eval, float rawPolicyProbTemp);
  * @return
  */
 size_t clip_ply(size_t ply, size_t maxPly);
-
-#endif // SELFPLAY_H
+#endif

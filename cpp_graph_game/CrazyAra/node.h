@@ -90,7 +90,7 @@ private:
     mutex mtx;
 
     vector<int> legalActions;
-    uint16_t key;
+    uint32_t key;
 
     // singular values
     // valueSum stores the sum of all incoming value evaluations
@@ -264,7 +264,7 @@ public:
     void increment_no_visit_idx();
     void fully_expand_node();
 
-    uint16_t hash_key() const;
+    uint32_t hash_key() const;
 
     size_t get_number_child_nodes() const;
 

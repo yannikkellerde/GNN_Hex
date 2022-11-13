@@ -7,6 +7,9 @@ option(WITH_CUDA "Enable CUDA support" ON)
 # option(FOR_INFERENCE "" ON)
 # add_definitions(-DFOR_INFERENCE)
 
+include_directories("/usr/local/libtorch/include")
+include_directories("/usr/local/libtorch")
+
 if(DEFINED ENV{BLAZE_PATH})
     MESSAGE(STATUS "BLAZE_PATH set to: $ENV{BLAZE_PATH}")
     include_directories("$ENV{BLAZE_PATH}/include")

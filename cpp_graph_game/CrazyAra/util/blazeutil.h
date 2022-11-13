@@ -55,7 +55,7 @@ void append(DynamicVector<T>& vec, T value)
  * @return Random picked element index
  */
 template <typename T>
-size_t random_choice(const DynamicVector<T>& distribution)
+size_t random_choice(const T& distribution)
 {
     const T* prob = distribution.data();
     discrete_distribution<> d(prob, prob+distribution.size());
@@ -68,7 +68,7 @@ size_t random_choice(const DynamicVector<T>& distribution)
  * @param distribution Arbitrary distribution
  */
 template <typename T, typename U>
-void apply_temperature(DynamicVector<T>& distribution, U temperature)
+void apply_temperature(T& distribution, U temperature)
 {
     if (temperature == 1) {
         return;
@@ -85,7 +85,7 @@ void apply_temperature(DynamicVector<T>& distribution, U temperature)
  * @param thresh Threshold which is substracted
  */
 template <typename T, typename U>
-void sharpen_distribution(DynamicVector<T>& distribution, U thresh) {
+void sharpen_distribution(T& distribution, U thresh) {
     if (max(distribution) < thresh) {
         return;
     }

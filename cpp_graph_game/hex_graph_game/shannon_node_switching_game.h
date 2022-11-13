@@ -58,11 +58,11 @@ class Node_switching_game {
 
 		void reset();
 
-		uint16_t hash_key();
+		uint32_t hash_key() const;
 
-		int vertex_from_board_location(int bl);
+		int vertex_from_board_location(int bl) const;
 
-		int get_response(int bloc,bool for_maker);
+		int get_response(int bloc,bool for_maker); // Not const, deletes response
 
 		set<int> fix_terminal_connections(int vertex, Fprops conn_prop);
 
@@ -70,24 +70,26 @@ class Node_switching_game {
 
 		void switch_onturn();
 
-		int get_random_action();
+		int get_random_action() const;
 
-		vector<int> get_actions();
+		vector<int> get_actions() const;
 
 		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false);
 
 		void remove_dead_and_captured(set<int> &consider_set);
 
-		TerminalType get_winner();
+		TerminalType get_winner() const;
 
-		Onturn who_won();
+		Onturn who_won() const;
 
-		vector<string> get_grid_layout();
+		string format_action(int action) const;
 
-		vector<string> get_colors();
+		vector<string> get_grid_layout() const;
 
-		void graphviz_me (string fname);
+		vector<string> get_colors() const;
 
-	std::vector<torch::Tensor> convert_graph(torch::Device &device);
+		void graphviz_me (string fname) const;
+
+	std::vector<torch::Tensor> convert_graph(torch::Device &device) const;
 };
 #endif

@@ -27,6 +27,8 @@ wandb/
 build/
 saved_models/
 3rdparty/
+compile_commands.json
+.cache/
 
 gctest.py
 *.pyc

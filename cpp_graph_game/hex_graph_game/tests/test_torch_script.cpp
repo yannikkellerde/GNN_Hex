@@ -3,6 +3,7 @@
 #include <ATen/ATen.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/autograd/function.h>
+#include <torch/csrc/api/include/torch/serialize.h>
 #include "../shannon_node_switching_game.h"
 #include "../nn_api.h"
 #include <blaze/Math.h>
@@ -72,6 +73,10 @@ void test_torch_script(string fname) {
 	node_feat.push_back(inputs[0]);
 	vector<int> batch_ptr;
 	tie(vi, batch_ptr) = collate_batch(node_feat,ei);
+	std::map<string,vector<torch::Tensor>> stuff;
+	stuff["node_features"] = node_feat;
+	stuff["ei"] = ei;
+	torch::save(stuff,"test.pt");
 
 	cout << vi[0].toTensor().sizes() << endl;
 	cout << vi[1].toTensor().sizes() << endl;

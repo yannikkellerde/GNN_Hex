@@ -25,7 +25,7 @@
 
 #include "searchthread.h"
 #include <unistd.h>
-#include "../hex_graph_game/util.h"
+#include "util.h"
 
 #include <stdlib.h>
 #include <climits>

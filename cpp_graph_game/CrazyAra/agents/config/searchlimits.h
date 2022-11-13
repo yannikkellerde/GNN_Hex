@@ -27,7 +27,7 @@
 
 #include <chrono>
 #include <ostream>
-#include "../../../hex_graph_game/shannon_node_switching_game.h"
+#include "shannon_node_switching_game.h"
 
 #ifndef SEARCHLIMITS_H
 #define SEARCHLIMITS_H
@@ -47,7 +47,7 @@ public:
     int time[2];
     int inc[2];
     TimePoint npmsec;
-    TimePoint startTime;
+    chrono::steady_clock::time_point startTime;
     int moveOverhead;
     bool infinite;
     bool ponder;
