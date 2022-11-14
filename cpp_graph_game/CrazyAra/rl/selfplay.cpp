@@ -27,20 +27,23 @@
 #include "selfplay.h"
 
 #include "config/searchlimits.h"
-#include "thread.h"
 #include <iostream>
 #include <fstream>
-#include "state.h"
 #include "util/blazeutil.h"
 #include "util/randomgen.h"
 #include "rl/gamepgn.h"
+#include "util.h"
 
 
 void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult)
 {
     string sanMove = state->format_action(evalInfo.bestMove);
-    state->make_move(evalInfo.bestMove);
+		print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove);
+    state->make_move(evalInfo.bestMove,false,noplayer,true);
     gameResult = state->who_won();
+
+		print_info(__LINE__,__FILE__,"gameResult",gameResult);
+		print_info(__LINE__,__FILE__,"makerwon",state->maker_won);
 
     if (gameResult!=noplayer) {
 			sanMove += "#";
@@ -65,11 +68,12 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
     gamePGN.event = "SelfPlay";
     gamePGN.site = "Darmstadt, GER";
     gamePGN.round = "?";
-    this->exporter = new TrainDataExporter(string("data_") + mctsAgent->get_device_name() + string(".zarr"),
+		string folder = "data/traindata1";
+    this->exporter = new TrainDataExporter(folder,
                                            rlSettings->numberChunks, rlSettings->chunkSize);
-    filenamePGNSelfplay = string("games_") + mctsAgent->get_device_name() + string(".pgn");
-    filenamePGNArena = string("arena_games_")+ mctsAgent->get_device_name() + string(".pgn");
-    fileNameGameIdx = string("gameIdx_") + mctsAgent->get_device_name() + string(".txt");
+    filenamePGNSelfplay = folder+string("games") + string(".pgn");
+    filenamePGNArena = folder+string("arena_games") + string(".pgn");
+    fileNameGameIdx = folder + string("gameIdx") + string(".txt");
 
     // delete content of files
     ofstream pgnFile;
@@ -118,9 +122,11 @@ void SelfPlay::check_for_resignation(const bool allowResingation, const EvalInfo
     }
     if (evalInfo.bestMoveQ[0] < rlSettings->resignThreshold) {
         if (state->onturn == maker) {
+						print_info(__LINE__,__FILE__,"Breaker resigned");
             gameResult = maker;
         }
         else {
+						print_info(__LINE__,__FILE__,"Maker resigned");
             gameResult = breaker;
         }
     }
@@ -135,7 +141,7 @@ void SelfPlay::reset_search_params(bool isQuickSearch)
     }
 }
 
-void SelfPlay::generate_game(int variant, bool verbose)
+void SelfPlay::generate_game(bool verbose)
 {
     chrono::steady_clock::time_point gameStartTime = chrono::steady_clock::now();
 
@@ -148,12 +154,11 @@ void SelfPlay::generate_game(int variant, bool verbose)
 		assert (state->who_won()==noplayer); // If this fails, ply is to high.
     EvalInfo evalInfo;
     Onturn gameResult;
-    exporter->new_game();
 
     size_t generatedSamples = 0;
     const bool allowResignation = is_resignation_allowed();
     do {
-        searchLimits->startTime = chrono::steady_clock::now();
+        searchLimits->startTime = current_time();
         const int randInt = rand();
         const bool isQuickSearch = is_quick_search();
 
@@ -179,11 +184,12 @@ void SelfPlay::generate_game(int variant, bool verbose)
         play_move_and_update(evalInfo, state.get(), gamePGN, gameResult);
         reset_search_params(isQuickSearch);
         check_for_resignation(allowResignation, evalInfo, state.get(), gameResult);
+				state->graphviz_me("state_"+to_string(generatedSamples)+".dot");
     }
     while(gameResult == noplayer);
 
-    // export all training samples of the generated game
-    exporter->export_game_samples(gameResult);
+		// Finish up exporter work. Does not export yet.
+    exporter->new_game(gameResult);
 
     set_game_result_to_pgn(gameResult);
     write_game_to_pgn(filenamePGNSelfplay, verbose);
@@ -197,7 +203,7 @@ void SelfPlay::generate_game(int variant, bool verbose)
     ++gameIdx;
 }
 
-Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, int variant, bool verbose)
+Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, bool verbose)
 {
     gamePGN.white = "Maker";
     gamePGN.black = "Breaker";
@@ -209,7 +215,7 @@ Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerP
     // preserve the current active states
     Onturn gameResult;
     do {
-        searchLimits->startTime = chrono::steady_clock::now();
+        searchLimits->startTime = current_time();
         if (state->onturn == maker) {
             activePlayer = makerPlayer;
             passivePlayer = breakerPlayer;
@@ -286,7 +292,7 @@ void SelfPlay::export_number_generated_games() const
 }
 
 
-void SelfPlay::go(size_t numberOfGames, int variant)
+void SelfPlay::go(size_t numberOfGames)
 {
     reset_speed_statistics();
     gamePGN.white = mctsAgent->get_name();
@@ -294,18 +300,19 @@ void SelfPlay::go(size_t numberOfGames, int variant)
 
     if (numberOfGames == 0) {
         while(!exporter->is_file_full()) {
-            generate_game(variant, true);
+            generate_game(true);
         }
     }
     else {
         for (size_t idx = 0; idx < numberOfGames; ++idx) {
-            generate_game(variant, true);
+            generate_game(true);
         }
     }
+    exporter->export_game_samples();
     export_number_generated_games();
 }
 
-TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGames, int variant)
+TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGames)
 {
     TournamentResult tournamentResult;
     tournamentResult.playerA = mctsContender->get_name();
@@ -315,7 +322,7 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
     for (size_t idx = 0; idx < numberOfGames; ++idx) {
         if (idx % 2 == 0) {
             // use default or in case of chess960 a random starting position
-            gameResult = generate_arena_game(mctsContender, mctsAgent, variant, true);
+            gameResult = generate_arena_game(mctsContender, mctsAgent, true);
             if (gameResult == maker) {
                 ++tournamentResult.numberWins;
             }
@@ -325,7 +332,7 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
         }
         else {
             // use same starting position as before stored via gamePGN.fen
-            gameResult = generate_arena_game(mctsAgent, mctsContender, variant, true);
+            gameResult = generate_arena_game(mctsAgent, mctsContender, true);
             if (gameResult == breaker) {
                 ++tournamentResult.numberWins;
             }
@@ -350,18 +357,22 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
         const size_t moveIdx = random_choice(eval.policyProbSmall);
         eval.bestMove = eval.legalMoves[moveIdx];
 
+				print_info(__LINE__, __FILE__, "init best move ",eval.bestMove);
+				print_info(__LINE__, __FILE__, "init move idx",eval.legalMoves);
+				print_info(__LINE__, __FILE__, "pps size ",eval.policyProbSmall.size());
+				print_info(__LINE__, __FILE__, "legal moves ",eval.legalMoves);
 				gamePGN.gameMoves.push_back(state->format_action(eval.legalMoves[moveIdx]));
-				state->make_move(eval.bestMove);
+				state->make_move(eval.bestMove,false,noplayer,true);
     }
     return state;
 }
 
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN &gamePGN, int variant, bool is960, const vector<int>& actions)
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN &gamePGN, bool is960, const vector<int>& actions)
 {
     unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
     for (int action : actions) {
         gamePGN.gameMoves.push_back(state->format_action(action));
-        state->make_move(action);
+        state->make_move(action,false,noplayer,true);
     }
     return state;
 }

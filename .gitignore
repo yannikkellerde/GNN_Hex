@@ -29,6 +29,7 @@ saved_models/
 3rdparty/
 compile_commands.json
 .cache/
+.ipynb_checkpoints/
 
 gctest.py
 *.pyc

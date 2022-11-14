@@ -31,5 +31,5 @@
 
 #if !defined(RESULTED)
 #define RESULTED
-const std::string result[] = {"1/2-1/2", "1-0", "0-1"};
+const std::string result[] = {"1-0", "0-1","1/2-1/2"};
 #endif

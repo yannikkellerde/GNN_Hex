@@ -218,7 +218,7 @@ void CrazyAra::selfplay(istringstream &is)
     SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
     size_t numberOfGames;
     is >> numberOfGames;
-    selfPlay.go(numberOfGames, variant);
+    selfPlay.go(numberOfGames);
     cout << "readyok" << endl;
 }
 
@@ -230,7 +230,7 @@ void CrazyAra::arena(istringstream &is)
     mctsAgentContender = create_new_mcts_agent(netSingleContender.get(), netBatchesContender, &searchSettings);
     size_t numberOfGames;
     is >> numberOfGames;
-    TournamentResult tournamentResult = selfPlay.go_arena(mctsAgentContender.get(), numberOfGames, variant);
+    TournamentResult tournamentResult = selfPlay.go_arena(mctsAgentContender.get(), numberOfGames);
 
     cout << "Arena summary" << endl;
     cout << "Score of Contender vs Producer: " << tournamentResult << endl;
@@ -284,7 +284,7 @@ void CrazyAra::multimodel_arena(istringstream &is, const string &modelDirectory1
     SelfPlay selfPlay(rawAgent.get(), mcts1.get(), &searchLimits, &playSettings, &rlSettings, Options);
     size_t numberOfGames;
     is >> numberOfGames;
-    TournamentResult tournamentResult = selfPlay.go_arena(mcts2.get(), numberOfGames, variant);
+    TournamentResult tournamentResult = selfPlay.go_arena(mcts2.get(), numberOfGames);
 
     cout << "Arena summary" << endl;
     cout << "Score of Agent1 vs Agent2: " << tournamentResult << endl;

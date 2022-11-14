@@ -46,6 +46,9 @@ private:
     size_t chunkSize;
     size_t numberSamples;
 
+#ifdef DO_DEBUG
+		vector<torch::Tensor> board_indices;
+#endif
 		vector<torch::Tensor> node_features;
 		vector<torch::Tensor> edge_indices;
 		vector<torch::Tensor> gamePolicy;
@@ -98,15 +101,10 @@ private:
     void save_cur_sample_index();
 
     /**
-     * @brief save_start_idx Saves the current starting index where the next game starts to the game array
-     */
-    void save_start_idx();
-
-    /**
      * @brief open_dataset_from_file Reads a previously exported training set back into memory
      * @param file filesystem handle
      */
-    void open_dataset_from_file(const string& file);
+    void open_dataset_from_folder(const string& folder);
 
     /**
      * @brief open_dataset_from_file Creates a new zarr data set given a filesystem handle
@@ -125,7 +123,7 @@ private:
      * @brief apply_result_to_plys_to_end Converts the ply index information into plys-to-end
      *  by subtracting the final ply and multiplying by -1.
      */
-    void apply_result_to_plys_to_end();
+    void extend_plys_vector(int game_length);
 
 public:
     /**

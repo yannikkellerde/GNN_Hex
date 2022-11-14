@@ -30,14 +30,10 @@
 #include <algorithm>
 #include <cstring>
 #include "util.h"
+#include "searchlimits.h"
 
 using namespace std;
 
-// method is based on 3rdparty/Stockfish/misc.cpp
-inline TimePoint current_time() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>
-        (std::chrono::steady_clock::now().time_since_epoch()).count();
-}
 
 void OptionsUCI::init(OptionsMap &o)
 {
@@ -96,7 +92,7 @@ void OptionsUCI::init(OptionsMap &o)
 #endif
     o["Precision"]                     << Option("float32", {"float32", "int8"});
 #ifdef USE_RL
-    o["Reuse_Tree"]                    << Option(false);
+    o["Reuse_Tree"]                    << Option(false); // why?
 #else
     o["Reuse_Tree"]                    << Option(true);
 #endif
@@ -125,10 +121,10 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Quick_Q_Value_Weight"]    << Option(70, 0, 99999);
     o["Centi_Raw_Prob_Temperature"]    << Option(25, 0, 100);
     o["Centi_Resign_Probability"]      << Option(90, 0, 100);
-    o["Centi_Resign_Threshold"]        << Option(-90, -100, 100);
+    o["Centi_Resign_Threshold"]        << Option(-100, -100, 100); // No resign allowed
     o["EPD_File_Path"]                 << Option("<empty>");
-    o["MaxInitPly"]                    << Option(30, 0, 99999);
-    o["MeanInitPly"]                   << Option(15, 0, 99999);
+    o["MaxInitPly"]                    << Option(4, 0, 99999);
+    o["MeanInitPly"]                   << Option(2, 0, 99999);
     o["Selfplay_Number_Chunks"]        << Option(640, 1, 99999);
     o["Selfplay_Chunk_Size"]           << Option(128, 1, 99999);
     o["Milli_Policy_Clip_Thresh"]      << Option(0, 0, 100);

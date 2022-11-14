@@ -1,4 +1,5 @@
 #include <vector>
+#include <string>
 #include <iostream>
 #include <iterator>
 #include <blaze/Math.h>
@@ -46,6 +47,23 @@ void info_string(const T &messageA, const U &messageB) {
 template<typename T, typename U, typename V>
 void info_string(const T &messageA, const U &messageB, const V &messageC) {
     std::cout << "INFO: " << messageA << ' ' << messageB << ' ' << messageC << std::endl;
+}
+
+template<typename T>
+void print_info(const int line_number, const std::string filename, const T &message ){
+	std::string base_filename = filename.substr(filename.find_last_of("/\\") + 1);
+	std::cout << "File " << base_filename << " Line " << line_number << ": " << message << std::endl;
+}
+template<typename T, typename U>
+void print_info(const int line_number, const std::string filename, const T &messageA, const U &messageB ){
+	std::string base_filename = filename.substr(filename.find_last_of("/\\") + 1);
+	std::cout << "File " << base_filename << " Line " << line_number << ": " << messageA << ' ' << messageB << std::endl;
+}
+
+template<typename T, typename U, typename V>
+void print_info(const int line_number, const std::string filename, const T &messageA, const U &messageB, const V &messageC){
+	std::string base_filename = filename.substr(filename.find_last_of("/\\") + 1);
+	std::cout << "File " << base_filename << " Line " << line_number << ": " << messageA << ' ' << messageB << ' ' << messageC << std::endl;
 }
 
 #endif

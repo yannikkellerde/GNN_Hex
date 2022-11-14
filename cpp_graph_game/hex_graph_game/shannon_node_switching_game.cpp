@@ -536,6 +536,7 @@ vector<string> Node_switching_game::get_colors() const{
 }
 
 string Node_switching_game::format_action(int action) const{
+	assert (action<graph.num_vertices);
 	return to_string(action)+"("+to_string(graph.lprops[board_location][action])+")";
 }
 

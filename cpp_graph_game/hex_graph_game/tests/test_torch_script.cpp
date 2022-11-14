@@ -74,9 +74,9 @@ void test_torch_script(string fname) {
 	vector<int> batch_ptr;
 	tie(vi, batch_ptr) = collate_batch(node_feat,ei);
 	std::map<string,vector<torch::Tensor>> stuff;
-	stuff["node_features"] = node_feat;
-	stuff["ei"] = ei;
-	torch::save(stuff,"test.pt");
+	/* stuff["node_features"] = node_feat; */
+	/* stuff["ei"] = ei; */
+	/* torch::save(stuff,"test.pt"); */
 
 	cout << vi[0].toTensor().sizes() << endl;
 	cout << vi[1].toTensor().sizes() << endl;
@@ -90,6 +90,13 @@ void test_torch_script(string fname) {
 	cout << vi[1] << endl;
 	cout << batch_ptr << endl;
 
+	torch::jit::Module load_stuff = torch::jit::load("test.pt");
+	cout << *(++load_stuff.parameters().begin()) << endl;
+
+	/* torch::Tensor tens; */
+	vector<torch::Tensor> tens;
+	torch::load(tens,"test.pt");
+	cout << tens << endl;
 	/* vector<at::Tensor> out = net.predict(vi); */
 
 	/* blaze::DynamicVector<double> probvec = torch_to_blaze<double>(out[0]); */

@@ -47,7 +47,7 @@ public:
     int time[2];
     int inc[2];
     TimePoint npmsec;
-    chrono::steady_clock::time_point startTime;
+    TimePoint startTime;
     int moveOverhead;
     bool infinite;
     bool ponder;
@@ -74,6 +74,8 @@ public:
  * @return True if in game situation else false
  */
 bool is_game_sceneario(const SearchLimits* searchLimits);
+
+TimePoint current_time();
 
 extern std::ostream& operator<<(std::ostream& os, const SearchLimits& searchLimits);
 

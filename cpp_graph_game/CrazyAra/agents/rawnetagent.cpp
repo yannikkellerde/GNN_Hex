@@ -51,6 +51,8 @@ void RawNetAgent::evaluate_board_state()
         return;
     }
 		vector<torch::Tensor> tens = state->convert_graph(net->device);
+		node_features.clear();
+		edge_indices.clear();
 		node_features.push_back(tens[0]);
 		edge_indices.push_back(tens[1]);
 

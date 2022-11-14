@@ -51,8 +51,8 @@ void SearchLimits::reset()
     depth = 0;
     minMovetime = 0;
     npmsec = 0;
-    startTime = 0;
     moveOverhead = 0;
+		startTime = 0;
     infinite = false;
     ponder = false;
     time[maker] = 0;
@@ -69,4 +69,10 @@ int SearchLimits::get_safe_remaining_time(Onturn sideToMove) const
 bool is_game_sceneario(const SearchLimits* searchLimits)
 {
     return searchLimits->movestogo != 0 || searchLimits->time[maker] != 0 || searchLimits->time[maker+1] != 0;
+}
+
+// method is based on 3rdparty/Stockfish/misc.cpp
+TimePoint current_time() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>
+        (std::chrono::steady_clock::now().time_since_epoch()).count();
 }

@@ -565,7 +565,7 @@ uint32_t Node::get_real_visits() const
     return realVisitsSum;
 }
 
-uint16_t Node::hash_key() const
+uint32_t Node::hash_key() const
 {
     return key;
 }

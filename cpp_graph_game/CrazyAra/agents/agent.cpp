@@ -27,7 +27,8 @@
 #include <chrono>
 
 #include "agent.h"
-#include "../util/blazeutil.h"
+#include "util/blazeutil.h"
+#include "util.h"
 
 using namespace std;
 using namespace crazyara;
@@ -83,6 +84,7 @@ void Agent::perform_action()
     this->evaluate_board_state();
     evalInfo->end = chrono::steady_clock::now();
     set_best_move(state->move_num);
+		print_info(__LINE__, __FILE__,"Best move set to ", evalInfo->bestMove );
     isRunning = false;
     runnerMutex.unlock();
 }

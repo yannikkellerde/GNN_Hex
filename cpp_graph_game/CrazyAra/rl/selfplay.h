@@ -89,7 +89,7 @@ public:
      * @param numberOfGames Number of games to generate
      * @param int variant to generate games for
      */
-    void go(size_t numberOfGames, int variant);
+    void go(size_t numberOfGames);
 
     /**
      * @brief go_arena Starts comparision matches between the original mctsAgent with the old NN weights and
@@ -100,14 +100,14 @@ public:
      * @return Score in respect to the contender, as floating point number.
      *  Wins give 1.0 points, 0.5 for draw, 0.0 for loss.
      */
-    TournamentResult go_arena(MCTSAgent *mctsContender, size_t numberOfGames, int variant);
+    TournamentResult go_arena(MCTSAgent *mctsContender, size_t numberOfGames);
 
 private:
     /**
      * @brief generate_game Generates a new game in self play mode
      * @param variant Current chess variant
      */
-    void generate_game(int variant, bool verbose);
+    void generate_game(bool verbose);
 
     /**
      * @brief generate_arena_game Generates a game of the current NN weights vs the new acquired weights
@@ -118,7 +118,7 @@ private:
      * The fen will be stored in gamePGN.fen.
      * @param verbose If true the games will printed to stdout
      */
-    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, int variant, bool verbose);
+    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose);
 
     /**
      * @brief write_game_to_pgn Writes the game log to a pgn file
@@ -215,7 +215,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent&
  * @param actions Vector of actions
  * @return New state object
  */
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN& gamePGN, int variant, bool is960, const vector<int>& actions);
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN& gamePGN, bool is960, const vector<int>& actions);
 
 /**
  * @brief apply_raw_policy_temp Applies a temperature scaling to the policyProbSmall of the eval struct.

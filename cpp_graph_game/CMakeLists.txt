@@ -3,6 +3,8 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set (CMAKE_CXX_STANDARD 17)
 
+add_definitions(-DDO_DEBUG)
+
 option(WITH_CUDA 								 "Enable CUDA support" 		ON)
 option(USE_PROFILING             "Build with profiling"   OFF)
 option(USE_RL                    "Build with reinforcement learning support"  ON)
@@ -12,7 +14,7 @@ option(BACKEND_MXNET             "Build with MXNet backend (Blas/IntelMKL/CUDA/T
 option(BACKEND_TORCH             "Build with Torch backend (CPU/GPU) support" ON)
 option(BACKEND_OPENVINO          "Build with OpenVino backend (CPU/GPU) support" OFF)
 option(BUILD_TESTS               "Build and run tests"  OFF)
-option(USE_DYNAMIC_NN_ARCH       "Build with dynamic neural network architektur support"  ON)
+option(USE_DYNAMIC_NN_ARCH       "Build with dynamic neural network architektur support"  OFF)
 # enable a single mode for different model input / outputs
 option(MODE_CRAZYHOUSE           "Build with crazyhouse only support"  OFF)
 option(MODE_CHESS                "Build with chess + chess960 only support"  OFF)
@@ -48,6 +50,9 @@ else()
     MESSAGE(STATUS "BLAZE_PATH not set")
 endif()
 
+
+include_directories("/usr/local/libtorch/include")
+include_directories("/usr/local/libtorch")
 find_package( blaze REQUIRED HINTS ${BLAZE_PATH} )
 add_library( blaze_target INTERFACE )
 target_link_libraries( blaze_target INTERFACE blaze::blaze )

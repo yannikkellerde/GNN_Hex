@@ -122,8 +122,9 @@ size_t MCTSAgent::init_root_node(Node_switching_game *state)
         info_string(nodesPreSearch, "nodes of former tree will be reused");
     }
     else {
-        create_new_root_node(state);
-        nodesPreSearch = 0;
+			print_info(__LINE__,__FILE__,"Num Verts for new root:",state->graph.num_vertices);
+			create_new_root_node(state);
+			nodesPreSearch = 0;
     }
     reachedTablebases = rootNode->is_tablebase() || reachedTablebases;
     return nodesPreSearch;
@@ -171,6 +172,8 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
     rootNode->enable_has_nn_results();
 #else
 		vector<torch::Tensor> tens = state->convert_graph(net->device);
+		node_features.clear();
+		edge_indices.clear();
 		node_features.push_back(tens[0]);
 		edge_indices.push_back(tens[1]);
 
@@ -181,6 +184,7 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
     vector<at::Tensor> tvec = net->predict(inputs);
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
+		print_info(__LINE__,__FILE__,probOutputs.size(0),node_features[0].sizes(),node_features.size());
     size_t tbHits = 0;
     fill_nn_results(0, false, valueOutputs, probOutputs, batch_ptr, rootNode.get(), tbHits,
                     searchSettings, rootNode->is_tablebase());
