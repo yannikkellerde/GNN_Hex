@@ -48,6 +48,7 @@ private:
 
 #ifdef DO_DEBUG
 		vector<torch::Tensor> board_indices;
+		vector<int> moves;
 #endif
 		vector<torch::Tensor> node_features;
 		vector<torch::Tensor> edge_indices;
@@ -65,6 +66,10 @@ private:
     size_t startIdx;
     // current sample index of the current game
     size_t curSampleIdx;
+
+#ifdef DO_DEBUG
+	void save_best_move(const EvalInfo &eval,const Node_switching_game* pos);
+#endif
 
     /**
      * @brief export_planes Exports the board in plane representation (x)

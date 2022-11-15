@@ -28,6 +28,7 @@
 #include "util/blazeutil.h" // get_dirichlet_noise()
 #include "constants.h"
 #include "evalinfo.h"
+#include "util.h"
 
 bool Node::is_sorted() const
 {
@@ -420,6 +421,7 @@ void Node::sort_moves_by_probabilities()
     auto p = sort_permutation(policyProbSmall, std::greater<float>());
     apply_permutation_in_place(policyProbSmall, p);
     apply_permutation_in_place(legalActions, p);
+		/* print_info(__LINE__,__FILE__,"sorted actions/policy prob",legalActions,policyProbSmall); */
     sorted = true;
 }
 

@@ -76,12 +76,12 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Virtual_Loss"]            << Option(100, 0, 99999);
     o["Context"]                       << Option("gpu", {"cpu", "gpu"});
     o["CPuct_Base"]                    << Option(19652, 1, 99999);
-//    o["Enhance_Captures"]              << Option(false);         currently disabled
     o["First_Device_ID"]               << Option(0, 0, 99999);
     o["Fixed_Movetime"]                << Option(0, 0, 99999999);
     o["Last_Device_ID"]                << Option(0, 0, 99999);
     o["MCTS_Solver"]                   << Option(true);
     o["Model_Path"]               		 << Option(string("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/alpha_zero/saved_models/traced.pt").c_str());
+    o["Model_Path_Contender"]               		 << Option(string("").c_str());
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
 #ifdef USE_RL
@@ -97,7 +97,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Reuse_Tree"]                    << Option(true);
 #endif
 #ifdef USE_RL
-    o["Temperature_Moves"]             << Option(15, 0, 99999);
+    o["Temperature_Moves"]             << Option(15, 0, 99999); // originally 15
 #else
     o["Temperature_Moves"]             << Option(0, 0, 99999);
 #endif

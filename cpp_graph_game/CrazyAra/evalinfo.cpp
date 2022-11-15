@@ -25,6 +25,7 @@
 
 #include "evalinfo.h"
 #include "util/blazeutil.h"
+#include "util.h"
 
 void print_single_pv(std::ostream& os, const EvalInfo& evalInfo, size_t idx, size_t elapsedTimeMS)
 {
@@ -127,26 +128,16 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
             if (nextNode->get_node_type() == LOSS) {
                 // always round up the ply counter
                 evalInfo.movesToMate[idx] = (int(pv.size())+1) / 2;
-#ifdef MCTS_SINGLE_PLAYER
-                evalInfo.movesToMate[idx] = -evalInfo.movesToMate[idx];
-#endif
                 return;
             }
             if (nextNode->get_node_type() == WIN) {
                 // always round up the ply counter
                 evalInfo.movesToMate[idx] = -(int(pv.size())+1) / 2;
-#ifdef MCTS_SINGLE_PLAYER
-                evalInfo.movesToMate[idx] = -evalInfo.movesToMate[idx];
-#endif
                 return;
             }
         }
         else {
-#ifndef MCTS_SINGLE_PLAYER
             evalInfo.bestMoveQ[idx] = -nextNode->get_value();
-#else
-            evalInfo.bestMoveQ[idx] = nextNode->get_value();
-#endif
         }
     }
     else {
@@ -164,6 +155,7 @@ void sort_eval_lists(EvalInfo& evalInfo, vector<size_t>& indices)
     apply_permutation_in_place(evalInfo.policyProbSmall, p);
     apply_permutation_in_place(evalInfo.legalMoves, p);
     apply_permutation_in_place(indices, p);
+		print_info(__LINE__,__FILE__,"sorted eval lists",evalInfo.legalMoves,evalInfo.policyProbSmall);
 }
 
 void update_eval_info(EvalInfo& evalInfo, const Node* rootNode, size_t tbHits, size_t selDepth, const SearchSettings* searchSettings)

@@ -62,9 +62,18 @@ void TrainDataExporter::save_sample(const Node_switching_game* pos, const EvalIn
     save_policy(eval.legalMoves, eval.policyProbSmall);
     save_best_move_q(eval);
     save_side_to_move(pos->onturn);
+#ifdef DO_DEBUG
+		save_best_move(eval,pos);
+#endif
     ++curSampleIdx;
     firstMove = false;
 }
+
+#ifdef DO_DEBUG
+void TrainDataExporter::save_best_move(const EvalInfo &eval,const Node_switching_game* pos){
+	moves.push_back(pos->graph.lprops[board_location][eval.bestMove]);
+}
+#endif
 
 void TrainDataExporter::save_best_move_q(const EvalInfo &eval)
 {
@@ -95,6 +104,7 @@ void TrainDataExporter::export_game_samples() {
 		torch::save(torch::from_blob(gameStartPtr.data(),gameStartPtr.size(),options_int),output_folder+"/game_start_ptr.pt");
 #ifdef DO_DEBUG
 		torch::save(board_indices,output_folder+"/board_indices.pt");
+		torch::save(torch::from_blob(moves.data(),moves.size(),options_int),output_folder+"/moves.pt");
 #endif
 
     startIdx += curSampleIdx;
@@ -137,7 +147,11 @@ void TrainDataExporter::save_planes(const Node_switching_game *pos)
 void TrainDataExporter::save_policy(const vector<int>& legalMoves, const DynamicVector<float>& policyProbSmall)
 {
     assert(legalMoves.size() == policyProbSmall.size());
-		gamePolicy.push_back(torch::tensor(vector<float>(policyProbSmall.begin(),policyProbSmall.end())));
+		torch::Tensor policy = torch::empty(policyProbSmall.size());
+		for (int i=0;i<policyProbSmall.size();++i){   // This is super slow??
+			policy[legalMoves[i]] = policyProbSmall[i];
+		}
+		gamePolicy.push_back(policy);
 }
 
 void TrainDataExporter::open_dataset_from_folder(const string& folder)
