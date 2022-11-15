@@ -25,8 +25,9 @@
 
 #include <blaze/Math.h>
 #include "rawnetagent.h"
-#include "../util/blazeutil.h"
-#include "../../hex_graph_game/util.h"
+#include "util/blazeutil.h"
+#include "util.h"
+#include "util/speedcheck.h"
 
 RawNetAgent::RawNetAgent(NN_api * net, PlaySettings* playSettings, bool verbose):
     Agent(net, playSettings, verbose)
@@ -50,7 +51,9 @@ void RawNetAgent::evaluate_board_state()
         evalInfo->pv[0] = {evalInfo->legalMoves[0]};
         return;
     }
+		speedcheck.track_next("convert_graph");
 		vector<torch::Tensor> tens = state->convert_graph(net->device);
+		speedcheck.stop_track("convert_graph");
 		node_features.clear();
 		edge_indices.clear();
 		node_features.push_back(tens[0]);
@@ -59,9 +62,13 @@ void RawNetAgent::evaluate_board_state()
 		std::vector<torch::jit::IValue> inputs;
 		vector<int> batch_ptr;
 
+		speedcheck.track_next("collate");
 		tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+		speedcheck.stop_track("collate");
 
+		speedcheck.track_next("nn predict");
     vector<at::Tensor> tvec = net->predict(inputs);
+		speedcheck.stop_track("nn predict");
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
 

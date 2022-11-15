@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <climits>
 #include "util/blazeutil.h"
+#include "util/speedcheck.h"
 
 
 size_t SearchThread::get_max_depth() const
@@ -177,11 +178,13 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
         if (nextNode == nullptr) {
             newState = unique_ptr<Node_switching_game>(rootState->clone());
             assert(actionsBuffer.size() == description.depth-1);
+						speedcheck.track_next("make move");
             for (int action : actionsBuffer) {
                 newState->make_move(action,false,noplayer,true);
             }
 						/* cout << "ab  " << actionsBuffer.size() << "  " << childIdx << endl; */
             newState->make_move(currentNode->get_action(childIdx),false,noplayer,true);
+						speedcheck.stop_track("make move");
             currentNode->increment_no_visit_idx();
             nextNode = add_new_node_to_tree(newState.get(), currentNode, childIdx, description.type);
             currentNode->unlock();
@@ -192,9 +195,9 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
                 nextNode->set_value(newState->random_rollout());
                 nextNode->enable_has_nn_results();
 #else
-                // fill a new board in the input_planes vector
-                // we shift the index by nbNNInputValues each time
+								speedcheck.track_next("convert_graph");
 								vector<torch::Tensor> tens = newState->convert_graph(net->device);
+								speedcheck.stop_track("convert_graph");
 								node_features.push_back(tens[0]);
 								edge_indices.push_back(tens[1]);
 								/* cout << "Created new node with key: " << nextNode->hash_key() << endl; */
@@ -364,7 +367,9 @@ void SearchThread::thread_iteration()
     if (newNodes->size() != 0) {
 				std::vector<torch::jit::IValue> inputs;
 
+				speedcheck.track_next("collate");
 				tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+				speedcheck.stop_track("collate");
 				node_features.clear();
 				edge_indices.clear();
 				/* cout << inputs[0].toTensor().sizes() << endl; */
@@ -378,7 +383,9 @@ void SearchThread::thread_iteration()
 				/* cout << inputs[2].toTensor().max() << endl; */
 				/* cout << node_features.size() << endl; */
 
+				speedcheck.track_next("nn predict");
         vector<at::Tensor> tvec = net->predict(inputs);
+				speedcheck.stop_track("nn predict");
 				probOutputs = tvec[0].exp();
 				valueOutputs = tvec[1];
         set_nn_results_to_child_nodes();

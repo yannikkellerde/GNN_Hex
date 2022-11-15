@@ -1,4 +1,5 @@
 #include "nn_api.h"
+#include "util/speedcheck.h"
 
 
 using namespace std;
@@ -10,8 +11,9 @@ NN_api::NN_api(string fname, torch::Device device):
 }
 
 vector<at::Tensor> NN_api::predict(vector<torch::jit::IValue> inputs){
-	// This is clearly not the most efficient way to do this, but idk, that's the only
+	// This is clearly not the most natural way to do this, but idk, that's the only
 	// thing that seems to work.
+	// speedcheck showed that this is not unnaturally slow.
 	c10::ivalue::Tuple res = model.forward(inputs).toTupleRef();
 	return vector<at::Tensor>({res.elements()[0].toTensor(),res.elements()[1].toTensor()});
 }

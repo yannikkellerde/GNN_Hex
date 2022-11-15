@@ -33,13 +33,16 @@
 #include "util/randomgen.h"
 #include "rl/gamepgn.h"
 #include "util.h"
+#include "util/speedcheck.h"
 
 
 void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult)
 {
     string sanMove = state->format_action(evalInfo.bestMove);
 		print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove);
+		speedcheck.track_next("make move");
     state->make_move(evalInfo.bestMove,false,noplayer,true);
+		speedcheck.stop_track("make move");
     gameResult = state->who_won();
 
 		print_info(__LINE__,__FILE__,"gameResult",gameResult);
@@ -362,7 +365,9 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 				print_info(__LINE__, __FILE__, "pps size ",eval.policyProbSmall.size());
 				print_info(__LINE__, __FILE__, "legal moves ",eval.legalMoves);
 				gamePGN.gameMoves.push_back(state->format_action(eval.legalMoves[moveIdx]));
+				speedcheck.track_next("make move");
 				state->make_move(eval.bestMove,false,noplayer,true);
+				speedcheck.stop_track("make move");
     }
     return state;
 }
@@ -370,10 +375,12 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN &gamePGN, bool is960, const vector<int>& actions)
 {
     unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
+		speedcheck.track_next("make move");
     for (int action : actions) {
         gamePGN.gameMoves.push_back(state->format_action(action));
         state->make_move(action,false,noplayer,true);
     }
+		speedcheck.stop_track("make move");
     return state;
 }
 

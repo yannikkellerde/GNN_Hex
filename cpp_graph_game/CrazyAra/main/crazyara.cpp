@@ -28,12 +28,13 @@
 
 #include <thread>
 #include <fstream>
-#include "../agents/mctsagent.h"
+#include "agents/mctsagent.h"
 #include "search.h"
 #include "timeoutreadythread.h"
-#include "../evalinfo.h"
-#include "../constants.h"
-#include "../../hex_graph_game/util.h"
+#include "evalinfo.h"
+#include "constants.h"
+#include "util.h"
+#include "util/speedcheck.h"
 
 
 CrazyAra::CrazyAra():
@@ -69,10 +70,6 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 {
 	init();
 	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
-	cout << state->graph.num_vertices << endl;
-	cout << Options["Hex_Size"] << endl;
-	Node_switching_game test(5);
-	cout << test.graph.num_vertices << endl;
 	string token, cmd;
 	EvalInfo evalInfo;
 	state->reset();
@@ -106,6 +103,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 			cout << engine_info()
 				<< "uciok" << endl;
 		}
+		else if (token == "speedsummary") speedcheck.summarize(cout);
 		else if (token == "setoption")  set_uci_option(is, *state.get());
 		else if (token == "go")         go(state.get(), is, evalInfo);
 		else if (token == "ucinewgame") ucinewgame();
@@ -215,11 +213,13 @@ void CrazyAra::activeuci()
 #ifdef USE_RL
 void CrazyAra::selfplay(istringstream &is)
 {
+	speedcheck.track_next("selfplay");
 	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
 	size_t numberOfGames;
 	is >> numberOfGames;
 	selfPlay.go(numberOfGames);
 	cout << "readyok" << endl;
+	speedcheck.stop_track("selfplay");
 }
 
 void CrazyAra::arena(istringstream &is)

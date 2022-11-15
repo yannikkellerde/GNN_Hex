@@ -26,13 +26,14 @@
 #include <thread>
 #include <fstream>
 #include "mctsagent.h"
-#include "../evalinfo.h"
-#include "../constants.h"
-#include "../util/blazeutil.h"
-#include "../manager/treemanager.h"
-#include "../manager/threadmanager.h"
-#include "../node.h"
-#include "../../hex_graph_game/util.h"
+#include "evalinfo.h"
+#include "constants.h"
+#include "util/blazeutil.h"
+#include "manager/treemanager.h"
+#include "manager/threadmanager.h"
+#include "node.h"
+#include "util.h"
+#include "util/speedcheck.h"
 
 
 MCTSAgent::MCTSAgent(NN_api *netSingle, vector<unique_ptr<NN_api>>& netBatches,
@@ -171,7 +172,9 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
     rootNode->set_value(newState->random_rollout());
     rootNode->enable_has_nn_results();
 #else
+		speedcheck.track_next("convert_graph");
 		vector<torch::Tensor> tens = state->convert_graph(net->device);
+		speedcheck.stop_track("convert_graph");
 		node_features.clear();
 		edge_indices.clear();
 		node_features.push_back(tens[0]);
@@ -180,8 +183,12 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
 		std::vector<torch::jit::IValue> inputs;
 		vector<int> batch_ptr;
 
+		speedcheck.track_next("collate");
 		tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+		speedcheck.stop_track("collate");
+		speedcheck.track_next("nn predict");
     vector<at::Tensor> tvec = net->predict(inputs);
+		speedcheck.stop_track("nn predict");
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
 		print_info(__LINE__,__FILE__,probOutputs.size(0),node_features[0].sizes(),node_features.size());

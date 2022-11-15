@@ -31,16 +31,16 @@
 #include <iostream>
 
 #include "customuci.h"
-#include "../agents/rawnetagent.h"
-#include "../agents/mctsagent.h"
-#include "../agents/randomagent.h"
-#include "../agents/config/searchsettings.h"
-#include "../agents/config/searchlimits.h"
-#include "../agents/config/playsettings.h"
-#include "../node.h"
+#include "agents/rawnetagent.h"
+#include "agents/mctsagent.h"
+#include "agents/randomagent.h"
+#include "agents/config/searchsettings.h"
+#include "agents/config/searchlimits.h"
+#include "agents/config/playsettings.h"
+#include "node.h"
 #ifdef USE_RL
-#include "../rl/selfplay.h"
-#include "../agents/config/rlsettings.h"
+#include "rl/selfplay.h"
+#include "agents/config/rlsettings.h"
 #endif
 
 using namespace crazyara;
