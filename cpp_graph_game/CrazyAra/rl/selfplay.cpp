@@ -187,7 +187,6 @@ void SelfPlay::generate_game(bool verbose)
         play_move_and_update(evalInfo, state.get(), gamePGN, gameResult);
         reset_search_params(isQuickSearch);
         check_for_resignation(allowResignation, evalInfo, state.get(), gameResult);
-				state->graphviz_me("state_"+to_string(generatedSamples)+".dot");
     }
     while(gameResult == noplayer);
 

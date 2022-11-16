@@ -177,6 +177,7 @@ if (BACKEND_TORCH)
 endif()
 
 if (WITH_CUDA)
+	add_definitions(-DWITH_CUDA)
 	find_package(CUDAToolkit REQUIRED)
 endif()
 

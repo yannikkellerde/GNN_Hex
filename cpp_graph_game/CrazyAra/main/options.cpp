@@ -74,7 +74,11 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Temperature_Decay"]       << Option(92, 0, 100);
     o["Centi_U_Init_Divisor"]          << Option(100, 1, 99999);
     o["Centi_Virtual_Loss"]            << Option(100, 0, 99999);
+#ifdef WITH_CUDA
     o["Context"]                       << Option("gpu", {"cpu", "gpu"});
+#else
+    o["Context"]                       << Option("cpu", {"cpu"});
+#endif
     o["CPuct_Base"]                    << Option(19652, 1, 99999);
     o["First_Device_ID"]               << Option(0, 0, 99999);
     o["Fixed_Movetime"]                << Option(0, 0, 99999999);
