@@ -1,6 +1,7 @@
 ## Current status
 + Combined Hex graphs, GNNs and MCTS from CrazyAra.
 + Can generate selfplay MCTS games using GNN in C++ binary and save generated training data to file.
+	- Can import data in python and data does look correct.
 + Arena (Letting two nets play against each other) also works.
 + Implemented in (near future) unmergable way
 	- Fully replaced NN-api and State-api with my own.
