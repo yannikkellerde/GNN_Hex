@@ -10,11 +10,7 @@
 + The main loop and NN training part.
 	- CrazyAra implements this fully in python, using the C++ binary to generate training data and then loads it from file.
 	- I think I'll go the same path
-
-## What might be missing (Not sure if worth implementing yet)
-+ Multithreading in CrazyAra seems to be built with the concept of one thread per GPU.
-	- This does make sense for super fast environments
-	- For my case, I might be able to profit from the fact that there are usually more CPU cores available than GPUs.
++ Multithreading. I'm still a little confused by threading setup. Currently it only works with Threads=1. Might not be super nescessary. Have to keep monitoring CPU times and NN prediction times.
 
 ## Batching, virtual loss and speed
 + During MCTS, total required nn-prediction time gets lower with higher batch size (up to a point)
