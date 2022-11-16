@@ -44,15 +44,8 @@ void Agent::set_best_move(size_t moveCounter)
         }
         size_t moveIdx = random_choice(policyProbSmall);
         evalInfo->bestMove = evalInfo->legalMoves[moveIdx];
-				print_info(__LINE__,__FILE__,"Legal Moves",evalInfo->legalMoves);
-
-				print_info(__LINE__,__FILE__,"Policy compare",evalInfo->legalMoves[argmax(evalInfo->policyProbSmall)],evalInfo->bestMove);	
-				print_info(__LINE__,__FILE__,evalInfo->policyProbSmall, evalInfo->legalMoves);
     }
     else {
-			print_info(__LINE__,__FILE__,"Policy compare",argmax(evalInfo->policyProbSmall),evalInfo->pv[0][0]);	
-			print_info(__LINE__,__FILE__,evalInfo->policyProbSmall);
-			print_info(__LINE__,__FILE__,evalInfo->pv[0]);
 			print_single_pv(cout,*evalInfo,0,0);
 			evalInfo->bestMove = evalInfo->pv[0][0];
     }

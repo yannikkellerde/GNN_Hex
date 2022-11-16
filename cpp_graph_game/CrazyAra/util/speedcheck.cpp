@@ -30,11 +30,11 @@ void Speedcheck::stop_track(const string& what){
 }
 
 void Speedcheck::summarize(ostream& write_here){
-	write_here << "      task      |  total time (μs) " << endl
-			 <<       "----------------+------------------"<< endl
+	write_here << "|      task      |  total time (μs) |" << endl
+			 <<       "| -------------- | ---------------- |"<< endl
 			 << std::setprecision(5);
 	for (map<string,long>::iterator it=movetimes.begin();it!=movetimes.end();++it){
-		write_here << std::setw(16) << it->first << "|"
-			<< std::setw(18) << it->second << endl;
+		write_here << "|" << std::setw(16) << it->first << "|"
+			<< std::setw(18) << it->second << "|" << endl;
 	}
 }
