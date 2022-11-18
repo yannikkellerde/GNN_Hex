@@ -37,10 +37,10 @@ using namespace std;
 
 void OptionsUCI::init(OptionsMap &o)
 {
-		o["Hex_Size"]											 << Option(11,1,21);
+		o["Hex_Size"]											 << Option(5,1,21);
     o["Allow_Early_Stopping"]          << Option(true);
 #ifdef USE_RL
-    o["Batch_Size"]                    << Option(64, 1, 8192);
+    o["Batch_Size"]                    << Option(8, 1, 8192);
 #else
     o["Batch_Size"]                    << Option(16, 1, 8192);
 #endif
@@ -85,7 +85,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Last_Device_ID"]                << Option(0, 0, 99999);
     o["MCTS_Solver"]                   << Option(true);
     o["Model_Path"]               		 << Option(string("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/alpha_zero/saved_models/traced.pt").c_str());
-    o["Model_Path_Contender"]               		 << Option(string("").c_str());
+    o["Model_Path_Contender"]          << Option(string("").c_str());
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
 #ifdef USE_RL
@@ -154,29 +154,7 @@ void OptionsUCI::setoption(istringstream &is, int& variant, Node_switching_game&
         const string givenName = name;
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
         Options[name] = value;
-        if (name != "uci_variant" && name != "uci_chess960") {
             info_string("Updated option", givenName, value);
-        } else {
-            bool is960 = false;
-            string uciVariant = Options["UCI_Variant"];
-            if (name == "uci_variant") {
-                std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                uciVariant = check_uci_variant_input(value, &is960);
-                Options["UCI_Variant"] << Option(uciVariant.c_str());
-                info_string("Updated option", givenName, uciVariant);
-                if (Options["UCI_Chess960"] != is960) {
-                    Options["UCI_Chess960"] << Option(is960);
-                    info_string("Updated option UCI_Chess960 to", (string)Options["UCI_Chess960"]);
-                }
-            } else { // name == "uci_chess960"
-                info_string("Updated option", givenName, value);
-                is960 = Options["UCI_Chess960"];
-            }
-            variant = 0;
-
-            string suffix_960 = (is960) ? "960" : "";
-            info_string("variant", (string)Options["UCI_Variant"] + suffix_960, "startpos");
-        }
     }
     else {
         info_string("Given option", name, "does not exist");

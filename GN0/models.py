@@ -729,41 +729,27 @@ class GCN_with_glob(torch.nn.Module):
         return torch.sigmoid(x)
 
 class PV_torch_script(torch.nn.Module):
-    def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=2,**gnn_kwargs):
+    def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
         super().__init__()
-        self.gnn = ModifiedGraphSAGE(in_channels=in_channels-1,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
+        self.gnn = ModifiedGraphSAGE(in_channels=in_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
 
-        self.maker_modules = torch.nn.ModuleDict()
-        self.breaker_modules = torch.nn.ModuleDict()
+        self.my_modules = torch.nn.ModuleDict()
 
-        self.maker_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
-        self.breaker_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
-        self.maker_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
-        self.breaker_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
-        self.maker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
-        self.breaker_modules["linear"] = torch.nn.Linear(hidden_channels,1)
+        self.my_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
+        self.my_modules["linear"] = torch.nn.Linear(hidden_channels,1)
 
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor):
-        is_maker = x[0,2]==1
-        x = x[:,:2]
-
         embeds = self.gnn(x,edge_index)
 
-        if is_maker:
-            pi = self.maker_modules["policy_head"](embeds,edge_index)
-            value_embeds = self.maker_modules["value_head"](embeds,edge_index)
-            graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
-            value = self.maker_modules["linear"](graph_parts)
-        else:
-            pi = self.breaker_modules["policy_head"](embeds,edge_index)
-            value_embeds = self.breaker_modules["value_head"](embeds,edge_index)
-            graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
-            value = self.breaker_modules["linear"](graph_parts)
+        pi = self.my_modules["policy_head"](embeds,edge_index)
+        value_embeds = self.my_modules["value_head"](embeds,edge_index)
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
+        value = self.my_modules["linear"](graph_parts)
 
         pi = log_softmax(pi,index=graph_indices)
-
 
         value = self.value_activation(value)
         return pi.reshape(pi.size(0)),value.reshape(value.size(0))
@@ -881,6 +867,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
             ))
     elif name == "policy_value":
         model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=args.hidden_channels,hidden_layers=args.num_layers,policy_layers=args.head_layers,value_layers=args.head_layers,norm=None,act="relu")
+    elif name == "HexAra":
+        model = PV_torch_script(hidden_channels=25,hidden_layers=10,policy_layers=2,value_layers=2,in_channels=3)
     else:
         print(name)
         raise NotImplementedError

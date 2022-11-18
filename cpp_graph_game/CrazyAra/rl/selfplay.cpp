@@ -59,7 +59,6 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
     rawAgent(rawAgent), mctsAgent(mctsAgent), searchLimits(searchLimits), playSettings(playSettings),
     rlSettings(rlSettings), gameIdx(0), gamesPerMin(0), samplesPerMin(0), options(options)
 {
-      
 		gamePGN.variant = "hex";
     time_t     now = time(0);
     struct tm  tstruct;
@@ -71,8 +70,8 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
     gamePGN.event = "SelfPlay";
     gamePGN.site = "Darmstadt, GER";
     gamePGN.round = "?";
-		string folder = "data/traindata1";
-    this->exporter = new TrainDataExporter(folder,
+		string folder = "data/";
+    this->exporter = new TrainDataExporter(folder+"torch",
                                            rlSettings->numberChunks, rlSettings->chunkSize);
     filenamePGNSelfplay = folder+string("games") + string(".pgn");
     filenamePGNArena = folder+string("arena_games") + string(".pgn");

@@ -25,6 +25,7 @@ model/
 checkpoints/
 wandb/
 build/
+data/
 saved_models/
 3rdparty/
 compile_commands.json

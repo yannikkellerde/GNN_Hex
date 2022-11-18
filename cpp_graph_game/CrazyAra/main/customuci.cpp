@@ -87,7 +87,7 @@ Option::operator double() const {
 }
 
 Option::operator std::string() const {
-  assert(type == "string" || type == "combo");
+  /* assert(type == "string" || type == "combo"); */
   return currentValue;
 }
 
