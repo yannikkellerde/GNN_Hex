@@ -9,6 +9,7 @@ from torch_geometric.data import Batch, Data
 from torch_geometric.utils import add_self_loops, degree
 import torch_geometric.utils
 from torch_scatter import scatter, scatter_mean
+from torch_scatter.composite import scatter_log_softmax
 from torch_geometric.nn.norm import GraphNorm
 from torch_geometric.typing import Adj, OptTensor, OptPairTensor, SparseTensor
 from torch.nn import Softmax, Sigmoid, Tanh
@@ -749,10 +750,10 @@ class PV_torch_script(torch.nn.Module):
         graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
         value = self.my_modules["linear"](graph_parts)
 
-        pi = log_softmax(pi,index=graph_indices)
-
         value = self.value_activation(value)
-        return pi.reshape(pi.size(0)),value.reshape(value.size(0))
+
+        pi = scatter_log_softmax(pi.reshape(pi.size(0)),index=graph_indices)
+        return pi,value.reshape(value.size(0))
 
 class PolicyValue(torch.nn.Module):
     supports_cache = False

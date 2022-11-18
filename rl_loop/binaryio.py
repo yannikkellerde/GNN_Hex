@@ -12,7 +12,7 @@ import os
 
 from subprocess import PIPE, Popen
 from dataclasses import fields
-from DeepCrazyhouse.configs.rl_config import UCIConfig, UCIConfigArena
+from rl_loop.rl_config import UCIConfig, UCIConfigArena
 
 
 class BinaryIO:
@@ -155,6 +155,7 @@ class BinaryIO:
         # Send all UCI options (from basic UCIConfig class) that won't be sent further down
         for field in fields(uci):
             if not is_arena or (is_arena and field.name not in fields(uci_arena)):
+                print(f"setting option {field.name}", getattr(uci,field.name))
                 self._set_uci_param(field.name, getattr(uci, field.name))
 
         if is_arena:

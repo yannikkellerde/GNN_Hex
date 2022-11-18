@@ -24,7 +24,6 @@ from rl_loop.train_config import TrainConfig
 from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network
 import torch
-torch.multiprocessing.set_start_method('spawn')
 
 class RLLoop:
     """
@@ -120,17 +119,18 @@ class RLLoop:
             self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,
                                                    self.did_contender_win)
             # start training using a process to ensure memory clearing afterwards
-            queue = Queue()  # start a subprocess to be memory efficient
             self.tc.device_id = self.args.device_id
-            process = Process(target=update_network, args=(queue, self.nn_update_index,
-                                                           self.file_io.get_current_model_pt_file(),
-                                                           not self.args.no_trace_torch,
-                                                           main_config, self.tc,
-                                                           self.file_io.model_contender_dir))
             logging.info("Start Training")
-            process.start()
+            queue = Queue()  # start a subprocess to be memory efficient
+            # process = Process(target=update_network, args=(queue, self.nn_update_index,
+            #                                                self.file_io.get_current_model_pt_file(),
+            #                                                not self.args.no_trace_torch,
+            #                                                main_config, self.tc,
+            #                                                self.file_io.model_contender_dir))
+            # process.start()
+            update_network(queue,self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
             self.tc.k_steps = queue.get() + 1
-            process.join()  # this blocks until the process terminates
+            # process.join()  # this blocks until the process terminates
 
             if self.tc.max_lr > self.tc.min_lr:
                 self.tc.max_lr = max(self.tc.max_lr - self.lr_reduction, self.tc.min_lr * 10)

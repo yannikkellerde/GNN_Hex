@@ -8,6 +8,7 @@ Metric definitions for Pytorch
 """
 import torch
 from rl_loop.trainer_agent_pytorch import SoftCrossEntropyLoss
+from torch_scatter import scatter_max
 
 
 class Metric:
@@ -35,12 +36,12 @@ class Accuracy(Metric):
         self.correct_cnt = 0
         self.total_cnt = 0
 
-    def update(self, preds: torch.Tensor, labels: torch.Tensor) -> None:
+    def update(self, preds: torch.Tensor, labels: torch.Tensor, graph_indices: torch.Tensor) -> None:
         if self.sparse_policy_label:
-            self.correct_cnt += float((preds == labels.data).sum())
+            self.correct_cnt += float((scatter_max(preds,graph_indices)[1] == labels.data).sum())
         else:
-            self.correct_cnt += float((preds == labels.argmax(dim=1)).sum())
-        self.total_cnt += preds.shape[0]
+            self.correct_cnt += float((scatter_max(preds,graph_indices)[1] == scatter_max(labels,graph_indices)[1]).sum())
+        self.total_cnt += torch.max(graph_indices)
 
     def compute(self) -> float:
         return self.correct_cnt / self.total_cnt

@@ -16,7 +16,7 @@ import numpy as np
 from typing import Tuple
 
 from rl_loop.main_config import main_config
-from engine.src.rl.rl_utils import create_dir, move_all_files
+from rl_loop.rl_utils import create_dir, move_all_files
 
 
 class FileIO:
@@ -168,7 +168,10 @@ class FileIO:
         """
         Return the filename of the current active model weight (.pt) file for pytorch
         """
-        return os.path.join(self.model_dir,self.model_name+"_weights.pt")
+        for fname in os.listdir(self.model_dir):
+            if fname.startswith("weights"):
+                return os.path.join(self.model_dir,fname)
+        raise FileNotFoundError("Model weights file not found")
 
     def get_number_generated_files(self) -> int:
         """

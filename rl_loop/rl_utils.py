@@ -25,8 +25,8 @@ def change_binary_name(binary_dir: str, current_binary_name: str, process_name: 
     idx = process_name.find(f'#')
     new_binary_name = f'{process_name[:idx]}_UP={nn_update_idx}{process_name[idx:]}'
 
-    if not os.path.exists(binary_dir + new_binary_name):
-        os.rename(binary_dir + current_binary_name, binary_dir + new_binary_name)
+    if not os.path.exists(os.path.join(binary_dir, new_binary_name)):
+        os.rename(os.path.join(binary_dir, current_binary_name), os.path.join(binary_dir, new_binary_name))
         logging.info(f'Changed binary name to: {new_binary_name}')
 
     return new_binary_name
@@ -123,4 +123,4 @@ def move_all_files(from_dir, to_dir):
     file_names = os.listdir(from_dir)
 
     for file_name in file_names:
-        os.rename(from_dir + file_name, to_dir + file_name)
+        os.rename(os.path.join(from_dir, file_name), os.path.join(to_dir, file_name))

@@ -14,7 +14,7 @@ import os
 class RLConfig:
     """Dataclass storing the options (except UCI options) for executing reinforcement learning."""
     # How many arena games will be done to judge the quality of the new network
-    arena_games: int = 100
+    arena_games: int = 2
     # Directory where the executable is located and where the selfplay data will be stored
     binary_dir: str = os.path.abspath(f'data/RL/')
     binary_name: str = f'HexAra'
@@ -54,7 +54,7 @@ class UCIConfig:
     MCTS_Solver: bool = True
     MeanInitPly: int = 0  # default: 15
     Milli_Policy_Clip_Thresh: int = 10
-    Nodes: int = 800
+    Nodes: int = 100
     Reuse_Tree: str = False
     Search_Type: str = f'mcts'
     Selfplay_Chunk_Size: int = 128  # default: 128

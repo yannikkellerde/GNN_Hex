@@ -25,7 +25,7 @@ from torch_geometric.loader import DataLoader
 import os
 
 
-def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir):
+def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name):
     """
     Creates a new NN checkpoint in the model contender directory after training using the game files stored in the
      training directory
@@ -77,21 +77,18 @@ def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, 
     cur_it = train_config.k_steps_initial * train_config.batch_steps
     (k_steps_final, val_value_loss_final, val_policy_loss_final, val_value_acc_sign_final,
      val_policy_acc_final), (_, _) = train_agent.train(cur_it)
-    prefix = "%smodel-%.5f-%.5f-%.3f-%.3f" % (model_contender_dir, val_value_loss_final, val_policy_loss_final,
-                                                                   val_value_acc_sign_final, val_policy_acc_final)
+    prefix = os.path.join(model_contender_dir,"weights-%.5f-%.5f-%.3f-%.3f" % (val_value_loss_final, val_policy_loss_final,
+                                                                   val_value_acc_sign_final, val_policy_acc_final))
 
-    sym_file = prefix + "-symbol.json"
-    params_file = prefix + "-" + "%04d.params" % nn_update_idx
-
-    _export_net(trace_torch, k_steps_final, net, nn_update_idx, params_file, prefix, sym_file,
-                train_config, model_contender_dir)
+    _export_net(trace_torch, k_steps_final, net, prefix,
+                train_config, model_contender_dir, model_name)
 
     logging.info("k_steps_final %d" % k_steps_final)
     queue.put(k_steps_final)
 
 
-def _export_net(trace_torch, k_steps_final, net, nn_update_idx, params_file, prefix, sym_file,
-                train_config, model_contender_dir):
+def _export_net(trace_torch, k_steps_final, net, prefix,
+                train_config, model_contender_dir, model_name):
     """
     Export function saves both the architecture and the weights and optionally saves it as onnx
     """
@@ -99,7 +96,7 @@ def _export_net(trace_torch, k_steps_final, net, nn_update_idx, params_file, pre
     save_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.max_lr),
                      '%s-%04d.pt' % (prefix, k_steps_final))
     if trace_torch:
-        export_as_script_module(net,Path(model_contender_dir))
+        export_as_script_module(net,os.path.join(model_contender_dir,model_name+"_model.pt"))
 
 def _get_net(ctx, train_config, pt_filename):
     """

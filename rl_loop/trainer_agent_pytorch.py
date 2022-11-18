@@ -117,9 +117,9 @@ class TrainerAgentPytorch:
                     data = self.train_update(batch)
 
                     # add the graph representation of the network to the tensorboard log file
-                    if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
-                        self.sum_writer.add_graph(self._model, data)
-                        self.graph_exported = True
+                    # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
+                    #     self.sum_writer.add_graph(self._model, data)
+                    #     self.graph_exported = True
 
                     if self.batch_proc_tmp >= self.tc.batch_steps or self.cur_it >= self.tc.total_it:  # show metrics every thousands steps
                         train_metric_values, val_metric_values = self.evaluate(train_loader)
@@ -202,7 +202,7 @@ class TrainerAgentPytorch:
                                 # log the samples per second metric to tensorboard
                                 self.sum_writer.add_scalar(
                                     tag="samples_per_second",
-                                    scalar_value=data.shape[0] * self.tc.batch_steps / self.t_delta,
+                                    scalar_value=int(torch.max(data.batch)) * self.tc.batch_steps / self.t_delta,
                                     global_step=self.k_steps,
                                 )
 
@@ -272,9 +272,10 @@ class TrainerAgentPytorch:
     def train_update(self, batch:Batch):
         self.optimizer.zero_grad()
         batch.to(self._ctx)
-        value_out, policy_out = self._model(batch.x,batch.edge_index,batch.batch)
+        policy_out,value_out = self._model(batch.x,batch.edge_index,batch.batch)
         # policy_out = policy_out.softmax(dim=1)
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
+        print(policy_out.size(),batch.policy.size())
         policy_loss = self.policy_loss(policy_out, batch.policy)
         # weight the components of the combined loss
         combined_loss = (
@@ -288,7 +289,7 @@ class TrainerAgentPytorch:
         self.optimizer.step()
         self.cur_it += 1
         self.batch_proc_tmp += 1
-        return data
+        return batch
 
     def _log_metrics(self, metric_values, global_step, prefix="train_"):
         """
@@ -354,8 +355,8 @@ class SoftCrossEntropyLoss(_Loss):
         super(SoftCrossEntropyLoss, self).__init__(size_average, reduce, reduction)
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        log_softmax = torch.nn.LogSoftmax(dim=1)
-        return torch.mean(torch.sum(-target * log_softmax(input), 1))
+        # The input is already log softmax
+        return torch.sum(-target * input)
 
 
 def get_context(context: str, device_id: int):
@@ -429,7 +430,7 @@ def export_model(model, dir=Path('.'), torch_cpu=True, torch_cuda=True):
 
 
 
-def export_as_script_module(model, dir) -> None:
+def export_as_script_module(model, path) -> None:
     """
     Exports the model to a Torch Script Module to allow later import in C++.
 
@@ -444,7 +445,7 @@ def export_as_script_module(model, dir) -> None:
     # traced_script_module = torch.jit.trace(model, dummy_input)
 
     # serialize script module to file
-    traced.save(str(dir / Path(f"model.pt")))
+    traced.save(path)
 
 
 def reset_metrics(metrics):
@@ -481,15 +482,16 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
         for i, batch in enumerate(data_iterator):
             batch.to(ctx)
 
-            value_out, policy_out = model(batch)
+            policy_out,value_out = model(batch.x,batch.edge_index,batch.batch)
 
             # update the metrics
             metrics["value_loss"].update(preds=torch.flatten(value_out), labels=batch.y)
             metrics["policy_loss"].update(preds=policy_out, #.softmax(dim=1),
                                           labels=batch.policy)
             metrics["value_acc_sign"].update(preds=torch.flatten(value_out), labels=batch.y)
-            metrics["policy_acc"].update(preds=policy_out.argmax(axis=1),
-                                         labels=batch.policy)
+            metrics["policy_acc"].update(preds=policy_out,
+                                         labels=batch.policy,
+                                         graph_indices=batch.batch)
 
             # stop after evaluating x batches (only recommended to use this for the train set evaluation)
             if nb_batches and i+1 == nb_batches:
@@ -501,3 +503,9 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
         metric_values[metric_name] = metrics[metric_name].compute()
     model.train()  # return back to training mode
     return metric_values
+
+def return_metrics_and_stop_training(k_steps, val_metric_values, k_steps_best, val_metric_values_best):
+    return (k_steps,
+            val_metric_values["value_loss"], val_metric_values["policy_loss"],
+            val_metric_values["value_acc_sign"], val_metric_values["policy_acc"]), \
+           (k_steps_best, val_metric_values_best)
