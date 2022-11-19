@@ -354,6 +354,7 @@ void MCTSAgent::run_mcts_search()
     }
     threadManager->kill();
     tManager->join();
+		print_info(__LINE__,__FILE__,rootNode->get_node_count());
     delete[] threads;
 }
 

@@ -545,6 +545,7 @@ float Node::get_value() const
 
 float Node::get_value_display() const
 {
+		print_info(__LINE__,__FILE__,d.get());
     if (is_win_node_type(d->nodeType)) {
         return WIN_VALUE;
     }
@@ -608,6 +609,7 @@ void Node::revert_virtual_loss(ChildIdx childIdx, float virtualLoss)
     d->childNumberVisits[childIdx] -= virtualLoss;
     d->visitSum -= virtualLoss;
     // decrement virtual loss counter
+		/* print_info(__LINE__,__FILE__,childIdx,virtualLoss,(int)d->virtualLossCounter[childIdx]); */
     update_virtual_loss_counter<false>(childIdx, virtualLoss);
     unlock();
 }

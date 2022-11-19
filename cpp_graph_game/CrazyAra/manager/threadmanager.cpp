@@ -26,6 +26,7 @@
 #include "threadmanager.h"
 #include "../util/blazeutil.h"
 #include "../../hex_graph_game/util.h"
+#include "util.h"
 #include <chrono>
 
 ThreadManager::ThreadManager(ThreadManagerData* tData, ThreadManagerInfo* tInfo, ThreadManagerParams* tParams):
@@ -41,16 +42,25 @@ void ThreadManager::print_info()
 {
     tData->evalInfo->end = chrono::steady_clock::now();
     update_eval_info(*tData->evalInfo, tData->rootNode, get_tb_hits(tData->searchThreads), get_max_depth(tData->searchThreads), tInfo->searchSettings);
-    /* info_string(*tData->evalInfo); */
+    info_string(*tData->evalInfo);
 }
 
 void ThreadManager::await_kill_signal()
 {
-    while(isRunning && tData->searchThreads.front()->is_running()) {
+    while(isRunning) {
+				if (!tData->searchThreads.front()->is_running()){
+					::print_info(__LINE__,__FILE__,"one check for weird stopping condition");
+					std::this_thread::sleep_for(std::chrono::milliseconds(20)); // ensure that we don't have a very unfortunate timing
+					if (!tData->searchThreads.front()->is_running()){
+						::print_info(__LINE__,__FILE__,"weird thread stopping condition");
+						break;
+					}
+				}
         if (wait_for(chrono::milliseconds(tParams->updateIntervalMS*4))){
             print_info();
         }
         else {
+						/* ::print_info(__LINE__,__FILE__,"stopping because wait_for is false"); */
             return;
         }
     }

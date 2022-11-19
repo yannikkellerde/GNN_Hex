@@ -135,10 +135,22 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 	wait_to_finish_last_search();
 }
 
+void CrazyAra::prepare_search_config_structs()
+{
+    OptionsUCI::init_new_search(searchLimits, Options);
+
+    if (changedUCIoption) {
+        init_search_settings();
+        init_play_settings();
+        changedUCIoption = false;
+    }
+}
+
 void CrazyAra::go(Node_switching_game* state, istringstream &is,  EvalInfo& evalInfo)
 {
 	wait_to_finish_last_search();
 	ongoingSearch = true;
+	prepare_search_config_structs();
 
 	string token;
 	while (is >> token) {
@@ -213,6 +225,7 @@ void CrazyAra::activeuci()
 #ifdef USE_RL
 void CrazyAra::selfplay(istringstream &is)
 {
+	prepare_search_config_structs();
 	speedcheck.track_next("selfplay");
 	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
 	size_t numberOfGames;
@@ -225,6 +238,7 @@ void CrazyAra::selfplay(istringstream &is)
 void CrazyAra::arena(istringstream &is)
 {
 	assert (((string)Options["Model_Path_Contender"]).length()>0);
+	prepare_search_config_structs();
 	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
 	netSingleContender = create_new_net_single(Options["Model_Path_Contender"]);
 	netBatchesContender = create_new_net_batches(Options["Model_Path_Contender"]);
@@ -450,7 +464,11 @@ unique_ptr<NN_api> CrazyAra::create_new_net_single(const string& modelPath)
 vector<unique_ptr<NN_api>> CrazyAra::create_new_net_batches(const string& modelPath)
 {
 	vector<unique_ptr<NN_api>> netBatches;
-	netBatches.push_back(create_new_net_single(modelPath));
+	for (int deviceId = int(Options["First_Device_ID"]); deviceId <= int(Options["Last_Device_ID"]); ++deviceId) {
+		for (size_t i = 0; i < size_t(Options["Threads"]); ++i) {
+			netBatches.push_back(create_new_net_single(modelPath));
+		}
+	}
 	return netBatches;
 }
 

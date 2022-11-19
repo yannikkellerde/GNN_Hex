@@ -92,8 +92,8 @@ void OptionsUCI::init(OptionsMap &o)
     o["Nodes"]                         << Option(800, 0, 99999999);
 #else
     o["Nodes"]                         << Option(0, 0, 99999999);
-    o["Nodes_Limit"]                   << Option(0, 0, 999999999);
 #endif
+    o["Nodes_Limit"]                   << Option(0, 0, 999999999);
     o["Precision"]                     << Option("float32", {"float32", "int8"});
 #ifdef USE_RL
     o["Reuse_Tree"]                    << Option(false); // why?
@@ -127,8 +127,8 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Resign_Probability"]      << Option(90, 0, 100);
     o["Centi_Resign_Threshold"]        << Option(-100, -100, 100); // No resign allowed
     o["EPD_File_Path"]                 << Option("<empty>");
-    o["MaxInitPly"]                    << Option(4, 0, 99999);
-    o["MeanInitPly"]                   << Option(2, 0, 99999);
+    o["MaxInitPly"]                    << Option(0, 0, 99999);
+    o["MeanInitPly"]                   << Option(0, 0, 99999);
     o["Selfplay_Number_Chunks"]        << Option(640, 1, 99999);
     o["Selfplay_Chunk_Size"]           << Option(128, 1, 99999);
     o["Milli_Policy_Clip_Thresh"]      << Option(0, 0, 100);

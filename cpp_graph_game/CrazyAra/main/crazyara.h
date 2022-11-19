@@ -99,6 +99,8 @@ public:
      */
     void welcome();
 
+		void prepare_search_config_structs();
+
     /**
      * @brief uci_loop Runs the uci-loop which reads std-in UCI-messages
      * @param argc Number of arguments

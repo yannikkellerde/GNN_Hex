@@ -46,9 +46,9 @@ void Agent::set_best_move(size_t moveCounter)
         evalInfo->bestMove = evalInfo->legalMoves[moveIdx];
     }
     else {
-			print_single_pv(cout,*evalInfo,0,0);
 			evalInfo->bestMove = evalInfo->pv[0][0];
     }
+		print_single_pv(cout,*evalInfo,0,evalInfo->calculate_elapsed_time_ms());
 }
 
 Agent::Agent(NN_api * net, PlaySettings* playSettings, bool verbose):

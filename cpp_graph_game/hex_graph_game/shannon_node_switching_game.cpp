@@ -266,7 +266,6 @@ void Node_switching_game::remove_marked_nodes(){
 
 int Node_switching_game::get_random_action() const{
 	vector<int> actions = get_actions();
-	/* return *select_randomly(actions.begin(),actions.end()); // unbiased, non-repeatable*/
 	return repeatable_random_choice(actions);
 }
 

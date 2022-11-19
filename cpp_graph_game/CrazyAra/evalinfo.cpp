@@ -115,6 +115,8 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
     }
     pv.push_back(rootNode->get_action(childIdx));
 
+		print_info(__LINE__,__FILE__,"Root is solved",is_win_node_type(rootNode->get_node_type()),evalInfo.movesToMate[idx]);
+
     Node* nextNode = rootNode->get_child_node(childIdx);
     // make sure the nextNode has been expanded (e.g. when inference of the NN is too slow on the given hardware to evaluate the next node in time)
     if (nextNode != nullptr) {
@@ -144,6 +146,16 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
         evalInfo.bestMoveQ[idx] = Q_INIT;
     }
     evalInfo.movesToMate[idx] = 0;
+}
+
+std::ostream& operator<<(std::ostream& os, const EvalInfo& evalInfo)
+{
+    const size_t elapsedTimeMS = evalInfo.calculate_elapsed_time_ms();
+
+    for (size_t idx = 0; idx < evalInfo.bestMoveQ.size(); ++idx) {
+        print_single_pv(os, evalInfo, idx, elapsedTimeMS);
+    }
+    return os;
 }
 
 void sort_eval_lists(EvalInfo& evalInfo, vector<size_t>& indices)

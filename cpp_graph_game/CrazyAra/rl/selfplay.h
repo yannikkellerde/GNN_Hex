@@ -118,7 +118,7 @@ private:
      * The fen will be stored in gamePGN.fen.
      * @param verbose If true the games will printed to stdout
      */
-    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose);
+    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose, vector<int>& starting_moves);
 
     /**
      * @brief write_game_to_pgn Writes the game log to a pgn file
@@ -215,7 +215,10 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent&
  * @param actions Vector of actions
  * @return New state object
  */
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN& gamePGN, bool is960, const vector<int>& actions);
+
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions);
+
+unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions);
 
 /**
  * @brief apply_raw_policy_temp Applies a temperature scaling to the policyProbSmall of the eval struct.

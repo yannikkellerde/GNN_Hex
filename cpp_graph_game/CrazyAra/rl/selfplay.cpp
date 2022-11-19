@@ -152,7 +152,9 @@ void SelfPlay::generate_game(bool verbose)
 
     srand(unsigned(int(time(nullptr))));
     // load position from file if epd filepath was set
-    unique_ptr<Node_switching_game> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, rlSettings->rawPolicyProbabilityTemperature);
+    /* unique_ptr<Node_switching_game> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, rlSettings->rawPolicyProbabilityTemperature); */
+		// random starting move
+		unique_ptr<Node_switching_game> state = init_starting_state_from_random_moves(gamePGN,1);
 		assert (state->who_won()==noplayer); // If this fails, ply is to high.
     EvalInfo evalInfo;
     Onturn gameResult;
@@ -195,6 +197,7 @@ void SelfPlay::generate_game(bool verbose)
     set_game_result_to_pgn(gameResult);
     write_game_to_pgn(filenamePGNSelfplay, verbose);
     clean_up(gamePGN, mctsAgent);
+		print_info(__LINE__,__FILE__,"Nodes per second",evalInfo.calculate_nps());
 
     // measure time statistics
     if (verbose) {
@@ -204,11 +207,11 @@ void SelfPlay::generate_game(bool verbose)
     ++gameIdx;
 }
 
-Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, bool verbose)
+Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, bool verbose, vector<int>& starting_moves)
 {
     gamePGN.white = "Maker";
     gamePGN.black = "Breaker";
-    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+    unique_ptr<Node_switching_game> state = init_starting_state_from_fixed_moves(gamePGN,starting_moves);
     EvalInfo evalInfo;
 
     MCTSAgent* activePlayer;
@@ -315,15 +318,24 @@ void SelfPlay::go(size_t numberOfGames)
 
 TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGames)
 {
+    unique_ptr<Node_switching_game> tmp_game = make_unique<Node_switching_game>(Options["Hex_Size"]);
+
+		// generate starting moves to ensure that both agents get the same starting moves.
+		vector<int> actions = tmp_game->get_actions();
+		std::random_device rd = std::random_device {}; 
+		std::default_random_engine rng = std::default_random_engine { rd() };
+		std::shuffle(std::begin(actions), std::end(actions), rng);
+
     TournamentResult tournamentResult;
     tournamentResult.playerA = mctsContender->get_name();
     tournamentResult.playerB = mctsAgent->get_name();
     Onturn gameResult;
 
     for (size_t idx = 0; idx < numberOfGames; ++idx) {
+				vector<int> starting_moves = {actions[(int)std::floor(idx/2)%actions.size()]};
         if (idx % 2 == 0) {
             // use default or in case of chess960 a random starting position
-            gameResult = generate_arena_game(mctsContender, mctsAgent, true);
+            gameResult = generate_arena_game(mctsContender, mctsAgent, true, starting_moves);
             if (gameResult == maker) {
                 ++tournamentResult.numberWins;
             }
@@ -333,7 +345,7 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
         }
         else {
             // use same starting position as before stored via gamePGN.fen
-            gameResult = generate_arena_game(mctsAgent, mctsContender, true);
+            gameResult = generate_arena_game(mctsAgent, mctsContender, true, starting_moves);
             if (gameResult == breaker) {
                 ++tournamentResult.numberWins;
             }
@@ -370,9 +382,22 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
     return state;
 }
 
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_move(GamePGN &gamePGN, bool is960, const vector<int>& actions)
+unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions)
 {
-    unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
+    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+		speedcheck.track_next("make move");
+    for (int i=0;i<num_actions;++i) {
+				int action = state->get_random_action();
+        gamePGN.gameMoves.push_back(state->format_action(action));
+        state->make_move(action,false,noplayer,true);
+    }
+		speedcheck.stop_track("make move");
+    return state;
+}
+
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions)
+{
+    unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
 		speedcheck.track_next("make move");
     for (int action : actions) {
         gamePGN.gameMoves.push_back(state->format_action(action));

@@ -75,6 +75,7 @@ bool SearchThread::is_running() const
 
 void SearchThread::set_is_running(bool value)
 {
+		/* print_info(__LINE__,__FILE__,__builtin_FUNCTION(),"is_running set to",value); */
     isRunning = value;
 }
 
@@ -98,6 +99,7 @@ Node* SearchThread::add_new_node_to_tree(Node_switching_game* newState, Node* pa
 
 void SearchThread::stop()
 {
+		/* print_info(__LINE__,__FILE__,__builtin_FUNCTION(),"Search thread got stopped"); */
     isRunning = false;
 }
 
@@ -372,16 +374,6 @@ void SearchThread::thread_iteration()
 				speedcheck.stop_track("collate");
 				node_features.clear();
 				edge_indices.clear();
-				/* cout << inputs[0].toTensor().sizes() << endl; */
-				/* cout << inputs[1].toTensor().sizes() << endl; */
-				/* cout << inputs[2].toTensor().sizes() << endl; */
-				/* cout << inputs[0].toTensor().dtype() << endl; */
-				/* cout << inputs[1].toTensor().dtype() << endl; */
-				/* cout << inputs[2].toTensor().dtype() << endl; */
-				/* cout << inputs[0].toTensor().max() << endl; */
-				/* cout << inputs[1].toTensor().max() << endl; */
-				/* cout << inputs[2].toTensor().max() << endl; */
-				/* cout << node_features.size() << endl; */
 
 				speedcheck.track_next("nn predict");
         vector<at::Tensor> tvec = net->predict(inputs);
@@ -402,6 +394,7 @@ void run_search_thread(SearchThread *t)
     while(t->is_running() && t->nodes_limits_ok() && t->is_root_node_unsolved()) {
         t->thread_iteration();
     }
+		/* print_info(__LINE__,__FILE__,t->is_running(),t->nodes_limits_ok(),t->is_root_node_unsolved()); */
     t->set_is_running(false);
 }
 
