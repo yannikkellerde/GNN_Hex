@@ -13,5 +13,6 @@ class NN_api{
 		std::string model_name;
 		NN_api(std::string fname, torch::Device device);
 		std::vector<at::Tensor> predict(std::vector<torch::jit::IValue> inputs);
+		std::vector<at::Tensor> predict(std::vector<torch::Tensor> inputs);
 };
 #endif

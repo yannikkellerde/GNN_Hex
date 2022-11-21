@@ -9,10 +9,12 @@ Contains the main class to communicate with the C++ binary.
 import logging
 import time
 import os
+from typing import Tuple
 
 from subprocess import PIPE, Popen
 from dataclasses import fields
 from rl_loop.rl_config import UCIConfig, UCIConfigArena
+from rl_loop.rl_utils import log_to_file_and_print
 
 
 class BinaryIO:
@@ -25,9 +27,18 @@ class BinaryIO:
         Open a process to the binary in order to send commands and read output
         :param binary_path: Path to the binary including the binary name
         """
-        self.proc = Popen([binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
+        #gdb -batch -ex "run" -ex "bt" @HexAra_HexAra_hex_UP=0
+        self.binary_dir = os.path.dirname(binary_path)
+        self.proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
+        # self.proc = Popen([binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
 
-    def compare_new_weights(self, nb_arena_games: int) -> bool:
+    def generate_starting_eval_img(self):
+        self.proc.stdin.write(b"starting_eval\n")
+        self.proc.stdin.flush()
+        self.read_output(b"readyok\n", check_error=True)
+
+
+    def compare_new_weights(self, nb_arena_games: int) -> Tuple[bool,float]:
         """
         Compares the old NN-weights with the newly acquired one.
         Internally, the binary uses the UCI Options 'Model_Directory' &
@@ -51,9 +62,9 @@ class BinaryIO:
         """
         logging.info(f'Generating games ...')
         # if 0, binary plays Selfplay_Number_Chunks * Selfplay_Chunk_Size games
-        self.proc.stdin.write(b"selfplay 2\n")
+        self.proc.stdin.write(b"selfplay 400\n")
         self.proc.stdin.flush()
-        self.read_output(b"readyok\n", check_error=True)
+        return self.read_output(b"readyok\n", check_error=True)
 
     def get_uci_options(self):
         """
@@ -101,32 +112,58 @@ class BinaryIO:
         :param check_error: Listens to stdout for errors
         :return:
         """
+        look_fors = ["50 games","WARNING"]
+        print_all = False
+        killit = False
+        statistics = {}
         while True:
             line = self.proc.stdout.readline()
+            strline = str(line)
             if check_error and line == b'':
                 error = self.proc.stderr.readline()
                 if error != b'':
                     logging.error(error)
+                elif "received signal" in str(error):
+                    killit = time.perf_counter()+3
+                    print_all=True
+                if print_all and error!=b"":
+                    print(error)
             if line == last_line:
-                break
+                return True, statistics
+            elif any([x in strline for x in look_fors]):
+                logging.debug(line)
+            elif "received signal" in strline:
+                killit = time.perf_counter()+3
+                print_all=True
+            if "STATISTIC" in strline:
+                parts = strline.strip().replace("\\n","").replace("'","").split(" ")
+                statistics[parts[1]] = float(parts[2])
+            if print_all and line!=b"":
+                log_to_file_and_print(os.path.join(self.binary_dir,"logs","errors.log"),str(line))
+            elif killit and time.perf_counter()>killit:
+                return False, statistics
 
-    def read_output_arena(self, check_error=True) -> bool:
+    def read_output_arena(self, check_error=True) -> Tuple[bool,float]:
         """
         Reads the output for arena matches and waits for the key-words "keep" or "replace"
         :param check_error: Listens to stdout for errors
         :return: True - If current NN generator should be replaced
                  False - If current NN generator should be kept
         """
+        winrate = -100
         while True:
             line = self.proc.stdout.readline()
             if check_error and line == b'':
                 error = self.proc.stderr.readline()
                 if error != b'':
                     logging.error(error)
+            elif line.startswith(b"Score of Contender vs Producer:"):
+                winrate = float(str(line).split("[")[1].split("]")[0])
+                logging.info(line)
             elif line == b"keep\n":
-                return False
+                return False,winrate
             elif line == b"replace\n":
-                return True
+                return True,winrate
 
     def set_uci_options(self, uci_variant: str, context: str, device_id: str, precision: str,
                         model_dir: str, model_contender_dir: str, model_name:str, is_arena: bool = False):

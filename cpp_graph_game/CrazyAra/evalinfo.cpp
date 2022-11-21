@@ -119,7 +119,10 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
 
     Node* nextNode = rootNode->get_child_node(childIdx);
     // make sure the nextNode has been expanded (e.g. when inference of the NN is too slow on the given hardware to evaluate the next node in time)
-    if (nextNode != nullptr) {
+		if (nextNode != nullptr && nextNode->d.get()==0){
+				print_info(__LINE__,__FILE__,"WARNING:","nullptr problem catched");
+		}
+    if (nextNode != nullptr && nextNode->d.get()!=0) { // YK: I added the second condition. Is this smart, idk, but it prevents rare segfaults.
         nextNode->get_principal_variation(pv, searchSettings->qValueWeight, searchSettings->qVetoDelta);
         evalInfo.pv[idx] = pv;
         evalInfo.bestMoveQ[idx] = get_best_move_q(nextNode);

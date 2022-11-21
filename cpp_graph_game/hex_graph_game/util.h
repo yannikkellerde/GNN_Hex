@@ -6,12 +6,15 @@
 #include <torch/script.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/autograd/function.h>
+#include "nn_api.h"
 
 
 #if !defined(UTIL_H)
 #define UTIL_H
 
 int repeatable_random_choice(std::vector<int>& vec);
+
+void starting_eval_img(int hex_size, NN_api* net);
 
 std::tuple<std::vector<torch::jit::IValue>,std::vector<int>> collate_batch(std::vector<torch::Tensor> & node_features, std::vector<torch::Tensor> & edge_index);
 

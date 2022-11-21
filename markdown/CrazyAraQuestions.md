@@ -13,4 +13,11 @@
 + Where can I find sensible defaults for RL training with CrazyAra. Are the values in rl\_config.py or options.cpp sensible defaults
 	- Or which parameters where used in other experiments.
 + Why aren't MCTS search trees reused by default for RL in crazyara options?
++ Why such a complicated LR/Momentum schedule?
 + What is the idea of wdl and ply loss?
+
+## Random notes
++ I will need an explicit swap rule representation.
+	- Run MCTS in starting state, but play random move fails, because value estimate of starting position will be wrong.
+	- Initialize with random move and start with MCTS after first move fails, because I do not learn anything about the starting position.
+	- Only idea: Add as another node feature if swap is allowed and add addtional global output if should swap which is always ignored except in first state.

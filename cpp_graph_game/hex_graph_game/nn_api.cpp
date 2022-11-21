@@ -1,6 +1,4 @@
 #include "nn_api.h"
-#include "util/speedcheck.h"
-
 
 using namespace std;
 
@@ -16,4 +14,9 @@ vector<at::Tensor> NN_api::predict(vector<torch::jit::IValue> inputs){
 	// speedcheck showed that this is not unnaturally slow.
 	c10::ivalue::Tuple res = model.forward(inputs).toTupleRef();
 	return vector<at::Tensor>({res.elements()[0].toTensor(),res.elements()[1].toTensor()});
+}
+
+vector<at::Tensor> NN_api::predict(vector<torch::Tensor> inputs){
+	vector<c10::IValue> vi(inputs.begin(),inputs.end());
+	return predict(vi);
 }

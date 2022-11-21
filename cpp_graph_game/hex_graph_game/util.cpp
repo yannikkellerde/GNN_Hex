@@ -1,4 +1,6 @@
 #include "util.h"
+#include "shannon_node_switching_game.h"
+#include "nn_api.h"
 
 using namespace std;
 using namespace torch::indexing;
@@ -29,3 +31,24 @@ tuple<vector<torch::jit::IValue>,vector<int>> collate_batch(std::vector<torch::T
 	return {vector<c10::IValue>({big_features,big_ei,graph_indices}),batch_ptr};
 }
 
+void starting_eval_img(int hex_size, NN_api* net){
+	stringstream ss;
+	std::vector<torch::Tensor> converted, outputs, node_features, edge_indices;
+	std::vector<torch::jit::IValue> inputs;
+	vector<int> batch_ptr;
+	Node_switching_game game(hex_size);
+	torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(net->device);
+	converted = game.convert_graph(net->device);
+	node_features.push_back(converted[0]);
+	edge_indices.push_back(converted[1]);
+	tie(inputs,batch_ptr) = collate_batch(node_features,edge_indices);
+	outputs = net->predict(inputs);
+	vector<string> nodetext(game.graph.num_vertices);
+	for (int i=0;i<game.graph.num_vertices;++i){
+		ss.str(string());
+		ss << i << "(" << setprecision(3) << outputs[0][i].item<double>() << ")";
+		nodetext[i] = ss.str();
+	}
+	game.graphviz_me(nodetext,"starting_eval.dot");
+	system("neato -Tpng starting_eval.dot -o starting_eval.png");
+}

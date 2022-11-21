@@ -940,6 +940,10 @@ size_t get_best_action_index(const Node *curNode, bool fast, float qValueWeight,
         size_t longestPVlength = 0;
         size_t childIdx = 0;
         for (size_t idx = 0; idx < curNode->get_number_child_nodes(); ++idx) {
+						if (curNode->get_child_node(idx)==nullptr||curNode->get_child_node(idx)->d==nullptr){
+							print_info(__LINE__,__FILE__,"WARNING:","nullptr problem catched");
+							continue;
+						}
             if (curNode->get_child_node(idx)->get_end_in_ply() > longestPVlength) {
                 longestPVlength = curNode->get_child_node(idx)->get_end_in_ply();
                 childIdx = idx;

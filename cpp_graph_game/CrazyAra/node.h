@@ -96,7 +96,6 @@ private:
     // valueSum stores the sum of all incoming value evaluations
     double valueSum;
 
-    unique_ptr<NodeData> d;
 #ifdef MCTS_STORE_STATES
     unique_ptr<Node_switching_game> state;
 #endif
@@ -113,6 +112,7 @@ private:
     bool sorted;
 
 public:
+    unique_ptr<NodeData> d;
     DynamicVector<float> policyProbSmall;
     /**
      * @brief Node Primary constructor which is used when expanding a node during search

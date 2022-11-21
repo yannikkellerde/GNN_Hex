@@ -21,6 +21,7 @@ from tqdm import tqdm
 from torch.optim.optimizer import Optimizer
 from torch.nn.modules.loss import _Loss
 from torch import Tensor
+import wandb
 
 from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig, TrainObjects
@@ -57,14 +58,8 @@ class TrainerAgentPytorch:
         self._ctx = get_context(train_config.context, train_config.device_id)
 
         # define a summary writer that logs data and flushes to the file every 5 seconds
-        if self.tc.log_metrics_to_tensorboard:
-            from torch.utils.tensorboard import SummaryWriter
-            self.sum_writer = SummaryWriter(log_dir=self.tc.export_dir+"logs", flush_secs=5)
-
         self.policy_loss = SoftCrossEntropyLoss()
         self.value_loss = nn.MSELoss()
-        self.wdl_loss = nn.CrossEntropyLoss()
-        self.ply_loss = nn.MSELoss()
 
         # Define the optimizer
         self.optimizer = create_optimizer(self._model, self.tc)
@@ -149,8 +144,6 @@ class TrainerAgentPytorch:
                                     + str(datetime.timedelta(seconds=round(time() - self.t_s)))
                                 )
 
-                                if self.tc.log_metrics_to_tensorboard:
-                                    self.sum_writer.close()
                                 return return_metrics_and_stop_training(self.k_steps, val_metric_values, self.k_steps_best,
                                                                         self.val_metric_values_best)
 
@@ -171,9 +164,10 @@ class TrainerAgentPytorch:
                         else:
                             # update the val_loss_value to compare with using spike recovery
                             self.old_val_loss = val_metric_values["loss"]
+                            logs = {}
                             # log the metric values to tensorboard
-                            self._log_metrics(train_metric_values, global_step=self.k_steps, prefix="train_")
-                            self._log_metrics(val_metric_values, global_step=self.k_steps, prefix="val_")
+                            self._log_metrics(train_metric_values, log_dict=logs, global_step=self.k_steps, prefix="train_")
+                            self._log_metrics(val_metric_values, log_dict=logs, global_step=self.k_steps, prefix="val_")
 
                             # check if a new checkpoint shall be created
                             if self.val_loss_best is None or val_metric_values["loss"] < self.val_loss_best:
@@ -198,20 +192,11 @@ class TrainerAgentPytorch:
                             print(" - %.ds" % self.t_delta)
                             self.t_s_steps = time()
 
-                            if self.tc.log_metrics_to_tensorboard:
-                                # log the samples per second metric to tensorboard
-                                self.sum_writer.add_scalar(
-                                    tag="samples_per_second",
-                                    scalar_value=int(torch.max(data.batch)) * self.tc.batch_steps / self.t_delta,
-                                    global_step=self.k_steps,
-                                )
-
-                                # log the current learning rate
-                                self.sum_writer.add_scalar(tag="lr", scalar_value=self.to.lr_schedule(self.cur_it), global_step=self.k_steps)
-                                # log the current momentum value
-                                self.sum_writer.add_scalar(
-                                    tag="momentum", scalar_value=self.to.momentum_schedule(self.cur_it), global_step=self.k_steps
-                                )
+                            logs["lr"] = self.to.lr_schedule(self.cur_it);
+                            # logs["lr"] = self.tc.max_lr;
+                            logs["samples_per_second"] = int(torch.max(data.batch)) * self.tc.batch_steps / self.t_delta
+                            logs["momentum"] = self.to.momentum_schedule(self.cur_it)
+                            wandb.log(logs);
 
                             if self.cur_it >= self.tc.total_it:
                                 logging.debug("The number of given iterations has been reached")
@@ -221,9 +206,6 @@ class TrainerAgentPytorch:
                                     "Elapsed time for training(hh:mm:ss): "
                                     + str(datetime.timedelta(seconds=round(time() - self.t_s)))
                                 )
-
-                                if self.tc.log_metrics_to_tensorboard:
-                                    self.sum_writer.close()
 
                                 # make sure to empty cache
                                 if torch.cuda.is_available():
@@ -273,9 +255,11 @@ class TrainerAgentPytorch:
         self.optimizer.zero_grad()
         batch.to(self._ctx)
         policy_out,value_out = self._model(batch.x,batch.edge_index,batch.batch)
+        assert not torch.isnan(policy_out.any())
+        assert not torch.isnan(value_out.any())
+        assert not torch.isnan(batch.y.any())
         # policy_out = policy_out.softmax(dim=1)
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
-        print(policy_out.size(),batch.policy.size())
         policy_loss = self.policy_loss(policy_out, batch.policy)
         # weight the components of the combined loss
         combined_loss = (
@@ -286,12 +270,13 @@ class TrainerAgentPytorch:
             param_group['lr'] = self.to.lr_schedule(self.cur_it)  # update the learning rate
             if 'momentum' in param_group:
                 param_group['momentum'] = self.to.momentum_schedule(self.cur_it)  # update the momentum
+
         self.optimizer.step()
         self.cur_it += 1
         self.batch_proc_tmp += 1
         return batch
 
-    def _log_metrics(self, metric_values, global_step, prefix="train_"):
+    def _log_metrics(self, metric_values, global_step, log_dict, prefix="train_"):
         """
         Logs a dictionary object of metric value to the console and to tensorboard
         if _log_metrics_to_tensorboard is set to true
@@ -302,12 +287,8 @@ class TrainerAgentPytorch:
         """
         for name in metric_values.keys():  # show the metric stats
             print(" - %s%s: %.4f" % (prefix, name, metric_values[name]), end="")
+            log_dict[f'{name}/{prefix.replace("_", "")}'] = metric_values[name]
             # add the metrics to the tensorboard event file
-            if self.tc.log_metrics_to_tensorboard:
-                self.sum_writer.add_scalar(tag="lr", scalar_value=self.to.lr_schedule(self.cur_it),
-                                           global_step=self.k_steps)
-
-                self.sum_writer.add_scalar(tag=f'{name}/{prefix.replace("_", "")}', scalar_value=metric_values[name], global_step=global_step)
 
     def _setup_variables(self, cur_it):
         if self.tc.seed is not None:
@@ -378,7 +359,6 @@ def get_context(context: str, device_id: int):
 def load_torch_state(model: nn.Module, optimizer: Optimizer, path: str, device_id: int):
     checkpoint = torch.load(path, map_location=f"cuda:{device_id}")
     model.load_state_dict(checkpoint['model_state_dict'])
-    print(type(checkpoint['optimizer_state_dict']),checkpoint['optimizer_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 
@@ -483,6 +463,9 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             batch.to(ctx)
 
             policy_out,value_out = model(batch.x,batch.edge_index,batch.batch)
+            assert not torch.isnan(policy_out).any()
+            assert not torch.isnan(batch.y).any()
+            assert not torch.isnan(value_out).any()
 
             # update the metrics
             metrics["value_loss"].update(preds=torch.flatten(value_out), labels=batch.y)

@@ -66,6 +66,11 @@ def enable_logging(logging_lvl=logging.DEBUG, log_filename=None):
         fh.setFormatter(formatter)
         root.addHandler(fh)
 
+def log_to_file_and_print(filename:str, message:str):
+    with open(filename,"a") as f:
+        f.write("\n"+message)
+    print(message)
+
 
 def extract_nn_update_idx_from_binary_name(current_binary_name: str) -> int:
     """

@@ -499,7 +499,7 @@ Onturn Node_switching_game::who_won() const{
 vector<string> Node_switching_game::get_grid_layout() const{
 	double scale;
 	vector<string> position_array(graph.num_vertices);
-	scale = 1.;
+	scale = 1.3;
 	const double xstart = 0;
 	const double ystart = 0;
 	const double xend = xstart+1.5*(board_size-1)*scale;
@@ -540,11 +540,18 @@ string Node_switching_game::format_action(int action) const{
 }
 
 void Node_switching_game::graphviz_me (string fname) const{
+	vector<string> nodetext(graph.num_vertices);
+	std::iota(std::begin(nodetext), std::end(nodetext), 0);
+	graphviz_me(nodetext,fname);
+}
+
+void Node_switching_game::graphviz_me (vector<string> nodetext, string fname) const{
 	vector<string> color_map = get_colors();
 	vector<string> pos_map = get_grid_layout();
 	vector<pair<string,vector<string>>> props;
 	props.push_back(pair<string,vector<string>>("color",color_map));
 	props.push_back(pair<string,vector<string>>("pos",pos_map));
+	props.push_back(pair<string,vector<string>>("label",nodetext));
 
 	graph.graphviz_me(props,fname,true);
 };

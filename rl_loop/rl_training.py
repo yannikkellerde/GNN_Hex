@@ -57,7 +57,7 @@ def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, 
     val_data = _get_loader(train_config, dataset_type="val")
 
     # calculate how many iterations per epoch exist
-    nb_it_per_epoch = (len(val_data) * train_config.nb_parts) // train_config.batch_size
+    nb_it_per_epoch = len(val_data) * train_config.nb_parts
     # one iteration is defined by passing 1 batch and doing backprop
     train_config.total_it = int(nb_it_per_epoch * train_config.nb_training_epochs)
 

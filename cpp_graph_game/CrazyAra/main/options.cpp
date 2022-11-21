@@ -89,7 +89,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
 #ifdef USE_RL
-    o["Nodes"]                         << Option(800, 0, 99999999);
+    o["Nodes"]                         << Option(100, 0, 99999999);
 #else
     o["Nodes"]                         << Option(0, 0, 99999999);
 #endif

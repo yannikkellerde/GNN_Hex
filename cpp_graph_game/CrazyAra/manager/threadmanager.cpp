@@ -48,22 +48,23 @@ void ThreadManager::print_info()
 void ThreadManager::await_kill_signal()
 {
     while(isRunning) {
-				if (!tData->searchThreads.front()->is_running()){
-					::print_info(__LINE__,__FILE__,"one check for weird stopping condition");
-					std::this_thread::sleep_for(std::chrono::milliseconds(20)); // ensure that we don't have a very unfortunate timing
-					if (!tData->searchThreads.front()->is_running()){
-						::print_info(__LINE__,__FILE__,"weird thread stopping condition");
-						break;
-					}
-				}
+				/* if (!tData->searchThreads.front()->is_running()){ */
+					/* ::print_info(__LINE__,__FILE__,"Stopping: one check for weird stopping condition"); */
+					/* std::this_thread::sleep_for(std::chrono::milliseconds(20)); // ensure that we don't have a very unfortunate timing */
+					/* if (!tData->searchThreads.front()->is_running()){ */
+						/* ::print_info(__LINE__,__FILE__,"Stopping Condition: weird thread stopping condition"); */
+						// break; I sure hope deactivating this won't break things
+					/* } */
+				/* } */
         if (wait_for(chrono::milliseconds(tParams->updateIntervalMS*4))){
             print_info();
         }
         else {
-						/* ::print_info(__LINE__,__FILE__,"stopping because wait_for is false"); */
+						/* ::print_info(__LINE__,__FILE__,"Stopping: stopping because wait_for is false"); */
             return;
         }
     }
+		::print_info(__LINE__,__FILE__,"Stopping Condition: IsRunning is false");
 }
 
 void run_thread_manager(ThreadManager* t)

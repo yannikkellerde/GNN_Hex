@@ -45,7 +45,7 @@ using namespace CUSTOM_UCI;
  * @param gamePGN PGN of the current game
  * @param gameResult Current game result (usually NO_RESULT after move was played)
  */
-void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult);
+void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult, bool make_random_move);
 
 
 class SelfPlay
@@ -69,6 +69,7 @@ private:
     float backupDirichletEpsilon;
     float backupQValueWeight;
     bool is960;
+		map<string,double> stats;
 
 public:
     /**
@@ -84,6 +85,7 @@ public:
         RLSettings* rlSettings, OptionsMap& options);
     ~SelfPlay();
 
+		void print_stats();
     /**
      * @brief go Starts the self play game generation for a given number of games
      * @param numberOfGames Number of games to generate
@@ -118,7 +120,7 @@ private:
      * The fen will be stored in gamePGN.fen.
      * @param verbose If true the games will printed to stdout
      */
-    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose, vector<int>& starting_moves);
+    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose, vector<int>& starting_moves, bool breaker_starts);
 
     /**
      * @brief write_game_to_pgn Writes the game log to a pgn file
@@ -216,9 +218,9 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent&
  * @return New state object
  */
 
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions);
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions,bool breaker_starts);
 
-unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions);
+unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions, bool breaker_starts);
 
 /**
  * @brief apply_raw_policy_temp Applies a temperature scaling to the policyProbSmall of the eval struct.

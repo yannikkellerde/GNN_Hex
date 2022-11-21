@@ -5,6 +5,7 @@
 #include "../tests/consistency_test.h"
 #include "../tests/test_my_graph.h"
 #include "../tests/test_copy.h"
+#include "../tests/play_vs_model.h"
 
 int main(int argc, char * argv[]){
 	assert (argc>1);
@@ -22,6 +23,9 @@ int main(int argc, char * argv[]){
 	}
 	else if (string(argv[1]).compare("copy")==0){
 		test_copy();
+	}
+	else if (string(argv[1]).compare("play")==0){
+		play_vs_model(argv[2]);
 	}
 	else if (string(argv[1]).compare("torch_script")==0){
 		assert (argc>2);

@@ -90,6 +90,8 @@ class Node_switching_game {
 
 		void graphviz_me (string fname) const;
 
+		void graphviz_me (vector<string> nodetext,string fname) const;
+
 	std::vector<torch::Tensor> convert_graph(torch::Device &device) const;
 };
 #endif

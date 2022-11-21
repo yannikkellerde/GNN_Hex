@@ -7,6 +7,7 @@ Created on 12.10.19
 Main reinforcement learning for generating games and train the neural network.
 """
 
+import distutils
 import os
 import sys
 import logging
@@ -14,6 +15,7 @@ import argparse
 from rtpt import RTPT
 import dataclasses
 from multiprocessing import Process, Queue
+from PIL import Image
 
 from rl_loop.fileio import FileIO
 from rl_loop.rl_utils import enable_logging, get_log_filename, get_current_binary_name, \
@@ -23,7 +25,7 @@ from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig
 from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network
-import torch
+import torch, wandb
 
 class RLLoop:
     """
@@ -41,12 +43,13 @@ class RLLoop:
         be written to the new model filenames to track how many iterations the model has trained in total)
         """
         self.args = args
-
         self.tc = TrainConfig()
+        wandb.init(id="1ovuf8dh",resume="must",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde",
+                   mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
+
         self.rl_config = rl_config
 
-        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir,
-                              uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name)
+        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name)
         self.binary_io = None
 
         if nb_arena_games % 2 == 1:
@@ -114,6 +117,7 @@ class RLLoop:
         :param number_files_to_update: Number of newly generated files needed to trigger a new NN update
         :return: True, if enough training data was availble and a training run has been executed.
         """
+        print("generated:",self.file_io.get_number_generated_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_number_generated_files() >= number_files_to_update:
             self.binary_io.stop_process()
             self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,
@@ -141,7 +145,7 @@ class RLLoop:
 
             self.initialize()
             logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
-            self.did_contender_win = self.binary_io.compare_new_weights(self.nb_arena_games)
+            self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games)
             if self.did_contender_win is True:
                 logging.info("REPLACING current generator with contender")
                 self.file_io.replace_current_model_with_contender()
@@ -155,6 +159,13 @@ class RLLoop:
             self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
                                                           self.rtpt._get_title(), self.nn_update_index)
             self.initialize()
+            logs = dict(winrate=winrate);
+            if self.did_contender_win:
+                self.binary_io.generate_starting_eval_img()
+                img = Image.open("starting_eval.png");
+                logs["starting_eval"] = wandb.Image(img,caption="starting eval")
+            wandb.log(logs)
+
 
 
 def parse_args(cmd_args: list):
@@ -163,6 +174,7 @@ def parse_args(cmd_args: list):
     :param cmd_args: Command-line arguments (sys.argv[1:])
     :return: Parsed arguments as dictionary object
     """
+    parse_bool = lambda b: bool(distutils.util.strtobool(b))
     parser = argparse.ArgumentParser(description='Reinforcement learning loop')
 
     parser.add_argument('--context', type=str, default="gpu",
@@ -182,6 +194,8 @@ def parse_args(cmd_args: list):
     parser.add_argument('--no-trace-torch', default=False, action="store_true",
                         help="By default the networks will be converted to ONNX to allow TensorRT inference."
                              " If this parameter is enabled no conversion will be done")
+
+    parser.add_argument('--use_wandb', type=parse_bool, default=True, help='whether use "weights & biases" for tracking metrics, video recordings and model checkpoints')
 
     args = parser.parse_args(cmd_args)
 
@@ -233,13 +247,21 @@ def main():
         else:
             rl_loop.check_for_new_model()
 
-        if rl_loop.nn_update_index >= rl_loop.last_nn_update_index:
-            logging.info(f'{rl_loop.rl_config.nb_nn_updates} NN updates reached, shutting down')
-            break
+        # if rl_loop.nn_update_index >= rl_loop.last_nn_update_index:
+        #     logging.info(f'{rl_loop.rl_config.nb_nn_updates} NN updates reached, shutting down')
+        #     break
 
-        rl_loop.binary_io.generate_games()
-        rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
-
+        success, statistics = rl_loop.binary_io.generate_games()
+        if success:
+            rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
+            statistics["Binary failed"] = 0
+            wandb.log(statistics)
+        else:
+            wandb.log({"Binary failed":1})
+            print("BINARY Errored, doing restart")
+            rl_loop.binary_io.stop_process()
+            rl_loop.initialize()
+    wandb.finish()
 
 if __name__ == "__main__":
     main()

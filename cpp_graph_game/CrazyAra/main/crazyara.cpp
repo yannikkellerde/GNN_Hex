@@ -103,6 +103,10 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 			cout << engine_info()
 				<< "uciok" << endl;
 		}
+		else if (token == "starting_eval"){
+			starting_eval_img(Options["Hex_Size"],netSingle.get());
+			cout << "readyok" << endl;
+		}
 		else if (token == "speedsummary") speedcheck.summarize(cout);
 		else if (token == "setoption")  set_uci_option(is, *state.get());
 		else if (token == "go")         go(state.get(), is, evalInfo);
