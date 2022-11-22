@@ -41,8 +41,12 @@ class Node_switching_game {
 		Hex_board board;
 		bool maker_won=false;
 		int move_num;
+#ifndef NO_PLAY
 		map<int,int> response_set_maker;
 		map<int,int> response_set_breaker;
+		vector<int> board_moves_maker;
+		vector<int> board_moves_breaker;
+#endif
 
 		Node_switching_game (int board_size=11);
 
@@ -69,6 +73,8 @@ class Node_switching_game {
 		void remove_marked_nodes();
 
 		void switch_onturn();
+
+		Onturn not_onturn();
 
 		int get_random_action() const;
 

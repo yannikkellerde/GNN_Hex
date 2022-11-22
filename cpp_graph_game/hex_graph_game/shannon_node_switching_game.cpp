@@ -133,8 +133,12 @@ Node_switching_game::Node_switching_game (Hex_board& from_board):board(from_boar
 Node_switching_game::Node_switching_game (Node_switching_game& ref){
 	graph = ref.graph;
 	maker_won = ref.maker_won;
+#ifndef NO_PLAY
 	response_set_maker = ref.response_set_maker;
 	response_set_breaker = ref.response_set_breaker;
+	board_moves_maker = ref.board_moves_maker;
+	board_moves_breaker = ref.board_moves_breaker;
+#endif
 	onturn = ref.onturn;
 	board_size = ref.board_size;
 	board = ref.board;
@@ -149,8 +153,12 @@ void Node_switching_game::reset(){
 	move_num = 0;
 	board_size = board.size;
 	maker_won=false;
+#ifndef NO_PLAY
 	response_set_maker = map<int,int>();
 	response_set_breaker = map<int,int>();
+	board_moves_maker = vector<int>();
+	board_moves_breaker = vector<int>();
+#endif
 	onturn = maker;
 	graph = Graph(board.num_squares);
 	graph.add_fprop(0.); // t1connect
@@ -205,6 +213,7 @@ int Node_switching_game::vertex_from_board_location(int bl) const{
 	return -1;
 }
 
+#ifndef NO_PLAY
 int Node_switching_game::get_response(int bloc,bool for_maker){
 	if (response_set_maker.find(bloc)!=response_set_maker.end()){
 		if (for_maker){
@@ -229,6 +238,11 @@ int Node_switching_game::get_response(int bloc,bool for_maker){
 		}
 	}
 	return -1;
+}
+#endif
+
+Onturn Node_switching_game::not_onturn(){
+	return onturn==maker?breaker:maker;
 }
 
 void Node_switching_game::switch_onturn(){
@@ -285,6 +299,9 @@ set<int> Node_switching_game::make_move(int vertex, bool do_force_color, Onturn 
 		switch_onturn();
 	}
 	if (player==maker){
+#ifndef NO_PLAY
+		board_moves_maker.push_back(graph.lprops[board_location][vertex]);
+#endif
 		bool t1_infect = graph.fprops[t1connect][vertex];
 		bool t2_infect = graph.fprops[t2connect][vertex];
 		if (t1_infect && t2_infect){
@@ -317,6 +334,11 @@ set<int> Node_switching_game::make_move(int vertex, bool do_force_color, Onturn 
 			change_set = fix_terminal_connections(vertex,t1_infect?t1connect:t2connect);
 		}
 	}
+#ifndef NO_PLAY
+	else{
+		board_moves_breaker.push_back(graph.lprops[board_location][vertex]);
+	}
+#endif
 	if (do_remove_dead_and_captured){
 		Neighbors neigh = graph.adjacent_vertices(vertex);
 		change_set.insert(neigh.first,neigh.second);
@@ -362,8 +384,11 @@ void Node_switching_game::remove_dead_and_captured(set<int> &consider_set){
 					continue;
 				}
 				if (check_if_same(graph,v1,vertex)){
+#ifndef NO_PLAY
 					response_set_maker[graph.lprops[board_location][v1]]=graph.lprops[board_location][vertex];
 					response_set_maker[graph.lprops[board_location][vertex]]=graph.lprops[board_location][v1];
+					board_moves_breaker.push_back(graph.lprops[board_location][v1]);
+#endif
 					/* tmp_neigh = adjacent_vertices(vertex,graph);       // These are not */
 					/* big_set.insert(tmp_neigh.first,tmp_neigh.second);  // in the python original */
 					/* cout << "maker captured " << v1 << vertex << endl; */
@@ -396,8 +421,12 @@ void Node_switching_game::remove_dead_and_captured(set<int> &consider_set){
 				}
 			}
 			if (is_fully_connected(graph,vertex,v1) && is_fully_connected(graph,v1,vertex)){
+#ifndef NO_PLAY
 				response_set_breaker[graph.lprops[board_location][v1]]=graph.lprops[board_location][vertex];
 				response_set_breaker[graph.lprops[board_location][vertex]]=graph.lprops[board_location][v1];
+				board_moves_breaker.push_back(graph.lprops[board_location][v1]);
+				board_moves_breaker.push_back(graph.lprops[board_location][vertex]);
+#endif
 				/* cout << "breaker captured " << v1 << " " << vertex << endl; */
 				tmp_neigh = graph.adjacent_vertices(vertex);
 				neigh_neigh = graph.adjacent_vertices(v1);
@@ -412,6 +441,9 @@ void Node_switching_game::remove_dead_and_captured(set<int> &consider_set){
 			}
 		}
 		if (is_dead && !can_continue){
+#ifndef NO_PLAY
+			board_moves_breaker.push_back(graph.lprops[board_location][vertex]);
+#endif
 			/* cout << "node is dead " << vertex << endl; */
 			neighbors = graph.adjacent_vertices(vertex);
 			big_set.insert(neighbors.first,neighbors.second);
@@ -499,7 +531,7 @@ Onturn Node_switching_game::who_won() const{
 vector<string> Node_switching_game::get_grid_layout() const{
 	double scale;
 	vector<string> position_array(graph.num_vertices);
-	scale = 1.3;
+	scale = 1+0.1*(11-board_size);
 	const double xstart = 0;
 	const double ystart = 0;
 	const double xend = xstart+1.5*(board_size-1)*scale;

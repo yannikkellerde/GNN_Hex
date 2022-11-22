@@ -13,6 +13,7 @@
 #include <string>
 
 using namespace std;
+using namespace torch::indexing;
 
 void play_vs_model(string model_path){
 	string action;
@@ -21,6 +22,12 @@ void play_vs_model(string model_path){
 	std::vector<torch::Tensor> inputs, outputs;
 	torch::Device device(torch::kCUDA);
 	NN_api nn_api(model_path,device);
+	/* for (auto m = nn_api.model.parameters().begin();m!=nn_api.model.parameters().end();++m){ */
+	/* 	torch::NoGradGuard no_grad; */
+	/* 	(*m).index_put_({None},torch::rand((*m).sizes())*5); */
+	/* 	cout << *m << endl; */
+	/* } */
+	/* exit(0); */
 	starting_eval_img(5,&nn_api);
 	Node_switching_game game(5);
 	while (true){
@@ -29,6 +36,7 @@ void play_vs_model(string model_path){
 		inputs.push_back(torch::zeros(game.graph.num_vertices,options_long));
 		outputs = nn_api.predict(inputs);
 		print_info(__LINE__,__FILE__,"Value:",outputs[1].item<double>());
+		print_info(__LINE__,__FILE__,"Policy:",outputs[0]);
 		vector<string> nodetext(game.graph.num_vertices);
 		for (int i=0;i<game.graph.num_vertices;++i){
 			ss.str(string());

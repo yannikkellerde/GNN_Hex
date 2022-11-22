@@ -57,8 +57,6 @@ private:
     void set_best_move(size_t moveCounter);
 
 protected:
-		torch::Tensor probOutputs;
-		torch::Tensor valueOutputs;
 
 		// The next batch of inputs
 		std::vector<torch::Tensor> edge_indices;
@@ -76,6 +74,8 @@ protected:
 		NN_api * net;
 
 public:
+		torch::Tensor probOutputs;
+		torch::Tensor valueOutputs;
     Agent(NN_api * net, PlaySettings* playSettings, bool verbose);
 
     /**

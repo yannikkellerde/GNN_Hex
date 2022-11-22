@@ -25,6 +25,7 @@
 
 #include "options.h"
 #include "crazyara.h"
+#include "playmode.h"
 
 #include <thread>
 #include <fstream>
@@ -112,6 +113,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 		else if (token == "go")         go(state.get(), is, evalInfo);
 		else if (token == "ucinewgame") ucinewgame();
 		else if (token == "isready")    is_ready<true>();
+		else if (token == "play")       playmode(mctsAgent.get(),rawAgent.get(),&searchLimits,&evalInfo);
 
 		// Additional custom non-UCI commands, mainly for debugging
 		else if (token == "root")       mctsAgent->print_root_node();

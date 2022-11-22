@@ -373,6 +373,7 @@ def build_hex_grid(colors,labels=None,fig=None):
     plt.autoscale(enable=True)
     plt.axis("off")
     plt.tight_layout()
+    plt.pause(0.001)
     return fig
 
 if __name__=="__main__":

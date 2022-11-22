@@ -1,3 +1,13 @@
+# I learned 5x5 Hex using CrazyAra and GNNs (งツ)ว
+## The good part
++ Policy of raw network after training plays perfect move in every situation (except the GNN problem case below)
++ Value estimate is usually correct, but has some minor errors
+## The bad part
++ Only works with Batch Size 8 / Num Threads 1
++ 20% GPU utilization
++ Took a lot longer to learn 5x5 Hex than with Rainbow DQN: ~30 min vs 5h for getting a pretty much perfect solution.
+
+# CrazyAra questions
 + How does threading / batching / virtual loss work in CrazyAra?
 	- Doe multiple threads batch results together for nn\_evaluation?
 		* It does not seem like that to me, as each SearchThread is running it's own create_mini_batch() and runs inference on it.
@@ -14,7 +24,17 @@
 	- Or which parameters where used in other experiments.
 + Why aren't MCTS search trees reused by default for RL in crazyara options?
 + Why such a complicated LR/Momentum schedule?
-+ What is the idea of wdl and ply loss?
+
+# A GNN problem
+The graph network that I am using can not differentiate between nodes that are different in rare circumstances:  
+![problem graph](problem_graph.png)  
+
+The reason for this is the mean in the GraphSage aggregation:
+![equation](GraphSage_equation.png)
+If all neighbor nodes are isomorph, we can't differentiate between how many neighbors we have.
+## Solution Ideas
+1. Add degree as a node feature.
+2. Use different GNN type that does not use mean but sum to differentiate between neighbors (which?).
 
 ## Random notes
 + I will need an explicit swap rule representation.
