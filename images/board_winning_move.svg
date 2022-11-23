@@ -26,7 +26,7 @@
      inkscape:document-units="pt"
      showgrid="false"
      inkscape:zoom="0.74553886"
-     inkscape:cx="958.36722"
+     inkscape:cx="1018.7262"
      inkscape:cy="472.14172"
      inkscape:window-width="1896"
      inkscape:window-height="1027"
@@ -1082,4 +1082,15 @@
        style="stroke-width:1.60157"
        x="511.96365"
        y="101.99242">A</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-weight:bold;font-size:48px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ffffff;stroke-width:1.60157;stroke-linecap:butt;stroke-linejoin:round;fill-opacity:1;stroke-opacity:1"
+     x="1128.2708"
+     y="103.94355"
+     id="text985-3"><tspan
+       sodipodi:role="line"
+       id="tspan983-6"
+       style="stroke-width:1.60157;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-opacity:1"
+       x="1128.2708"
+       y="103.94355">B</tspan></text>
 </svg>
