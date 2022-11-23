@@ -4,7 +4,7 @@
 + Guided by the learned policy, MCTS full solves many 5x5 positions even with only 100 nodes and MCTS agent plays 5x5 perfectly.
 ## The bad part
 + Raw Network still fails the most complicated opening move after 10h training (Rainbow DQN agent also had problems with it)
-+ Likely some overfitting to learned policy / state distribution. If I go into variations that aren't networks first choice, policy estimates are still good, but value estimates go negative for both players.
++ Likely some overfitting to learned policy / state distribution. If I go into variations that aren't networks first choice, policy estimates are still good, but value estimates go negative for both players. (Maybe related to the bad way I forced the engine to play all opening moves during selfplay, more at the bottom)
 + Only works with Batch Size 8 / Num Threads 1
 + 20% GPU utilization
 
