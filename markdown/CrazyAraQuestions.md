@@ -1,8 +1,10 @@
 # I learned 5x5 Hex using CrazyAra and GNNs (งツ)ว
 ## The good part
-+ Policy and value extimates of raw network perfect in almost every situation 
++ Policy of raw network perfect in almost every situation.
++ Guided by the learned policy, MCTS full solves many 5x5 positions even with only 100 nodes and MCTS agent plays 5x5 perfectly.
 ## The bad part
-+ Still fails the most complicated opening move after 10h training (Rainbow DQN agent also had problems with it)
++ Raw Network still fails the most complicated opening move after 10h training (Rainbow DQN agent also had problems with it)
++ Likely some overfitting to learned policy / state distribution. If I go into variations that aren't networks first choice, policy estimates are still good, but value estimates go negative for both players.
 + Only works with Batch Size 8 / Num Threads 1
 + 20% GPU utilization
 
