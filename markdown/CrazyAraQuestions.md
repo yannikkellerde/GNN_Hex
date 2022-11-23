@@ -1,11 +1,10 @@
 # I learned 5x5 Hex using CrazyAra and GNNs (งツ)ว
 ## The good part
-+ Policy of raw network after training plays perfect move in every situation (except the GNN problem case below)
-+ Value estimate is usually correct, but has some minor errors
++ Policy and value extimates of raw network perfect in almost every situation 
 ## The bad part
++ Still fails the most complicated opening move after 10h training (Rainbow DQN agent also had problems with it)
 + Only works with Batch Size 8 / Num Threads 1
 + 20% GPU utilization
-+ Took a lot longer to learn 5x5 Hex than with Rainbow DQN: ~30 min vs 5h for getting a pretty much perfect solution.
 
 # CrazyAra questions
 + How does threading / batching / virtual loss work in CrazyAra?
