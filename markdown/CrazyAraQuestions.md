@@ -42,3 +42,4 @@ If all neighbor nodes are isomorph, we can't differentiate between how many neig
 	- Run MCTS in starting state, but play random move fails, because value estimate of starting position will be wrong.
 	- Initialize with random move and start with MCTS after first move fails, because I do not learn anything about the starting position.
 	- Only idea: Add as another node feature if swap is allowed and add addtional global output if should swap which is always ignored except in first state.
++ I kind of killed some symetry with my different hex graph representation. Probably I should switch back.
