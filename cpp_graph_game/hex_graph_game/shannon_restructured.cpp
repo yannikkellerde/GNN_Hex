@@ -596,4 +596,8 @@ std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &dev
 	parts1 = convert_graph(device,graph);
 	parts2 = convert_graph(device,graph2);
 #endif
+	for (int i=0;i<parts1.size();++i){
+		out.push_back(torch::concat({parts1[i],parts2[i]}));
+	}
+	return out;
 };
