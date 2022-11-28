@@ -7,14 +7,15 @@ void interactive_env(){
 	torch::Device device(torch::kCPU,0);
 	int move;
 	Hex_board board(5);
-	Node_switching_game game_old(board);
-	std::vector<torch::Tensor> data = game_old.convert_graph(device);
-	Node_switching_game game(data);
-	game.board_size = 5;
+	Node_switching_game game(board);
+	Graph* cur_graph = &game.graph;
+	/* std::vector<torch::Tensor> data = game_old.convert_graph(device); */
+	/* Node_switching_game game(data); */
+	/* game.board_size = 5; */
 	/* Node_switching_game<5> game; */
 	while (true){
 		/* game.graphviz_me(cout); */
-		game.graphviz_me("my_graph.dot");
+		game.graphviz_me("my_graph.dot",*cur_graph);
 		game.graph.do_complete_dump("graph_dump.txt");
     system("pkill -f 'mupdf my_graph.pdf'");
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
@@ -22,13 +23,18 @@ void interactive_env(){
 		usleep(100000U);
 		system("bspc node -f west");
 		cin >> move;
-		game.make_move(move,false,maker,true);
-		Onturn winner = game.who_won();
-		if (winner==maker){
-			cout << "maker won" << endl;
+		if (move==-1){
+			cur_graph = cur_graph==&game.graph?&game.graph2:&game.graph;
 		}
-		if (winner==breaker){
-			cout << "breaker won" << endl;
+		else{
+			game.make_move(move,false,NOPLAYER,true);
+		}
+		Onturn winner = game.who_won();
+		if (winner==RED){
+			cout << "red won" << endl;
+		}
+		if (winner==BLUE){
+			cout << "blue won" << endl;
 		}
 	}
 }

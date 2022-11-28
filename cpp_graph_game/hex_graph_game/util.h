@@ -69,4 +69,10 @@ void print_info(const int line_number, const std::string filename, const T &mess
 	std::cout << "File " << base_filename << " Line " << line_number << ": " << messageA << ' ' << messageB << ' ' << messageC << std::endl;
 }
 
+template<typename T, typename U, typename V, typename K>
+void print_info(const int line_number, const std::string filename, const T &messageA, const U &messageB, const V &messageC, const K &messageD){
+	std::string base_filename = filename.substr(filename.find_last_of("/\\") + 1);
+	std::cout << "File " << base_filename << " Line " << line_number << ": " << messageA << ' ' << messageB << ' ' << messageC << ' ' << messageD << std::endl;
+}
+
 #endif

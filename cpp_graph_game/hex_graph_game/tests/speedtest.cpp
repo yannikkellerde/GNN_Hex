@@ -9,7 +9,7 @@ void speedtest(){
 	int move,move_num,move_time;
 	Onturn winner;
 	const int size=11;
-	const int num_games = 10;
+	const int num_games = 500;
 	move_time = 0;
 	Hex_board board(size);
 	Node_switching_game game(board);
@@ -31,14 +31,14 @@ void speedtest(){
 		move_num = 0;
 		do{
 			auto start = chrono::high_resolution_clock::now();
-			move = (rand()/((RAND_MAX + 1u)/(game_list[i].graph.num_vertices)));
+			move = game_list[i].get_random_action();
 
-			game_list[i].make_move(move,false,noplayer,true);
+			game_list[i].make_move(move,false,NOPLAYER,true);
 			auto stop = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 			move_time+=duration.count();
 			winner = game_list[i].who_won();
-			if (winner == noplayer){
+			if (winner == NOPLAYER){
 				game_list[i].convert_graph(device);
 			}
 			else{
@@ -56,8 +56,8 @@ void speedtest(){
 	/* cout << "node features" << feat_time << endl; */
 	/* cout << "edge indices" << ei_time << endl; */
 	/* cout << different_time << endl; */
-	/* cout << count(winstats.begin(),winstats.end(),maker) << endl; */
-	/* cout << count(winstats.begin(),winstats.end(),breaker) << endl; */
+	cout << "red wins" << count(winstats.begin(),winstats.end(),RED) << endl;
+	cout << "blue wins " << count(winstats.begin(),winstats.end(),BLUE) << endl;
 	cout << "move time " << move_time << endl;
 	
 	/* return 0; */

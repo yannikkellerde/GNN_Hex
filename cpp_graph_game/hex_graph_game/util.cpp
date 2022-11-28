@@ -49,6 +49,6 @@ void starting_eval_img(int hex_size, NN_api* net){
 		ss << i << "(" << setprecision(3) << outputs[0][i].item<double>() << ")";
 		nodetext[i] = ss.str();
 	}
-	game.graphviz_me(nodetext,"starting_eval.dot");
+	game.graphviz_me(nodetext,"starting_eval.dot",game.graph);
 	system("neato -Tpng starting_eval.dot -o starting_eval.png");
 }

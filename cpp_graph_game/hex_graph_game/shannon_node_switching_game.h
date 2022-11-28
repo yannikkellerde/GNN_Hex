@@ -20,9 +20,10 @@ enum TerminalType {
 };
 
 
-enum Onturn {maker,breaker,noplayer};
-enum Fprops {t1connect,t2connect};
-enum Lprops {removed,board_location};
+enum TerminalID {TERMINAL_1, TERMINAL_2};
+enum Onturn {RED,BLUE,NOPLAYER};
+enum Fprops {IS_TERMINAL};
+enum Lprops {REMOVED,BOARD_LOCATION};
 
 
 bool check_if_same(Graph& graph, int v1, int v2);
@@ -36,21 +37,23 @@ bool is_fully_connected(Graph& g,Neighbors& neigh);
 class Node_switching_game {
 	public:
 		Graph graph;
-		Onturn onturn=maker;
+#ifndef SINGLE_GRAPH
+		Graph graph2;
+#endif
+		Onturn onturn=RED;
+		Onturn maker_color=RED;
 		int board_size;
 		Hex_board board;
-		bool maker_won=false;
 		int move_num;
+		bool swap_allowed=true;
 #ifndef NO_PLAY
-		map<int,int> response_set_maker;
-		map<int,int> response_set_breaker;
-		vector<int> board_moves_maker;
-		vector<int> board_moves_breaker;
+		map<int,int> response_set_red;
+		map<int,int> response_set_blue;
+		vector<int> board_moves_red;
+		vector<int> board_moves_blue;
 #endif
 
 		Node_switching_game (int board_size=11);
-
-		Node_switching_game (Graph& g);
 
 		Node_switching_game (std::vector<torch::Tensor> &data);
 
@@ -66,9 +69,11 @@ class Node_switching_game {
 
 		int vertex_from_board_location(int bl) const;
 
-		int get_response(int bloc,bool for_maker); // Not const, deletes response
+		int action_from_board_location(int bl) const;
 
-		set<int> fix_terminal_connections(int vertex, Fprops conn_prop);
+		int get_response(int bloc,bool for_red); // Not const, deletes response
+
+		set<int> fix_terminal_connections(int terminal);
 
 		void remove_marked_nodes();
 
@@ -80,7 +85,7 @@ class Node_switching_game {
 
 		vector<int> get_actions() const;
 
-		set<int> make_move(int vertex, bool do_force_color=false, Onturn force_color=noplayer,bool do_remove_dead_and_captured=false,bool only_mark_removed=false);
+		set<int> make_move(int action, bool do_force_color=false, Onturn force_color=NOPLAYER, bool do_remove_dead_and_captured=false, bool only_mark_removed=false);
 
 		void remove_dead_and_captured(set<int> &consider_set);
 
@@ -90,14 +95,18 @@ class Node_switching_game {
 
 		string format_action(int action) const;
 
-		vector<string> get_grid_layout() const;
+		vector<string> get_grid_layout(Onturn color) const;
 
 		vector<string> get_colors() const;
 
 		void graphviz_me (string fname) const;
 
-		void graphviz_me (vector<string> nodetext,string fname) const;
+		void graphviz_me (string fname, const Graph& g) const;
 
-	std::vector<torch::Tensor> convert_graph(torch::Device &device) const;
+		void graphviz_me (vector<string> nodetext,string fname,const Graph& g) const;
+
+		std::vector<torch::Tensor> convert_graph(torch::Device &device) const;
+
+		std::vector<torch::Tensor> convert_graph(torch::Device &device, const Graph& graph) const;
 };
 #endif

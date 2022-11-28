@@ -43,7 +43,7 @@ void play_vs_model(string model_path){
 			ss << i << "(" << setprecision(3) << outputs[0][i].item<double>() << ")";
 			nodetext[i] = ss.str();
 		}
-		game.graphviz_me(nodetext,"my_graph.dot");
+		game.graphviz_me(nodetext,"my_graph.dot",game.graph);
     system("pkill -f 'mupdf my_graph.pdf'");
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
 		system("mupdf my_graph.pdf &");
@@ -56,13 +56,13 @@ void play_vs_model(string model_path){
 		else{
 			move = stoi(action);
 		}
-		game.make_move(move,false,maker,true);
+		game.make_move(move,false,NOPLAYER,true);
 		Onturn winner = game.who_won();
-		if (winner==maker){
-			cout << "maker won" << endl;
+		if (winner==RED){
+			cout << "red won" << endl;
 		}
-		if (winner==breaker){
-			cout << "breaker won" << endl;
+		if (winner==BLUE){
+			cout << "blue won" << endl;
 		}
 	}
 
