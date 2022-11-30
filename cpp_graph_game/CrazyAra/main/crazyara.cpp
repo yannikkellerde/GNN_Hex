@@ -162,10 +162,10 @@ void CrazyAra::go(Node_switching_game* state, istringstream &is,  EvalInfo& eval
 	while (is >> token) {
 		if (token == "searchmoves")
 			while (is >> token);
-		else if (token == "wtime")     is >> searchLimits.time[maker];
-		else if (token == "btime")     is >> searchLimits.time[breaker];
-		else if (token == "winc")      is >> searchLimits.inc[maker];
-		else if (token == "binc")      is >> searchLimits.inc[breaker];
+		else if (token == "wtime")     is >> searchLimits.time[RED];
+		else if (token == "btime")     is >> searchLimits.time[BLUE];
+		else if (token == "winc")      is >> searchLimits.inc[RED];
+		else if (token == "binc")      is >> searchLimits.inc[BLUE];
 		else if (token == "movestogo") is >> searchLimits.movestogo;
 		else if (token == "depth")     is >> searchLimits.depth;
 		else if (token == "nodes")     is >> searchLimits.nodes;

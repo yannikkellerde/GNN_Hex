@@ -23,12 +23,15 @@ void interactive_env(){
 		usleep(100000U);
 		system("bspc node -f west");
 		cin >> move;
+#ifndef SINGLE_GRAPH
 		if (move==-1){
 			cur_graph = cur_graph==&game.graph?&game.graph2:&game.graph;
 		}
 		else{
 			game.make_move(move,false,NOPLAYER,true);
 		}
+#endif
+		game.make_move(move,false,NOPLAYER,true);
 		Onturn winner = game.who_won();
 		if (winner==RED){
 			cout << "red won" << endl;

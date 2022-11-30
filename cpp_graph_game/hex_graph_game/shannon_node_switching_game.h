@@ -39,6 +39,8 @@ class Node_switching_game {
 		Graph graph;
 #ifndef SINGLE_GRAPH
 		Graph graph2;
+#else
+		int first_move;
 #endif
 		Onturn onturn=RED;
 		Onturn maker_color=RED;
@@ -65,6 +67,8 @@ class Node_switching_game {
 
 		void reset();
 
+		void reset_graph();
+
 		uint32_t hash_key() const;
 
 		int vertex_from_board_location(int bl) const;
@@ -84,6 +88,8 @@ class Node_switching_game {
 		int get_random_action() const;
 
 		vector<int> get_actions() const;
+
+		int get_num_actions() const;
 
 		set<int> make_move(int action, bool do_force_color=false, Onturn force_color=NOPLAYER, bool do_remove_dead_and_captured=false, bool only_mark_removed=false);
 

@@ -106,6 +106,10 @@ void Node_switching_game::reset(){
 	maker_color = RED;
 	move_num = 0;
 	board_size = board.size;
+	reset_graph();
+}
+
+void Node_switching_game::reset_graph(){
 #ifndef NO_PLAY
 	response_set_red = map<int,int>();
 	response_set_blue = map<int,int>();
@@ -285,6 +289,10 @@ int Node_switching_game::get_random_action() const{
 	return repeatable_random_choice(actions);
 }
 
+int Node_switching_game::get_num_actions() const{
+	return (swap_allowed&&move_num==1)?graph.num_vertices+1:graph.num_vertices;
+}
+
 vector<int> Node_switching_game::get_actions() const{
 	vector<int> res;
 	if (swap_allowed&&move_num==1){ // allow swap
@@ -303,18 +311,28 @@ set<int> Node_switching_game::make_move(int action, bool do_force_color, Onturn 
 	int vertex = action+2;
 	Onturn player = do_force_color?force_color:onturn;
 	if (!do_force_color){
+#ifdef SINGLE_GRAPH
+		if (move_num==0){
+			first_move = action;
+		}
+#endif
 		++move_num;
 		switch_onturn();
-	}
-	if (swap_allowed&&vertex == graph.num_vertices&&move_num==2){ // swap rule
-		/* print_info(__LINE__,__FILE__,"swap is happening"); */
-		maker_color = maker_color==RED?BLUE:RED;
+		if (swap_allowed&&vertex == graph.num_vertices&&move_num==2){ // swap rule
+			/* print_info(__LINE__,__FILE__,"swap is happening"); */
+#ifdef SINGLE_GRAPH
+			reset_graph();
+			make_move(first_move,true,not_onturn(),true,false);
+#else
+			maker_color = maker_color==RED?BLUE:RED;
 #ifndef NO_PLAY
-		swap(response_set_blue,response_set_red);
-		swap(board_moves_blue,board_moves_red);
+			swap(response_set_blue,response_set_red);
+			swap(board_moves_blue,board_moves_red);
 #endif
-		swap(graph,graph2);
-		return change_set;
+			swap(graph,graph2);
+#endif
+			return change_set;
+		}
 	}
 	assert(vertex<graph.num_vertices);
 	auto f = [this,player,vertex,do_remove_dead_and_captured,only_mark_removed](Graph& g, Onturn maker_color) {
@@ -575,7 +593,11 @@ void Node_switching_game::graphviz_me (string fname, const Graph& g) const{
 
 void Node_switching_game::graphviz_me (vector<string> nodetext, string fname, const Graph& g) const{
 	vector<string> color_map = get_colors();
+#ifdef SINGLE_GRAPH
+	vector<string> pos_map = get_grid_layout(RED);
+#else
 	vector<string> pos_map = get_grid_layout(&g==&graph2?BLUE:RED);
+#endif
 	vector<pair<string,vector<string>>> props;
 	props.push_back(pair<string,vector<string>>("color",color_map));
 	props.push_back(pair<string,vector<string>>("pos",pos_map));
@@ -592,22 +614,25 @@ std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &dev
 	torch::Tensor node_features = torch::zeros({n,3},options_float);
 	node_features.index_put_({Ellipsis,0},torch::tensor(g.fprops[IS_TERMINAL],options_float));
 
-#ifdef SINGLE_GRAPH
-	if (onturn==RED){
-#else
-	if ((onturn==RED && &g==&graph)||(onturn==BLUE && &g==&graph2)){
-#endif
-		node_features.index_put_({Ellipsis,2},1.);
-	}
+/* #ifdef SINGLE_GRAPH */
+/* 	if (onturn==RED){ */
+/* #else */
+/* 	if ((onturn==RED && &g==&graph)||(onturn==BLUE && &g==&graph2)){ */
+/* #endif */
+/* 		node_features.index_put_({Ellipsis,2},1.); */
+/* 	} */
 	if (swap_allowed){
 		switch (move_num){
 			case 0:
-				node_features.index_put_({Ellipsis,2},-1.);
+				node_features.index_put_({Ellipsis,1},1.);
+				node_features.index_put_({Ellipsis,2},0.);
 				break;
 			case 1:
+				node_features.index_put_({Ellipsis,1},0.);
 				node_features.index_put_({Ellipsis,2},1.);
 				break;
 			case 2:
+				node_features.index_put_({Ellipsis,1},0.);
 				node_features.index_put_({Ellipsis,2},0.);
 				break;
 		}
@@ -624,5 +649,9 @@ std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &dev
 };
 
 std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &device) const{
+#ifdef SINGLE_GRAPH
 	return convert_graph(device,graph);
+#else
+	return onturn==BLUE?convert_graph(device,graph2):convert_graph(device,graph);
+#endif
 };

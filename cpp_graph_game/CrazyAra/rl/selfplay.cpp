@@ -42,18 +42,17 @@ void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, 
 	print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove);
 	speedcheck.track_next("make move");
 	if (make_random_move){
-		state->make_move(state->get_random_action(),false,noplayer,true);
+		state->make_move(state->get_random_action(),false,NOPLAYER,true);
 	}
 	else{
-		state->make_move(evalInfo.bestMove,false,noplayer,true);
+		state->make_move(evalInfo.bestMove,false,NOPLAYER,true);
 	}
 	speedcheck.stop_track("make move");
 	gameResult = state->who_won();
 
 	print_info(__LINE__,__FILE__,"gameResult",gameResult);
-	print_info(__LINE__,__FILE__,"makerwon",state->maker_won);
 
-	if (gameResult!=noplayer) {
+	if (gameResult!=NOPLAYER) {
 		sanMove += "#";
 	}
 	gamePGN.gameMoves.emplace_back(sanMove);
@@ -128,13 +127,13 @@ void SelfPlay::check_for_resignation(const bool allowResingation, const EvalInfo
 		return;
 	}
 	if (evalInfo.bestMoveQ[0] < rlSettings->resignThreshold) {
-		if (state->onturn == maker) {
-			print_info(__LINE__,__FILE__,"Breaker resigned");
-			gameResult = maker;
+		if (state->onturn == RED) {
+			print_info(__LINE__,__FILE__,"Blue resigned");
+			gameResult = RED;
 		}
 		else {
-			print_info(__LINE__,__FILE__,"Maker resigned");
-			gameResult = breaker;
+			print_info(__LINE__,__FILE__,"Red resigned");
+			gameResult = BLUE;
 		}
 	}
 }
@@ -160,7 +159,7 @@ void SelfPlay::generate_game(bool verbose)
 	/* unique_ptr<Node_switching_game> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, rlSettings->rawPolicyProbabilityTemperature); */
 	// random starting move
 	unique_ptr<Node_switching_game> state = init_starting_state_from_random_moves(gamePGN,0,gameIdx%2==0);
-	assert (state->who_won()==noplayer); // If this fails, ply is to high.
+	assert (state->who_won()==NOPLAYER); // If this fails, ply is to high.
 	EvalInfo evalInfo;
 	Onturn gameResult;
 
@@ -194,11 +193,11 @@ void SelfPlay::generate_game(bool verbose)
 		reset_search_params(isQuickSearch);
 		check_for_resignation(allowResignation, evalInfo, state.get(), gameResult);
 	}
-	while(gameResult == noplayer);
-	stats["maker_wins"]+=(gameResult==maker);
-	stats["breaker_wins"]+=(gameResult==breaker);
-	stats["first_player_wins"]+=((gameResult==maker&&(gameIdx%2==1))||(gameResult==breaker&&(gameIdx%2==0)));
-	stats["second_player_wins"]+=((gameResult==maker&&(gameIdx%2==0))||(gameResult==breaker&&(gameIdx%2==1)));
+	while(gameResult == NOPLAYER);
+	stats["red_wins"]+=(gameResult==RED);
+	stats["blue_wins"]+=(gameResult==BLUE);
+	stats["first_player_wins"]+=((gameResult==RED&&(gameIdx%2==1))||(gameResult==BLUE&&(gameIdx%2==0)));
+	stats["second_player_wins"]+=((gameResult==RED&&(gameIdx%2==0))||(gameResult==BLUE&&(gameIdx%2==1)));
 	stats["num_moves"]+=state->move_num;
 
 	// Finish up exporter work. Does not export yet.
@@ -227,7 +226,7 @@ void SelfPlay::print_stats(){
 	stats.clear();
 }
 
-Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerPlayer, bool verbose, vector<int>& starting_moves, bool breaker_starts)
+Onturn SelfPlay::generate_arena_game(MCTSAgent* redPlayer, MCTSAgent* bluePlayer, bool verbose, vector<int>& starting_moves, bool breaker_starts)
 {
 	gamePGN.white = "Maker";
 	gamePGN.black = "Breaker";
@@ -240,13 +239,13 @@ Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerP
 	Onturn gameResult;
 	do {
 		searchLimits->startTime = current_time();
-		if (state->onturn == maker) {
-			activePlayer = makerPlayer;
-			passivePlayer = breakerPlayer;
+		if (state->onturn == RED) {
+			activePlayer = redPlayer;
+			passivePlayer = bluePlayer;
 		}
 		else {
-			activePlayer = breakerPlayer;
-			passivePlayer = makerPlayer;
+			activePlayer = bluePlayer;
+			passivePlayer = redPlayer;
 		}
 		activePlayer->set_search_settings(state.get(), searchLimits, &evalInfo);
 		activePlayer->perform_action();
@@ -256,11 +255,11 @@ Onturn SelfPlay::generate_arena_game(MCTSAgent* makerPlayer, MCTSAgent* breakerP
 		}
 		play_move_and_update(evalInfo, state.get(), gamePGN, gameResult, false);
 	}
-	while(gameResult == noplayer);
+	while(gameResult == NOPLAYER);
 	set_game_result_to_pgn(gameResult);
 	write_game_to_pgn(filenamePGNArena, verbose);
-	clean_up(gamePGN, makerPlayer);
-	breakerPlayer->clear_game_history();
+	clean_up(gamePGN, redPlayer);
+	bluePlayer->clear_game_history();
 	return gameResult;
 }
 
@@ -357,24 +356,24 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
 		if (idx % 2 == 0) {
 			// use default or in case of chess960 a random starting position
 			gameResult = generate_arena_game(mctsContender, mctsAgent, true, starting_moves,idx%4==0);
-			if (gameResult == maker) {
+			if (gameResult == RED) {
 				++tournamentResult.numberWins;
 			}
-			else if (gameResult == breaker){
+			else if (gameResult == BLUE){
 				++tournamentResult.numberLosses;
 			}
 		}
 		else {
 			// use same starting position as before stored via gamePGN.fen
 			gameResult = generate_arena_game(mctsAgent, mctsContender, true, starting_moves,(idx+1)%4==0);
-			if (gameResult == breaker) {
+			if (gameResult == RED) {
 				++tournamentResult.numberWins;
 			}
-			else if (gameResult == maker){
+			else if (gameResult == BLUE){
 				++tournamentResult.numberLosses;
 			}
 		}
-		assert (gameResult!=noplayer);
+		assert (gameResult!=NOPLAYER);
 	}
 	return tournamentResult;
 }
@@ -397,7 +396,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 		print_info(__LINE__, __FILE__, "legal moves ",eval.legalMoves);
 		gamePGN.gameMoves.push_back(state->format_action(eval.legalMoves[moveIdx]));
 		speedcheck.track_next("make move");
-		state->make_move(eval.bestMove,false,noplayer,true);
+		state->make_move(eval.bestMove,false,NOPLAYER,true);
 		speedcheck.stop_track("make move");
 	}
 	return state;
@@ -413,7 +412,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &g
 	for (int i=0;i<num_actions;++i) {
 		int action = state->get_random_action();
 		gamePGN.gameMoves.push_back(state->format_action(action));
-		state->make_move(action,false,noplayer,true);
+		state->make_move(action,false,NOPLAYER,true);
 	}
 	speedcheck.stop_track("make move");
 	return state;
@@ -428,7 +427,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &ga
 	speedcheck.track_next("make move");
 	for (int action : actions) {
 		gamePGN.gameMoves.push_back(state->format_action(action));
-		state->make_move(action,false,noplayer,true);
+		state->make_move(action,false,NOPLAYER,true);
 	}
 	speedcheck.stop_track("make move");
 	return state;

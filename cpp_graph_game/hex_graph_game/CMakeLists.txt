@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(test_torch_script)
 
 option(WITH_CUDA "Enable CUDA support" ON)
-# option(FOR_INFERENCE "" ON)
+option(SINGLE_GRAPH "Enable singe graph mode" OFF)
 # add_definitions(-DFOR_INFERENCE)
+if (SINGLE_GRAPH)
+	add_definitions(-DSINGLE_GRAPH)
+endif()
+
 
 include_directories("/usr/local/libtorch/include")
 include_directories("/usr/local/libtorch")

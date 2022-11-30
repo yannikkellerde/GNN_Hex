@@ -195,7 +195,7 @@ class ModifiedGraphSAGE(torch.nn.Module):
 
     def init_conv(self, in_channels: Union[int, Tuple[int, int]],
                   out_channels: int, **kwargs) -> MessagePassing:
-        return ModifiedSAGEConv(in_channels, out_channels, **kwargs).jittable()
+        return ModifiedSAGEConv(in_channels, out_channels, aggr="sum", **kwargs).jittable() # aggr sum for detecting num neighbors
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -738,22 +738,53 @@ class PV_torch_script(torch.nn.Module):
 
         self.my_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
         self.my_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
-        self.my_modules["linear"] = torch.nn.Linear(hidden_channels,1)
+
+        self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
+        self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
 
         self.value_activation = torch.nn.Tanh()
+        self.swap_activation = torch.nn.Sigmoid()
 
-    def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor):
+    def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         embeds = self.gnn(x,edge_index)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
         graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
-        value = self.my_modules["linear"](graph_parts)
-
+        value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
-        pi = scatter_log_softmax(pi.reshape(pi.size(0)),index=graph_indices)
-        return pi,value.reshape(value.size(0))
+        should_swap = self.my_modules["swap_linear"](graph_parts)
+        should_swap = should_swap.reshape(should_swap.size(0))
+        should_swap = torch.ones_like(should_swap)*100
+        # should_swap = self.swap_activation(should_swap)
+        pi = pi.reshape(pi.size(0))
+
+        # This part implements the swap rule and removes terminal nodes. It takes up to 5% of total NN time.
+        swap_parts = x[batch_ptr[1:-1]-1,2].type(torch.bool)
+        swap_indices = batch_ptr[1:-1][swap_parts]
+        to_select = torch.ones(pi.size(),dtype=torch.bool, device=x.device)
+        to_select[batch_ptr[0]] = False
+        to_select[batch_ptr[1:-1]] = swap_parts
+        to_select[batch_ptr[:-1]+1] = False
+
+        all_swap_parts = torch.empty(len(batch_ptr),dtype=torch.bool,device=batch_ptr.device)
+        all_swap_parts[0] = 0
+        all_swap_parts[1:-1] = swap_parts
+        all_swap_parts[-1] = x[batch_ptr[-2],2]
+        output_batch_ptr = batch_ptr-torch.arange(0,len(batch_ptr)*2,2,device=batch_ptr.device)+torch.cumsum(all_swap_parts,dim=0)
+
+        pi[swap_indices] = should_swap[:-1][swap_parts]
+        output_graph_indices = graph_indices.clone()
+        output_graph_indices[swap_indices] = output_graph_indices[swap_indices-1]
+        pi = pi[to_select]
+        output_graph_indices = output_graph_indices[to_select]
+        if x[batch_ptr[-2],2]:
+            pi = torch.cat((pi,should_swap[-1:]))
+            output_graph_indices = torch.cat((output_graph_indices,output_graph_indices[-1:]))
+
+        pi = scatter_log_softmax(pi,index=output_graph_indices)
+        return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
 class PolicyValue(torch.nn.Module):
     supports_cache = False
