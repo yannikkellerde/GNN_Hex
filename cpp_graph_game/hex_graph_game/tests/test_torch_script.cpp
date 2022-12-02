@@ -71,8 +71,8 @@ void test_torch_script(string fname) {
 	inputs = game.convert_graph(device);
 	ei.push_back(inputs[1]);
 	node_feat.push_back(inputs[0]);
-	vector<int> batch_ptr;
-	tie(vi, batch_ptr) = collate_batch(node_feat,ei);
+	torch::Tensor batch_ptr;
+	vi = collate_batch(node_feat,ei);
 	std::map<string,vector<torch::Tensor>> stuff;
 	/* stuff["node_features"] = node_feat; */
 	/* stuff["ei"] = ei; */
@@ -88,7 +88,6 @@ void test_torch_script(string fname) {
 	cout << vi[1].toTensor().max() << endl;
 	cout << vi[2].toTensor().max() << endl;
 	cout << vi[1] << endl;
-	cout << batch_ptr << endl;
 
 	torch::jit::Module load_stuff = torch::jit::load("test.pt");
 	cout << *(++load_stuff.parameters().begin()) << endl;

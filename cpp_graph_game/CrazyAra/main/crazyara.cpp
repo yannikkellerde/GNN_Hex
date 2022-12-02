@@ -417,6 +417,7 @@ bool CrazyAra::is_ready()
 #ifdef USE_RL
 		init_rl_settings();
 #endif
+		print_info(__LINE__,__FILE__,"loading model",string(Options["Model_Path"]));
 		netSingle = create_new_net_single(string(Options["Model_Path"]));
 		netBatches = create_new_net_batches(string(Options["Model_Path"]));
 		mctsAgent = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings);

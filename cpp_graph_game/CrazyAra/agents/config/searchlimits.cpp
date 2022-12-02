@@ -28,10 +28,10 @@
 
 std::ostream &operator<<(std::ostream &os, const SearchLimits &searchLimits)
 {
-    os << " wtime " << searchLimits.time[maker]
-          << " btime " << searchLimits.time[maker+1]
-             << " winc "  << searchLimits.inc[maker]
-                << " binc "  << searchLimits.inc[maker+1]
+    os << " rtime " << searchLimits.time[RED]
+          << " btime " << searchLimits.time[BLUE]
+             << " rinc "  << searchLimits.inc[RED]
+                << " binc "  << searchLimits.inc[BLUE]
                    << "movestogo " << searchLimits.movestogo;
     return os;
 }
@@ -55,10 +55,10 @@ void SearchLimits::reset()
 		startTime = 0;
     infinite = false;
     ponder = false;
-    time[maker] = 0;
-    time[maker+1] = 0;
-    inc[maker] = 0;
-    inc[maker+1] = 0;
+    time[RED] = 0;
+    time[BLUE] = 0;
+    inc[RED] = 0;
+    inc[BLUE] = 0;
 }
 
 int SearchLimits::get_safe_remaining_time(Onturn sideToMove) const
@@ -68,7 +68,7 @@ int SearchLimits::get_safe_remaining_time(Onturn sideToMove) const
 
 bool is_game_sceneario(const SearchLimits* searchLimits)
 {
-    return searchLimits->movestogo != 0 || searchLimits->time[maker] != 0 || searchLimits->time[maker+1] != 0;
+    return searchLimits->movestogo != 0 || searchLimits->time[RED] != 0 || searchLimits->time[BLUE] != 0;
 }
 
 // method is based on 3rdparty/Stockfish/misc.cpp

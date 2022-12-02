@@ -84,6 +84,7 @@ void Agent::perform_action()
     evalInfo->start = chrono::steady_clock::now();
     this->evaluate_board_state();
     evalInfo->end = chrono::steady_clock::now();
+		assert(evalInfo->policyProbSmall.size()==state->get_num_actions());
     set_best_move(state->move_num);
 		print_info(__LINE__, __FILE__,"Best move set to ", evalInfo->bestMove );
     isRunning = false;

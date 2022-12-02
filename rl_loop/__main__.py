@@ -16,6 +16,8 @@ from rtpt import RTPT
 import dataclasses
 from multiprocessing import Process, Queue
 from PIL import Image
+import matplotlib.image as img
+import matplotlib.pyplot as plt
 
 from rl_loop.fileio import FileIO
 from rl_loop.rl_utils import enable_logging, get_log_filename, get_current_binary_name, \
@@ -44,7 +46,7 @@ class RLLoop:
         """
         self.args = args
         self.tc = TrainConfig()
-        wandb.init(id="1ovuf8dh",resume="must",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde",
+        wandb.init(project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde",
                    mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         self.rl_config = rl_config
@@ -162,8 +164,11 @@ class RLLoop:
             logs = dict(winrate=winrate);
             if self.did_contender_win:
                 self.binary_io.generate_starting_eval_img()
-                img = Image.open("starting_eval.png");
-                logs["starting_eval"] = wandb.Image(img,caption="starting eval")
+                im = img.imread("starting_eval.png")
+                plt.imshow(im)
+                plt.axis("off")
+                fig = plt.gcf()
+                logs["starting_eval"] = wandb.Image(fig,caption="starting eval")
             wandb.log(logs)
 
 
@@ -220,7 +225,7 @@ def main():
     if rl_config.binary_dir[-1] != '/':
         rl_config.binary_dir += '/'
 
-    enable_logging(logging.DEBUG, get_log_filename(args, rl_config))
+    enable_logging(logging.INFO, get_log_filename(args, rl_config))
 
     rl_loop = RLLoop(args, rl_config, nb_arena_games=rl_config.arena_games, lr_reduction=0)
     if args.trainer:

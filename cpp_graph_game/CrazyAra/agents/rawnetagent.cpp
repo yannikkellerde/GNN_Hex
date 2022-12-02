@@ -60,10 +60,10 @@ void RawNetAgent::evaluate_board_state()
 		edge_indices.push_back(tens[1]);
 
 		std::vector<torch::jit::IValue> inputs;
-		vector<int> batch_ptr;
+		torch::Tensor batch_ptr;
 
 		speedcheck.track_next("collate");
-		tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+		inputs = collate_batch(node_features,edge_indices);
 		speedcheck.stop_track("collate");
 
 		speedcheck.track_next("nn predict");
@@ -71,6 +71,7 @@ void RawNetAgent::evaluate_board_state()
 		speedcheck.stop_track("nn predict");
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
+		batch_ptr = tvec[3];
 
     /* evalInfo->policyProbSmall.resize(evalInfo->legalMoves.size()); */
 		evalInfo->policyProbSmall = torch_to_blaze<double>(probOutputs);

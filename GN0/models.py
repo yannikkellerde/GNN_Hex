@@ -195,7 +195,7 @@ class ModifiedGraphSAGE(torch.nn.Module):
 
     def init_conv(self, in_channels: Union[int, Tuple[int, int]],
                   out_channels: int, **kwargs) -> MessagePassing:
-        return ModifiedSAGEConv(in_channels, out_channels, aggr="sum", **kwargs).jittable() # aggr sum for detecting num neighbors
+        return ModifiedSAGEConv(in_channels, out_channels, aggr="mean", **kwargs).jittable() # aggr sum for detecting num neighbors
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -743,9 +743,9 @@ class PV_torch_script(torch.nn.Module):
         self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
 
         self.value_activation = torch.nn.Tanh()
-        self.swap_activation = torch.nn.Sigmoid()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
+        assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
         embeds = self.gnn(x,edge_index)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)

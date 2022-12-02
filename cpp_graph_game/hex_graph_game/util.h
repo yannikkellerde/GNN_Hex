@@ -16,7 +16,7 @@ int repeatable_random_choice(std::vector<int>& vec);
 
 void starting_eval_img(int hex_size, NN_api* net);
 
-std::tuple<std::vector<torch::jit::IValue>,std::vector<int>> collate_batch(std::vector<torch::Tensor> & node_features, std::vector<torch::Tensor> & edge_index);
+std::vector<torch::jit::IValue> collate_batch(std::vector<torch::Tensor> & node_features, std::vector<torch::Tensor> & edge_index);
 
 template <class T>
 blaze::DynamicVector<T> torch_to_blaze(const at::Tensor& t){

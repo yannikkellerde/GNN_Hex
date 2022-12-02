@@ -199,7 +199,7 @@ class TrainerAgentPytorch:
                             wandb.log(logs);
 
                             if self.cur_it >= self.tc.total_it:
-                                logging.debug("The number of given iterations has been reached")
+                                logging.info("The number of given iterations has been reached")
                                 # finally stop training because the number of lr drops has been achieved
                                 print()
                                 print(
@@ -254,7 +254,10 @@ class TrainerAgentPytorch:
     def train_update(self, batch:Batch):
         self.optimizer.zero_grad()
         batch.to(self._ctx)
-        policy_out,value_out = self._model(batch.x,batch.edge_index,batch.batch)
+        policy_out,value_out,_,bp = self._model(batch.x,batch.edge_index,batch.batch,batch.ptr)
+        for start,fin in zip(bp[:-1],bp[1:]):
+            assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
+            assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
         assert not torch.isnan(policy_out.any())
         assert not torch.isnan(value_out.any())
         assert not torch.isnan(batch.y.any())
@@ -462,7 +465,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
         for i, batch in enumerate(data_iterator):
             batch.to(ctx)
 
-            policy_out,value_out = model(batch.x,batch.edge_index,batch.batch)
+            policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
             assert not torch.isnan(policy_out).any()
             assert not torch.isnan(batch.y).any()
             assert not torch.isnan(value_out).any()
@@ -474,7 +477,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             metrics["value_acc_sign"].update(preds=torch.flatten(value_out), labels=batch.y)
             metrics["policy_acc"].update(preds=policy_out,
                                          labels=batch.policy,
-                                         graph_indices=batch.batch)
+                                         graph_indices=graph_indices)
 
             # stop after evaluating x batches (only recommended to use this for the train set evaluation)
             if nb_batches and i+1 == nb_batches:

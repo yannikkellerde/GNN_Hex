@@ -19,7 +19,7 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 	hex_size = Options["Hex_Size"];
 	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size);
 	while (true){
-		if (game->who_won()==noplayer){
+		if (game->who_won()==NOPLAYER){
 			if (use_mcts){
 				mctsAgent->set_search_settings(game.get(),searchLimits,evalInfo);
 				mctsAgent->evaluate_board_state();
@@ -40,30 +40,33 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 				cout << "Value: " << rawAgent->valueOutputs.item<double>() << endl;
 			}
 			cout << "Evaluation: ";
-			for (int i=0;i<game->graph.num_vertices;++i){
-				cout << "(" << game->graph.lprops[board_location][i] << "," << policy[i].item<double>() << ") ";
+			for (int i=2;i<game->graph.num_vertices;++i){
+				cout << "(" << game->graph.lprops[BOARD_LOCATION][i] << "," << policy[i-2].item<double>() << ") ";
+			}
+			if (game->swap_allowed&&game->move_num==1){
+				cout << "(swap," << policy[game->graph.num_vertices-2].item<double>() << ") ";
 			}
 			cout << endl;
 		}
 #ifndef NO_PLAY
-		cout << "board_moves_maker: ";
-		for (int i=0;i<game->board_moves_maker.size();++i){
-			cout << game->board_moves_maker[i] << " ";
+		cout << "board_moves_red: ";
+		for (int i=0;i<game->board_moves_red.size();++i){
+			cout << game->board_moves_red[i] << " ";
 		}
 		cout << endl;
-		cout << "board_moves_breaker: ";
-		for (int i=0;i<game->board_moves_breaker.size();++i){
-			cout << game->board_moves_breaker[i] << " ";
+		cout << "board_moves_blue: ";
+		for (int i=0;i<game->board_moves_blue.size();++i){
+			cout << game->board_moves_blue[i] << " ";
 		}
 		cout << endl;
 #endif
 		vector<string> nodetext(game->graph.num_vertices);
-		for (int i=0;i<game->graph.num_vertices;++i){
+		for (int i=2;i<game->graph.num_vertices;++i){
 			ss.str(string());
-			ss << game->graph.lprops[board_location][i] << "(" << setprecision(3) << policy[i].item<double>() << ")";
+			ss << game->graph.lprops[BOARD_LOCATION][i] << "(" << setprecision(3) << policy[i-2].item<double>() << ")";
 			nodetext[i] = ss.str();
 		}
-		game->graphviz_me(nodetext,"my_graph.dot");
+		game->graphviz_me(nodetext,"my_graph.dot",game->graph);
 		system("neato -Tpdf my_graph.dot -o my_graph.pdf");
 		if (show){
 			system("pkill -f 'mupdf my_graph.pdf'");
@@ -91,15 +94,15 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 			}
 		}
 		else if (action == "engine_move"){
-			if (game->who_won()==noplayer){
+			if (game->who_won()==NOPLAYER){
 				move = policy.argmax().item<int>();
 				cout << "Engine_move: " << move << endl;
 			}
 		}
 		else{
-			move = game->vertex_from_board_location(stoi(action));
+			move = game->action_from_board_location(stoi(action));
 			if (move==-1){
-				response = game->get_response(stoi(action),game->onturn==breaker);
+				response = game->get_response(stoi(action),game->onturn==BLUE);
 				if (response == -1){
 					cout << "Dead_move" << endl;
 				}
@@ -109,13 +112,13 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 			}
 		}
 		if (move!=-1){
-			game->make_move(move,false,maker,true);
+			game->make_move(move,false,RED,true);
 		}
 		Onturn winner = game->who_won();
-		if (winner==maker){
+		if (winner==RED){
 			cout << "Winner: maker" << endl;
 		}
-		else if (winner==breaker){
+		else if (winner==BLUE){
 			cout << "Winner: breaker" << endl;
 		}
 	}

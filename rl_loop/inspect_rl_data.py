@@ -34,17 +34,21 @@ def visualize_data(data,do_board_index=False):
     size = g.new_vertex_property("int")
     
 
-    for feat,bi,pi in zip(data["node_features"],data["board_indices"],data["policy"]):
+    scale = 400/HEX_SIZE
+    yend = np.sqrt(3/4)*(HEX_SIZE-1)*scale
+    t1 = g.add_vertex()
+    t2 = g.add_vertex()
+    shape[t1] = "circle"
+    shape[t2] = "circle"
+    color[t1] = (0,0,1,1)
+    color[t2] = (0,0,1,1)
+    size[t1] = 25
+    size[t2] = 25
+    position[t1] = [0,yend/2]
+    position[t2] = [1.5*HEX_SIZE*scale,yend/2]
+    for feat,bi,pi in zip(data["node_features"][2:],data["board_indices"][2:],data["policy"]):
         v = g.add_vertex()
-        if feat[0] == 1:
-            if feat[1] == 1:
-                color[v] = (1,1,0,1)
-            else:
-                color[v] = (1,0,0,1)
-        elif feat[1] == 1:
-            color[v] = (0,1,0,1)
-        else:
-            color[v] = (0,0,0,1)
+        color[v] = (0,0,0,1)
         position[v] = get_position_from_board_index(int(bi));
         shape[v] = "hexagon"
         if do_board_index:
@@ -66,16 +70,20 @@ def exploration_loop():
     idx = 0
     do_board_index = False
     last_idx = 0
+    # print(len(data["moves"]), len(data["value"]))
+    # assert len(data['moves']) == len(data['value']) == len(data["best_q"])
     while 1:
         os.system("pkill -f 'mupdf data_graph.pdf'")
         visualize_data({key:value[idx] for key,value in data.items() if key!="game_start_ptr"},do_board_index=do_board_index)
         os.system("mupdf data_graph.pdf&")
         time.sleep(0.1)
         os.system("bspc node -f west")
+        if len(data['policy'][idx])==len(data["node_features"][idx])-1:
+            print(f"Swap prob",data['policy'][idx][-1])
         print(f"Value: {int(data['value'][idx])}")
         print(f"Best Q: {float(data['best_q'][idx])}")
         print(f"Plys to end: {int(data['plys'][idx])}")
-        print(f"To Move: {'maker' if data['node_features'][idx][0,2]==1 else 'breaker'}")
+        print(f"IDX: {idx}")
         print(f"Next Move: {int(data['moves'][idx])}")
         if last_idx>idx and idx in data['game_start_ptr']-1:
             print("Switched to previous game")

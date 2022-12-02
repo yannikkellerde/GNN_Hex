@@ -15,6 +15,7 @@ void interactive_env(){
 	/* Node_switching_game<5> game; */
 	while (true){
 		/* game.graphviz_me(cout); */
+		cout << game.graph.num_vertices <<endl;
 		game.graphviz_me("my_graph.dot",*cur_graph);
 		game.graph.do_complete_dump("graph_dump.txt");
     system("pkill -f 'mupdf my_graph.pdf'");
@@ -30,8 +31,9 @@ void interactive_env(){
 		else{
 			game.make_move(move,false,NOPLAYER,true);
 		}
-#endif
+#else
 		game.make_move(move,false,NOPLAYER,true);
+#endif
 		Onturn winner = game.who_won();
 		if (winner==RED){
 			cout << "red won" << endl;

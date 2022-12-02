@@ -14,7 +14,7 @@ def set_uci_param(proc, name: str, value):
     proc.stdin.flush()
 
 def read_output(proc, last_line=b"readyok\n", check_error=True):
-    look_for = ["board_moves_breaker:","board_moves_maker:","Evaluation:","Value:","Engine_move:","Dead_move","Engine_move:","Response:","Winner:"]
+    look_for = ["board_moves_blue:","board_moves_red:","Evaluation:","Value:","Engine_move:","Dead_move","Engine_move:","Response:","Winner:"]
     info = dict()
     print_all = False
     while True:
@@ -46,6 +46,7 @@ def play_vs_binary(binary_path, model_path):
         click_coord = np.array([event.xdata, event.ydata])
         distances = np.sum((coords-click_coord)**2,axis=1)
         to_place = np.argmin(distances)
+        print(f"sending move {to_place}")
         proc.stdin.write(f"{to_place}\n".encode())
         proc.stdin.flush()
         read_and_draw()
@@ -92,15 +93,19 @@ def play_vs_binary(binary_path, model_path):
         board = Hex_board()
         board.size = hex_size
         board.position = ["f"]*(hex_size*hex_size)
-        for move in info["board_moves_breaker:"]:
+        for move in info["board_moves_blue:"]:
             board.position[int(move)] = "b"
-        for move in info["board_moves_maker:"]:
+        for move in info["board_moves_red:"]:
             board.position[int(move)] = "r"
         policy = [""]*(hex_size*hex_size)
         if "Evaluation:" in info:
             for eval_comb in info["Evaluation:"]:
+                print(eval_comb)
                 board_ind, ev = eval_comb.replace("(","").replace(")","").split(",")
-                policy[int(board_ind)] = ev[:4]
+                if board_ind == "swap":
+                    print("swap prob:",str(round(float(ev),3)))
+                else:
+                    policy[int(board_ind)] = str(round(float(ev),3))
         for key in just_prints:
             if key in info:
                 print(f"{key} {' '.join(info[key])}")

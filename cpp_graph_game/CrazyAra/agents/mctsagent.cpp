@@ -181,16 +181,18 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
 		edge_indices.push_back(tens[1]);
 
 		std::vector<torch::jit::IValue> inputs;
-		vector<int> batch_ptr;
+		torch::Tensor batch_ptr;
 
 		speedcheck.track_next("collate");
-		tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+		inputs = collate_batch(node_features,edge_indices);
 		speedcheck.stop_track("collate");
 		speedcheck.track_next("nn predict");
     vector<at::Tensor> tvec = net->predict(inputs);
 		speedcheck.stop_track("nn predict");
+		print_info(__LINE__,__FILE__,tvec.size());
 		probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
 		valueOutputs = tvec[1];
+		batch_ptr = tvec[3];
 		print_info(__LINE__,__FILE__,probOutputs.size(0),node_features[0].sizes(),node_features.size());
     size_t tbHits = 0;
     fill_nn_results(0, false, valueOutputs, probOutputs, batch_ptr, rootNode.get(), tbHits,
@@ -413,7 +415,7 @@ void print_child_nodes_to_file(const Node* parentNode, Node_switching_game* stat
         if (node != nullptr && node->is_playout_node()) {
             unique_ptr<Node_switching_game> state2 = unique_ptr<Node_switching_game>(state->clone());
             int action = parentNode->get_action(childIdx);
-            state2->make_move(action,false,noplayer,true);
+            state2->make_move(action,false,NOPLAYER,true);
             print_child_nodes_to_file(node, state2.get(), ++initialId, nodeId, outFile, depth+1, maxDepth);
         }
     }

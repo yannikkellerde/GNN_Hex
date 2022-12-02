@@ -189,7 +189,7 @@ void SelfPlay::generate_game(bool verbose)
 			exporter->save_sample(state.get(), evalInfo);
 			++generatedSamples;
 		}
-		play_move_and_update(evalInfo, state.get(), gamePGN, gameResult, state->move_num==0); // random first move played
+		play_move_and_update(evalInfo, state.get(), gamePGN, gameResult, false);
 		reset_search_params(isQuickSearch);
 		check_for_resignation(allowResignation, evalInfo, state.get(), gameResult);
 	}
@@ -220,17 +220,17 @@ void SelfPlay::generate_game(bool verbose)
 }
 
 void SelfPlay::print_stats(){
-	cout << "STATISTIC: " << "maker_breaker_winrate " << stats["maker_wins"]/(stats["maker_wins"]+stats["breaker_wins"]) << endl;
+	cout << "STATISTIC: " << "red_blue_winrate " << stats["red_wins"]/(stats["red_wins"]+stats["blue_wins"]) << endl;
 	cout << "STATISTIC: " << "first_player_winrate " << stats["first_player_wins"]/(stats["first_player_wins"]+stats["second_player_wins"]) << endl;
 	cout << "STATISTIC: " << "avg_game_length " << stats["num_moves"]/gameIdx << endl;
 	stats.clear();
 }
 
-Onturn SelfPlay::generate_arena_game(MCTSAgent* redPlayer, MCTSAgent* bluePlayer, bool verbose, vector<int>& starting_moves, bool breaker_starts)
+Onturn SelfPlay::generate_arena_game(MCTSAgent* redPlayer, MCTSAgent* bluePlayer, bool verbose, vector<int>& starting_moves, bool blue_starts)
 {
-	gamePGN.white = "Maker";
-	gamePGN.black = "Breaker";
-	unique_ptr<Node_switching_game> state = init_starting_state_from_fixed_moves(gamePGN,starting_moves,breaker_starts);
+	gamePGN.white = "Red";
+	gamePGN.black = "Blue";
+	unique_ptr<Node_switching_game> state = init_starting_state_from_fixed_moves(gamePGN,starting_moves,blue_starts);
 	EvalInfo evalInfo;
 
 	MCTSAgent* activePlayer;
@@ -402,10 +402,10 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 	return state;
 }
 
-unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions, bool breaker_starts)
+unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions, bool blue_starts)
 {
 	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
-	if (breaker_starts){
+	if (blue_starts){
 		state->switch_onturn();
 	}
 	speedcheck.track_next("make move");
@@ -418,10 +418,10 @@ unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &g
 	return state;
 }
 
-unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions, bool breaker_starts)
+unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions, bool blue_starts)
 {
 	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
-	if (breaker_starts){
+	if (blue_starts){
 		state->switch_onturn();
 	}
 	speedcheck.track_next("make move");

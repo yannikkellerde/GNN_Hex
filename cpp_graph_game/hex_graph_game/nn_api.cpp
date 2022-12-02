@@ -10,7 +10,7 @@ NN_api::NN_api(string fname, torch::Device device):
 
 vector<at::Tensor> NN_api::predict(vector<torch::jit::IValue> inputs){
 	c10::ivalue::Tuple res = model.forward(inputs).toTupleRef();
-	return vector<at::Tensor>({res.elements()[0].toTensor(),res.elements()[1].toTensor(),res.elements()[2].toTensor()});
+	return vector<at::Tensor>({res.elements()[0].toTensor(),res.elements()[1].toTensor(),res.elements()[2].toTensor(),res.elements()[3].toTensor()});
 }
 
 vector<at::Tensor> NN_api::predict(vector<torch::Tensor> inputs){

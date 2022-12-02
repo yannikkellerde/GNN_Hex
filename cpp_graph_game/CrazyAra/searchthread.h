@@ -89,7 +89,7 @@ private:
 		// The next batch of inputs
 		vector<torch::Tensor> edge_indices;
 		vector<torch::Tensor> node_features;
-		vector<int> batch_ptr;
+		torch::Tensor batch_ptr;
 public:
     /**
      * @brief SearchThread
@@ -193,7 +193,7 @@ private:
 
 void run_search_thread(SearchThread *t);
 
-void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB);
+void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, torch::Tensor batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB);
 void node_post_process_policy(Node *node, float temperature, const SearchSettings* searchSettings);
 void node_assign_value(Node *node, const torch::Tensor valueOutputs, size_t& tbHits, size_t batchIdx, bool isRootNodeTB);
 

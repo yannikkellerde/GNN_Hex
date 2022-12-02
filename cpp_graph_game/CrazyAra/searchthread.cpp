@@ -182,10 +182,10 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
             assert(actionsBuffer.size() == description.depth-1);
 						speedcheck.track_next("make move");
             for (int action : actionsBuffer) {
-                newState->make_move(action,false,noplayer,true);
+                newState->make_move(action,false,NOPLAYER,true);
             }
 						/* cout << "ab  " << actionsBuffer.size() << "  " << childIdx << endl; */
-            newState->make_move(currentNode->get_action(childIdx),false,noplayer,true);
+            newState->make_move(currentNode->get_action(childIdx),false,NOPLAYER,true);
 						speedcheck.stop_track("make move");
             currentNode->increment_no_visit_idx();
             nextNode = add_new_node_to_tree(newState.get(), currentNode, childIdx, description.type);
@@ -263,17 +263,9 @@ void SearchThread::reset_stats()
     depthSum = 0;
 }
 
-void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, vector<int> batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB)
+void fill_nn_results(size_t batchIdx, bool isPolicyMap, const torch::Tensor & valueOutputs, const torch::Tensor & probOutputs, torch::Tensor batch_ptr, Node *node, size_t& tbHits, const SearchSettings* searchSettings, bool isRootNodeTB)
 {
-		node->policyProbSmall = torch_to_blaze<float>(probOutputs.index({Slice(batch_ptr[batchIdx],batch_ptr[batchIdx+1])}));
-		/* cout << "Filling policyProbSmall PID:" << getpid() << endl; */
-		/* cout << "Key:" << node->hash_key() << endl; */
-		/* cout << "prob_Outputs size:" << probOutputs.sizes() << endl; */
-		/* cout << "batch_ptr size:" << batch_ptr.size() << endl; */
-		/* cout << "batch_idx:" << batchIdx << endl; */
-		/* cout << "legal actions:" << node->get_legal_actions().size() << endl; */
-		/* cout << "range:" << batch_ptr[batchIdx] << ", " << batch_ptr[batchIdx+1] << endl; */
-		/* cout << "Size:" << node->policyProbSmall.size() << endl; */
+		node->policyProbSmall = torch_to_blaze<float>(probOutputs.index({Slice(batch_ptr[batchIdx].item<int>(),batch_ptr[batchIdx+1].item<int>())}));
 		assert(node->policyProbSmall.size()==node->get_legal_actions().size());
     node_post_process_policy(node, searchSettings->nodePolicyTemperature, searchSettings);
     node_assign_value(node, valueOutputs, tbHits, batchIdx, isRootNodeTB);
@@ -370,7 +362,7 @@ void SearchThread::thread_iteration()
 				std::vector<torch::jit::IValue> inputs;
 
 				speedcheck.track_next("collate");
-				tie(inputs, batch_ptr) = collate_batch(node_features,edge_indices);
+				inputs = collate_batch(node_features,edge_indices);
 				speedcheck.stop_track("collate");
 				node_features.clear();
 				edge_indices.clear();
@@ -380,6 +372,7 @@ void SearchThread::thread_iteration()
 				speedcheck.stop_track("nn predict");
 				probOutputs = tvec[0].exp();
 				valueOutputs = tvec[1];
+				batch_ptr = tvec[3];
         set_nn_results_to_child_nodes();
     }
 #endif

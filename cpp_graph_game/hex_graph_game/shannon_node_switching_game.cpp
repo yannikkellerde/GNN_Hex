@@ -290,7 +290,7 @@ int Node_switching_game::get_random_action() const{
 }
 
 int Node_switching_game::get_num_actions() const{
-	return (swap_allowed&&move_num==1)?graph.num_vertices+1:graph.num_vertices;
+	return (swap_allowed&&move_num==1)?graph.num_vertices-1:graph.num_vertices-2;
 }
 
 vector<int> Node_switching_game::get_actions() const{
@@ -338,11 +338,13 @@ set<int> Node_switching_game::make_move(int action, bool do_force_color, Onturn 
 	auto f = [this,player,vertex,do_remove_dead_and_captured,only_mark_removed](Graph& g, Onturn maker_color) {
 		set<int> change_set;
 #ifndef NO_PLAY
-		if (player == RED){
-			board_moves_red.push_back(g.lprops[BOARD_LOCATION][vertex]);
-		}
-		else{
-			board_moves_blue.push_back(g.lprops[BOARD_LOCATION][vertex]);
+		if (maker_color==RED){
+			if (player == RED){
+				board_moves_red.push_back(g.lprops[BOARD_LOCATION][vertex]);
+			}
+			else{
+				board_moves_blue.push_back(g.lprops[BOARD_LOCATION][vertex]);
+			}
 		}
 #endif
 		if (player==maker_color){
@@ -573,8 +575,13 @@ vector<string> Node_switching_game::get_colors() const{
 
 string Node_switching_game::format_action(int action) const{
 	int vertex = action+2;
-	assert (vertex<graph.num_vertices);
-	return to_string(action)+"("+to_string(graph.lprops[BOARD_LOCATION][vertex])+")";
+	assert (vertex<=graph.num_vertices);
+	if (vertex == graph.num_vertices){
+		return "swap";
+	}
+	else{
+		return to_string(action)+"("+to_string(graph.lprops[BOARD_LOCATION][vertex])+")";
+	}
 }
 
 void Node_switching_game::graphviz_me (string fname) const{

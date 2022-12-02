@@ -74,7 +74,12 @@ void TrainDataExporter::save_sample(const Node_switching_game* pos, const EvalIn
 
 #ifdef DO_DEBUG
 void TrainDataExporter::save_best_move(const EvalInfo &eval,const Node_switching_game* pos){
-	moves.push_back(pos->graph.lprops[board_location][eval.bestMove]);
+	if (eval.bestMove+2==pos->graph.num_vertices){
+		moves.push_back(-1);
+	}
+	else{
+		moves.push_back(pos->graph.lprops[BOARD_LOCATION][eval.bestMove+2]);
+	}
 }
 #endif
 
@@ -86,7 +91,7 @@ void TrainDataExporter::save_best_move_q(const EvalInfo &eval)
 
 void TrainDataExporter::save_side_to_move(Onturn col)
 {
-	gameValue.push_back(-(col * 2 - 1)); // Save 1 for maker and -1 for breaker initially. Multiply with -1 in the end if breaker wins.
+	gameValue.push_back(-(col * 2 - 1)); // Save 1 for red and -1 for blue initially. Multiply with -1 in the end if blue wins.
 }
 
 void TrainDataExporter::export_game_samples() {
@@ -147,7 +152,7 @@ void TrainDataExporter::save_planes(const Node_switching_game *pos)
 	node_features.push_back(tens[0]);
 	edge_indices.push_back(tens[1]);
 #ifdef DO_DEBUG
-	board_indices.push_back(torch::tensor(pos->graph.lprops[board_location]));
+	board_indices.push_back(torch::tensor(pos->graph.lprops[BOARD_LOCATION]));
 #endif
 }
 
@@ -182,7 +187,7 @@ void TrainDataExporter::open_dataset_from_folder(const string& folder)
 void TrainDataExporter::apply_result_to_value(Onturn result, int startIdx)
 {
 	// value
-	if (result == breaker) {
+	if (result == BLUE) {
 		for (vector<int8_t>::iterator start = gameValue.begin()+startIdx;start!=gameValue.end();++start){
 			(*start) = -(*start);
 		}
