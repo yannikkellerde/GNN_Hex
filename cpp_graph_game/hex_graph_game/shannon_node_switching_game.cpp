@@ -638,10 +638,6 @@ std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &dev
 				node_features.index_put_({Ellipsis,1},0.);
 				node_features.index_put_({Ellipsis,2},1.);
 				break;
-			case 2:
-				node_features.index_put_({Ellipsis,1},0.);
-				node_features.index_put_({Ellipsis,2},0.);
-				break;
 		}
 	}
 
