@@ -151,12 +151,18 @@ class BinaryIO:
                  False - If current NN generator should be kept
         """
         winrate = -100
+        print_all = False
+        killit = False
         while True:
             line = self.proc.stdout.readline()
+            strline = str(line)
             if check_error and line == b'':
                 error = self.proc.stderr.readline()
                 if error != b'':
                     logging.error(error)
+            elif "received signal" in strline:
+                killit = time.perf_counter()+3
+                print_all=True
             elif line.startswith(b"Score of Contender vs Producer:"):
                 winrate = float(str(line).split("[")[1].split("]")[0])
                 logging.info(line)
@@ -164,6 +170,10 @@ class BinaryIO:
                 return False,winrate
             elif line == b"replace\n":
                 return True,winrate
+            if print_all and line!=b"":
+                log_to_file_and_print(os.path.join(self.binary_dir,"logs","errors.log"),str(line))
+            elif killit and time.perf_counter()>killit:
+                return False, 0
 
     def set_uci_options(self, uci_variant: str, context: str, device_id: str, precision: str,
                         model_dir: str, model_contender_dir: str, model_name:str, is_arena: bool = False):

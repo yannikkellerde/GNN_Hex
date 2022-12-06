@@ -81,7 +81,7 @@ class TrainConfig:
     normalize: bool = True  # define whether to normalize input data to [01]
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 10
+    nb_training_epochs: int = 5
 
     policy_loss_factor: float = 0.003  # 0.99
 

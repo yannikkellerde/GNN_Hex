@@ -6,6 +6,7 @@ if __name__ == "__main__":
     model = get_pre_defined("HexAra")
     traced = torch.jit.script(model)
     traced.save("data/RL/model/HexAra/graph_sage_model.pt")
+    # traced.save("data/test_model.pt")
 
     torch.save({
         'model_state_dict':model.state_dict(),

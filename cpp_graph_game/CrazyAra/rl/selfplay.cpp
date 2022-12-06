@@ -367,10 +367,10 @@ TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGam
 			// use same starting position as before stored via gamePGN.fen
 			gameResult = generate_arena_game(mctsAgent, mctsContender, true, starting_moves,(idx+1)%4==0);
 			if (gameResult == RED) {
-				++tournamentResult.numberWins;
+				++tournamentResult.numberLosses;
 			}
 			else if (gameResult == BLUE){
-				++tournamentResult.numberLosses;
+				++tournamentResult.numberWins;
 			}
 		}
 		assert (gameResult!=NOPLAYER);
