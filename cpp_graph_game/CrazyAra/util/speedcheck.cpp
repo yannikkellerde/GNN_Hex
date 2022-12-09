@@ -8,7 +8,7 @@
 
 using namespace std;
 
-Speedcheck speedcheck; // Single object design
+Speedcheck speedcheck; // Singleton design
 
 Speedcheck::Speedcheck(){
 }
@@ -16,6 +16,7 @@ Speedcheck::Speedcheck(){
 void Speedcheck::track_next(const string& what){
 	thread::id tid = this_thread::get_id();
 	assert (!is_running[tid][what]);
+	lock_guard<mutex>lock(threadlock);
 	starts[tid][what] = chrono::steady_clock::now();
 	is_running[tid][what] = true;
 }
@@ -23,9 +24,8 @@ void Speedcheck::track_next(const string& what){
 void Speedcheck::stop_track(const string& what){
 	thread::id tid = this_thread::get_id();
 	assert (is_running[tid][what]);
-	threadlock[what].lock();
+	lock_guard<mutex>lock(threadlock);
 	movetimes[what] += chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now()-starts[tid][what]).count();
-	threadlock[what].unlock();
 	is_running[tid][what] = false;
 }
 

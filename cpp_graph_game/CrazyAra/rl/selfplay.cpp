@@ -38,6 +38,12 @@
 
 void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult, bool make_random_move)
 {
+	if (evalInfo.bestMove>=state->get_num_actions()){
+		cout << gamePGN << endl;
+		print_info(__LINE__,__FILE__,"num actions",state->get_num_actions(),"best move",evalInfo.bestMove);
+		print_info(__LINE__,__FILE__,"legal moves",evalInfo.legalMoves);
+
+	}
 	string sanMove = state->format_action(evalInfo.bestMove);
 	/* print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove); */
 	speedcheck.track_next("make move");

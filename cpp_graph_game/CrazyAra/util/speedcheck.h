@@ -10,7 +10,7 @@
 
 class Speedcheck{
 	public:
-		std::map<std::string,std::mutex> threadlock;
+		std::mutex threadlock;
 		std::map<std::string,long> movetimes;
 		std::map<std::thread::id,std::map<std::string,std::chrono::steady_clock::time_point>> starts;
 		std::map<std::thread::id,std::map<std::string,bool>> is_running;
