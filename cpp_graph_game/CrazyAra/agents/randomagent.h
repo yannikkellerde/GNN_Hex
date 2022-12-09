@@ -49,7 +49,6 @@ public:
 
 public:
     MCTSAgentRandom(NN_api* netSingle,
-              vector<unique_ptr<NN_api>>& netBatches,
               SearchSettings* searchSettings,
               PlaySettings* playSettings);
     ~MCTSAgentRandom();

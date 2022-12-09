@@ -33,10 +33,7 @@
 #include <torch/csrc/api/include/torch/serialize.h>
 #include "util/speedcheck.h"
 
-TrainDataExporter::TrainDataExporter(const string& output_folder, size_t numberChunks, size_t chunkSize):
-	numberChunks(numberChunks),
-	chunkSize(chunkSize),
-	numberSamples(numberChunks * chunkSize),
+TrainDataExporter::TrainDataExporter(const string& output_folder):
 	firstMove(true),
 	gameIdx(0),
 	startIdx(0),
@@ -56,10 +53,6 @@ TrainDataExporter::TrainDataExporter(const string& output_folder, size_t numberC
 void TrainDataExporter::save_sample(const Node_switching_game* pos, const EvalInfo& eval)
 {
 	speedcheck.track_next("save samples");
-	if (startIdx+curSampleIdx >= numberSamples) {
-		info_string("Extended number of maximum samples");
-		return;
-	}
 	save_planes(pos);
 	save_policy(eval.legalMoves, eval.policyProbSmall);
 	save_best_move_q(eval);
@@ -94,13 +87,32 @@ void TrainDataExporter::save_side_to_move(Onturn col)
 	gameValue.push_back(-(col * 2 - 1)); // Save 1 for red and -1 for blue initially. Multiply with -1 in the end if blue wins.
 }
 
+TrainDataExporter TrainDataExporter::merged_from_many(vector<vector<unique_ptr<TrainDataExporter>>> & exporters, const string& file_name_export){
+	TrainDataExporter out(file_name_export);
+	for (vector<vector<unique_ptr<TrainDataExporter>>>::iterator portvec=exporters.begin();portvec!=exporters.end();++portvec ){
+		for (vector<unique_ptr<TrainDataExporter>>::iterator exp=portvec->begin();exp!=portvec->end();++exp){
+			TrainDataExporter * exporter = exp->get();
+			out.node_features.insert(out.node_features.end(),make_move_iterator(exporter->node_features.begin()),make_move_iterator(exporter->node_features.end()));
+			out.edge_indices.insert(out.edge_indices.end(),make_move_iterator(exporter->edge_indices.begin()),make_move_iterator(exporter->edge_indices.end()));
+			out.gamePolicy.insert(out.gamePolicy.end(),make_move_iterator(exporter->gamePolicy.begin()),make_move_iterator(exporter->gamePolicy.end()));
+			out.gameValue.insert(out.gameValue.end(),make_move_iterator(exporter->gameValue.begin()),make_move_iterator(exporter->gameValue.end()));
+			out.gameBestMoveQ.insert(out.gameBestMoveQ.end(),make_move_iterator(exporter->gameBestMoveQ.begin()),make_move_iterator(exporter->gameBestMoveQ.end()));
+			out.gamePlysToEnd.insert(out.gamePlysToEnd.end(),make_move_iterator(exporter->gamePlysToEnd.begin()),make_move_iterator(exporter->gamePlysToEnd.end()));
+			for_each(exporter->gameStartPtr.begin(), exporter->gameStartPtr.end(), [out](int &n){ n+=out.node_features.size(); });
+			out.gameStartPtr.insert(out.gameStartPtr.end(),make_move_iterator(exporter->gameStartPtr.begin()),make_move_iterator(exporter->gameStartPtr.end()));
+
+#ifdef DO_DEBUG
+			out.board_indices.insert(out.board_indices.end(),make_move_iterator(exporter->board_indices.begin()),make_move_iterator(exporter->board_indices.end()));
+			out.moves.insert(out.moves.end(),make_move_iterator(exporter->moves.begin()),make_move_iterator(exporter->moves.end()));
+#endif
+		}
+	}
+	return out;
+}
+
 void TrainDataExporter::export_game_samples() {
 	assert (curSampleIdx == 0); // Call new_game first
 	speedcheck.track_next("file_write");
-	if (startIdx >= numberSamples) {
-		info_string("Exceeded number of maximum samples");
-		return;
-	}
 	torch::TensorOptions options_int = torch::TensorOptions().dtype(torch::kInt).device(device);
 	torch::TensorOptions options_int8 = torch::TensorOptions().dtype(torch::kInt8).device(device);
 	torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat).device(device);
@@ -119,17 +131,6 @@ void TrainDataExporter::export_game_samples() {
 	speedcheck.stop_track("file_write");
 	startIdx += curSampleIdx;
 	gameIdx++;
-}
-
-
-size_t TrainDataExporter::get_number_samples() const
-{
-	return numberSamples;
-}
-
-bool TrainDataExporter::is_file_full()
-{
-	return startIdx >= numberSamples;
 }
 
 void TrainDataExporter::new_game(Onturn last_result)

@@ -54,9 +54,9 @@ private:
      * @param evalInfo Evaluation information
      * @param moveCounter Current move counter (ply//2)
      */
-    void set_best_move(size_t moveCounter);
 
 protected:
+    void set_best_move(size_t moveCounter);
 
 		// The next batch of inputs
 		std::vector<torch::Tensor> edge_indices;
@@ -97,11 +97,6 @@ public:
      * @param evalInfo Returns the evaluation information
      */
     void set_search_settings(Node_switching_game *state, SearchLimits* searchLimits, EvalInfo* evalInfo);
-
-    /**
-     * @brief stop Stops the current search is called after "stop" from the stdin
-     */
-    virtual void stop() = 0;
 
     /**
      * @brief apply_move_to_tree Applies the given move to the search tree by adding the expanded node to the candidate list

@@ -82,6 +82,7 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 		if (action == "show") show=!show;
 		else if (action == "mcts") use_mcts=true;
 		else if (action == "raw") use_mcts=false;
+		else if (action == "switch") game->switch_onturn();
 		else if (action == "reset"){
 			if (getline(iss,subcommand,' ')){
 				print_info(__LINE__,__FILE__,"resetting to",subcommand);
@@ -97,6 +98,11 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 			if (game->who_won()==NOPLAYER){
 				move = policy.argmax().item<int>();
 				cout << "Engine_move: " << move << endl;
+			}
+		}
+		else if (action == "swap"){
+			if (game->who_won()==NOPLAYER&&game->swap_allowed&&game->move_num==1){
+				move = game->graph.num_vertices;
 			}
 		}
 		else{

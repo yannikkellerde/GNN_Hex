@@ -48,8 +48,6 @@ public:
 
     void evaluate_board_state() override;
 
-    void stop() override;
-
     void apply_move_to_tree(int move, bool ownMove) override;
 };
 

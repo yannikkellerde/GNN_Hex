@@ -50,7 +50,7 @@ class MCTSAgent : public Agent
 {
 public:
     SearchSettings* searchSettings;  // TODO: add "const" to searchSetting
-    vector<SearchThread*> searchThreads;
+    SearchThread* searchThread;
     unique_ptr<TimeManager> timeManager;
 
     shared_ptr<Node> rootNode;
@@ -67,6 +67,7 @@ public:
 
     // boolean which indicates if the same node was requested twice for analysis
     bool reusedFullTree;
+		bool search_active;
 
     // saves the overall nps for each move during the game
     float overallNPS;
@@ -81,12 +82,21 @@ public:
     bool reachedTablebases;
 public:
     MCTSAgent(NN_api* netSingle,
-              vector<unique_ptr<NN_api>>& netBatches,
               SearchSettings* searchSettings,
               PlaySettings* playSettings);
     ~MCTSAgent();
     MCTSAgent(const MCTSAgent&) = delete;
     MCTSAgent& operator=(MCTSAgent const&) = delete;
+
+		void init_eval();
+
+		void eval_step_start();
+
+		bool do_more_eval();
+
+		void eval_step_stop();
+
+		void eval_stop();
 
     void evaluate_board_state() override;
 
@@ -95,8 +105,6 @@ public:
      * @param evalInfo Evaluation struct which is updated during search
      */
     void run_mcts_search();
-
-    void stop() override;
 
     /**
      * @brief print_root_node Prints out the root node statistics (visits, q-value, u-value)

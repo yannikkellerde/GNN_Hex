@@ -42,9 +42,10 @@ struct GamePGN
     string site = "?";
     string date = "?";
     string round = "?";
-    string white = "?";
-    string black = "?";
+    string red = "?";
+    string blue = "?";
     string result = "?";
+		string starting_color = "?";
 //    string plyCount = "?";  // will be computed with gameMoves.size()
     string timeControl = "?";
     vector<string> gameMoves;

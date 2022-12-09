@@ -87,11 +87,6 @@ void RawNetAgent::evaluate_board_state()
 		cout << "Raw net evaluated board state " << valueOutputs[0] << endl;
 }
 
-void RawNetAgent::stop()
-{
-    // pass
-}
-
 void RawNetAgent::apply_move_to_tree(int move, bool ownMove)
 {
     // pass

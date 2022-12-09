@@ -28,8 +28,3 @@
 #else
 #define TERMINAL_NODE_CACHE 1
 #endif
-
-#if !defined(RESULTED)
-#define RESULTED
-const std::string result[] = {"1-0", "0-1","1/2-1/2"};
-#endif

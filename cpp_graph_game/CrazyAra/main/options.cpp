@@ -38,12 +38,9 @@ using namespace std;
 void OptionsUCI::init(OptionsMap &o)
 {
 		o["Hex_Size"]											 << Option(5,1,21);
+		o["Num_Parallel_Games"]						 << Option(32,1,2048);
     o["Allow_Early_Stopping"]          << Option(true);
-#ifdef USE_RL
-    o["Batch_Size"]                    << Option(8, 1, 8192);
-#else
-    o["Batch_Size"]                    << Option(16, 1, 8192);
-#endif
+    o["Batch_Size"]                    << Option(4, 1, 8192);
     o["Centi_CPuct_Init"]              << Option(250, 1, 99999);
 #ifdef USE_RL
     o["Centi_Dirichlet_Epsilon"]       << Option(25, 0, 99999);

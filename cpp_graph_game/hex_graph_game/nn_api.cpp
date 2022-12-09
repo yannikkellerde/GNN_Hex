@@ -1,4 +1,5 @@
 #include "nn_api.h"
+#include "util.h"
 
 using namespace std;
 
@@ -16,4 +17,19 @@ vector<at::Tensor> NN_api::predict(vector<torch::jit::IValue> inputs){
 vector<at::Tensor> NN_api::predict(vector<torch::Tensor> inputs){
 	vector<c10::IValue> vi(inputs.begin(),inputs.end());
 	return predict(vi);
+}
+
+
+void NN_api::predict_stored(){
+		std::vector<torch::jit::IValue> inputs;
+
+		print_info(__LINE__,__FILE__,"predict_stored with batch size",node_features.size());
+		inputs = collate_batch(node_features,edge_indices);
+		node_features.clear();
+		edge_indices.clear();
+
+		vector<at::Tensor> tvec = predict(inputs);
+		probOutputs = tvec[0].exp();
+		valueOutputs = tvec[1];
+		batch_ptr = tvec[3];
 }

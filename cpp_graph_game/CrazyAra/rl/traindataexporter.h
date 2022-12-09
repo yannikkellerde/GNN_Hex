@@ -40,11 +40,8 @@
 
 class TrainDataExporter
 {
-private:
+public:
 		torch::Device device;
-    size_t numberChunks;
-    size_t chunkSize;
-    size_t numberSamples;
 
 #ifdef DO_DEBUG
 		vector<torch::Tensor> board_indices;
@@ -58,7 +55,6 @@ private:
 		vector<int> gamePlysToEnd;
 		vector<int> gameStartPtr;
     bool firstMove;
-		string output_folder;
 
     // current number of games - 1
     size_t gameIdx;
@@ -130,7 +126,7 @@ private:
      */
     void extend_plys_vector(int game_length);
 
-public:
+		string output_folder;
     /**
      * @brief TrainDataExporter
      * @param fileNameExport File name of the uncompressed data to be exported in (e.g. "data.zarr")
@@ -138,7 +134,7 @@ public:
      * The product of the number of chunks and its chunk size yields the total number of samples of a file.
      * @param chunkSize Defines the chunk size of a single chunk
      */
-    TrainDataExporter(const string& fileNameExport, size_t numberChunks=200, size_t chunkSize=128);
+    TrainDataExporter(const string& fileNameExport);
 
     /**
      * @brief export_pos Saves a given board position, policy and Q-value to the specific game arrays
@@ -147,20 +143,14 @@ public:
      */
     void save_sample(const Node_switching_game* pos, const EvalInfo& eval);
 
+		static TrainDataExporter merged_from_many(vector<vector<unique_ptr<TrainDataExporter>>> & exporters, const string & file_name_export);
+
     /**
      * @brief export_game_samples Assigns the game result, (Monte-Carlo value result) to every training sample.
      * The value is inversed after each step and export all training samples of a single game.
      * @param result Game match result: LOST, DRAW, WON
      */
     void export_game_samples();
-
-    size_t get_number_samples() const;
-
-    /**
-     * @brief is_file_full Returns true if the exported data set contains as many samples as initially specified, else false
-     * @return bool
-     */
-    bool is_file_full();
 
     /**
      * @brief new_game Sets firstMove to true

@@ -36,18 +36,16 @@
 #include "util/gcthread.h"
 
 
-MCTSAgentRandom::MCTSAgentRandom(NN_api *netSingle, vector<unique_ptr<NN_api>>& netBatches,
+MCTSAgentRandom::MCTSAgentRandom(NN_api *netSingle,
                      SearchSettings* searchSettings, PlaySettings* playSettings):
-    MCTSAgent(netSingle, netBatches, searchSettings, playSettings)
+    MCTSAgent(netSingle, searchSettings, playSettings)
     {
 
     }
 
 MCTSAgentRandom::~MCTSAgentRandom()
 {
-    for (auto searchThread : searchThreads) {
-        delete searchThread;
-    }
+			delete searchThread;
 }
 
 string MCTSAgentRandom::get_name() const

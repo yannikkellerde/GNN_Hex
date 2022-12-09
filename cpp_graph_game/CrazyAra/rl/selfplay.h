@@ -50,15 +50,16 @@ void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, 
 
 class SelfPlay
 {
-private:
+public:
     RawNetAgent* rawAgent;
     MCTSAgent* mctsAgent;
     SearchLimits* searchLimits;
     PlaySettings* playSettings;
+		SearchSettings * searchSettings;
     RLSettings* rlSettings;
     OptionsMap& options;
     GamePGN gamePGN;
-    TrainDataExporter* exporter;
+    TrainDataExporter exporter;
     string filenamePGNSelfplay;
     string filenamePGNArena;
     string fileNameGameIdx;
@@ -68,10 +69,9 @@ private:
     size_t backupNodes;
     float backupDirichletEpsilon;
     float backupQValueWeight;
-    bool is960;
 		map<string,double> stats;
+		string folder;
 
-public:
     /**
      * @brief SelfPlay
      * @param rawAgent Raw network agent which uses the raw network policy for e.g. game initiliation
@@ -81,7 +81,7 @@ public:
      * @param RLSettings Additional settings for reinforcement learning usage
      * @param options Object holding all UCI options
      */
-    SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent,  SearchLimits* searchLimits, PlaySettings* playSettings,
+    SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent,  SearchLimits* searchLimits, PlaySettings* playSettings, SearchSettings * searchSettings,
         RLSettings* rlSettings, OptionsMap& options);
     ~SelfPlay();
 
@@ -91,7 +91,7 @@ public:
      * @param numberOfGames Number of games to generate
      * @param int variant to generate games for
      */
-    void go(size_t numberOfGames);
+			void go(size_t num_threads, size_t parallel_games_per_thread, size_t total_games_per_thread, vector<unique_ptr<NN_api>> & netBatches);
 
     /**
      * @brief go_arena Starts comparision matches between the original mctsAgent with the old NN weights and
@@ -104,7 +104,6 @@ public:
      */
     TournamentResult go_arena(MCTSAgent *mctsContender, size_t numberOfGames);
 
-private:
     /**
      * @brief generate_game Generates a new game in self play mode
      * @param variant Current chess variant
@@ -127,13 +126,13 @@ private:
      * @param pngFileName Filename to export
      * @param verbose If true, game will also be printed to stdout
      */
-    void write_game_to_pgn(const std::string& pngFileName, bool verbose);
+    void write_game_to_pgn(const std::string& pngFileName, bool verbose, GamePGN & pgn);
 
     /**
      * @brief set_game_result Sets the game result to the gamePGN object
      * @param res Game result
      */
-    void set_game_result_to_pgn(Onturn res);
+    void set_game_result_to_pgn(Onturn res,bool bluestarts,GamePGN & gamePGN);
 
     /**
      * @brief reset_speed_statistics Resets the interal measurements for gameIdx, gamesPerMin and samplesPerMin
@@ -240,4 +239,7 @@ void apply_raw_policy_temp(EvalInfo& eval, float rawPolicyProbTemp);
  * @return
  */
 size_t clip_ply(size_t ply, size_t maxPly);
+
+
+void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<TrainDataExporter>>  * exporters, map<string,double>* stats, int total_games_to_generate, SelfPlay * sp);
 #endif

@@ -34,8 +34,9 @@ ostream &operator<<(ostream& os, const GamePGN& gamePGN)
        << "[Site \"" << gamePGN.site << "\"]" << endl
        << "[Round \"" << gamePGN.round << "\"]" << endl
        << "[FEN \"" << gamePGN.fen << "\"]" << endl
-       << "[White \"" << gamePGN.white << "\"]" << endl
-       << "[Black \"" << gamePGN.black << "\"]" << endl
+       << "[Red \"" << gamePGN.red << "\"]" << endl
+       << "[Blue \"" << gamePGN.blue << "\"]" << endl
+       << "[Starting \"" << gamePGN.starting_color << "\"]" << endl
        << "[Result \"" << gamePGN.result << "\"]" << endl
        << "[PlyCount \"" << plyCount << "\"]" << endl
        << "[TimeControl \"" << gamePGN.timeControl << "\"]" << endl << endl;

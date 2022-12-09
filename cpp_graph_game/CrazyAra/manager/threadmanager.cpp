@@ -41,7 +41,7 @@ ThreadManager::ThreadManager(ThreadManagerData* tData, ThreadManagerInfo* tInfo,
 void ThreadManager::print_info()
 {
     tData->evalInfo->end = chrono::steady_clock::now();
-    update_eval_info(*tData->evalInfo, tData->rootNode, get_tb_hits(tData->searchThreads), get_max_depth(tData->searchThreads), tInfo->searchSettings);
+    update_eval_info(*tData->evalInfo, tData->rootNode, tData->searchThread->get_tb_hits(), tData->searchThread->get_max_depth(), tInfo->searchSettings);
     info_string(*tData->evalInfo);
 }
 
@@ -158,7 +158,7 @@ bool ThreadManager::early_stopping()
 
 
 bool ThreadManager::continue_search() {
-    if (!tParams->inGame || !tParams->canProlong || tInfo->overallNPS == 0 || checkedContinueSearch > 1 || !tData->searchThreads.front()->is_running()) {
+    if (!tParams->inGame || !tParams->canProlong || tInfo->overallNPS == 0 || checkedContinueSearch > 1 || !tData->searchThread->is_running()) {
         return false;
     }
     // make sure not to flag when continuing search
@@ -180,14 +180,12 @@ bool ThreadManager::continue_search() {
 
 void ThreadManager::stop_search()
 {
-    stop_search_threads(tData->searchThreads);
+    stop_search_thread(tData->searchThread);
 }
 
-void stop_search_threads(vector<SearchThread*>& searchThreads)
+void stop_search_thread(SearchThread*& searchThread)
 {
-    for (auto searchThread : searchThreads) {
-        searchThread->stop();
-    }
+			searchThread->stop();
 }
 
 bool can_prolong_search(size_t curMoveNumber, size_t expectedGameLength)

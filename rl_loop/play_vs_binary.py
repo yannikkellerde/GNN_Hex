@@ -57,6 +57,11 @@ def play_vs_binary(binary_path, model_path):
             proc.stdin.write(b"reset\n")
             proc.stdin.flush()
             read_and_draw()
+        elif event.key == "s":
+            proc.stdin.write(b"switch\n")
+            print("sending switch")
+            proc.stdin.flush()
+            read_and_draw()
         elif event.key == "+":
             hex_size+=1
             set_coords()
@@ -83,6 +88,10 @@ def play_vs_binary(binary_path, model_path):
             read_and_draw()
         elif event.key == "n":
             proc.stdin.write(b"raw\n")
+            proc.stdin.flush()
+            read_and_draw()
+        elif event.key == "z":
+            proc.stdin.write(b"swap\n")
             proc.stdin.flush()
             read_and_draw()
 

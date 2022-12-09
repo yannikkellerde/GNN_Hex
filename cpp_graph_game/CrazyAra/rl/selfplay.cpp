@@ -58,10 +58,10 @@ void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, 
 	gamePGN.gameMoves.emplace_back(sanMove);
 }
 
-SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* searchLimits, PlaySettings* playSettings,
+SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* searchLimits, PlaySettings* playSettings, SearchSettings * searchSettings,
 		RLSettings* rlSettings, OptionsMap& options):
-	rawAgent(rawAgent), mctsAgent(mctsAgent), searchLimits(searchLimits), playSettings(playSettings),
-	rlSettings(rlSettings), gameIdx(0), gamesPerMin(0), samplesPerMin(0), options(options)
+	rawAgent(rawAgent), mctsAgent(mctsAgent), searchLimits(searchLimits), playSettings(playSettings), searchSettings(searchSettings),
+	rlSettings(rlSettings), gameIdx(0), gamesPerMin(0), samplesPerMin(0), options(options), folder("data/"), exporter("data/torch")
 {
 	gamePGN.variant = "hex";
 	time_t     now = time(0);
@@ -74,9 +74,6 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
 	gamePGN.event = "SelfPlay";
 	gamePGN.site = "Darmstadt, GER";
 	gamePGN.round = "?";
-	string folder = "data/";
-	this->exporter = new TrainDataExporter(folder+"torch",
-			rlSettings->numberChunks, rlSettings->chunkSize);
 	filenamePGNSelfplay = folder+string("games") + string(".pgn");
 	filenamePGNArena = folder+string("arena_games") + string(".pgn");
 	fileNameGameIdx = folder + string("gameIdx") + string(".txt");
@@ -96,7 +93,6 @@ SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* se
 
 SelfPlay::~SelfPlay()
 {
-	delete exporter;
 }
 
 void SelfPlay::adjust_node_count(SearchLimits* searchLimits, int randInt)
@@ -147,6 +143,101 @@ void SelfPlay::reset_search_params(bool isQuickSearch)
 	}
 }
 
+void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<TrainDataExporter>> * exporters, map<string,double> * stats, int total_games_to_generate, SelfPlay * sp){
+	assert(total_games_to_generate>=num_games);
+	int game_restarts_left = total_games_to_generate-num_games;
+	srand(unsigned(int(time(nullptr))));
+	bool changed;
+	size_t generatedSamples = 0;
+	vector<unique_ptr<Node_switching_game>> states;
+	vector<GamePGN> pgns(num_games);
+	vector<unique_ptr<MCTSAgent>> agents;
+	vector<EvalInfo> evalInfos(num_games);
+	vector<Onturn> gameResults(num_games);
+	fill(gameResults.begin(),gameResults.end(),NOPLAYER);
+	SearchLimits searchLimits(*sp->searchLimits);
+	states.reserve(num_games);
+	agents.reserve(num_games);
+	for (int i=0;i<num_games;++i){
+		states.push_back(init_starting_state_from_random_moves(pgns[i],0,i%2==0));
+		pgns[i].starting_color = i%2==0?"Blue":"Red";
+		agents.push_back(make_unique<MCTSAgent>(net,sp->searchSettings,sp->playSettings));
+	}
+	do{
+		for (int i=0;i<num_games;++i){
+			if (gameResults[i] == NOPLAYER){
+				agents[i]->set_search_settings(states[i].get(), &searchLimits, &evalInfos[i]);
+				agents[i]->init_eval();
+			}
+		}
+		do{
+			changed = false;
+			for (int i=0;i<num_games;++i){
+				if (gameResults[i] == NOPLAYER && agents[i]->do_more_eval()){
+					int randInt = rand();
+					sp->adjust_node_count(&searchLimits, randInt); //ensure each game explores slightly different amount of nodes. (For variance)
+					agents[i]->eval_step_start();
+					changed = true;
+				}
+			}
+			if (changed&&net->node_features.size()>0){
+				net->predict_stored();
+				for (int i=0;i<num_games;++i){
+					agents[i]->eval_step_stop();
+				}
+			}
+		}
+		while(changed);
+		print_info(__LINE__,__FILE__,"bout to make a move");
+		for (int i=0;i<num_games;++i){
+			if (gameResults[i] == NOPLAYER){
+				agents[i]->eval_stop();
+				if (sp->rlSettings->lowPolicyClipThreshold > 0) {
+					sharpen_distribution(evalInfos[i].policyProbSmall, sp->rlSettings->lowPolicyClipThreshold);
+				}
+				(*exporters)[i]->save_sample(states[i].get(), evalInfos[i]);
+				++generatedSamples;
+				play_move_and_update(evalInfos[i], states[i].get(), pgns[i], gameResults[i], false);
+				sp->searchLimits->nodes = sp->backupNodes;
+				if (gameResults[i]!=NOPLAYER){
+					(*stats)["red_wins"]+=(gameResults[i]==RED);
+					(*stats)["blue_wins"]+=(gameResults[i]==BLUE);
+					(*stats)["first_player_wins"]+=((gameResults[i]==RED&&(i%2==1))||(gameResults[i]==BLUE&&(i%2==0)));
+					(*stats)["second_player_wins"]+=((gameResults[i]==RED&&(i%2==0))||(gameResults[i]==BLUE&&(i%2==1)));
+					(*stats)["num_moves"]+=states[i]->move_num;
+					if (game_restarts_left>0){
+						(*exporters)[i]->new_game(gameResults[i]);
+						sp->set_game_result_to_pgn(gameResults[i],i%2==0,pgns[i]);
+#ifdef DO_DEBUG
+						sp->write_game_to_pgn(sp->filenamePGNSelfplay, true, pgns[i]);
+#else
+						sp->write_game_to_pgn(sp->filenamePGNSelfplay, false, pgns[i]);
+#endif
+						clean_up(pgns[i], agents[i].get());
+						game_restarts_left-=1;
+						gameResults[i] = NOPLAYER;
+						states[i]->reset();
+						if (game_restarts_left%2==0){
+							states[i]->switch_onturn();
+						}
+					}
+				}
+			}
+		}
+	}
+	while(any_of(gameResults.begin(),gameResults.end(),[](Onturn res){return res==NOPLAYER;}));
+	for (int i=0;i<num_games;++i){
+		(*exporters)[i]->new_game(gameResults[i]);
+		sp->set_game_result_to_pgn(gameResults[i],i%2==0,pgns[i]);
+#ifdef DO_DEBUG
+		sp->write_game_to_pgn(sp->filenamePGNSelfplay, true, pgns[i]);
+#else
+		sp->write_game_to_pgn(sp->filenamePGNSelfplay, false, pgns[i]);
+#endif
+		clean_up(pgns[i], agents[i].get());
+	}
+}
+
 void SelfPlay::generate_game(bool verbose)
 {
 	chrono::steady_clock::time_point gameStartTime = chrono::steady_clock::now();
@@ -159,6 +250,7 @@ void SelfPlay::generate_game(bool verbose)
 	/* unique_ptr<Node_switching_game> state = init_starting_state_from_raw_policy(*rawAgent, ply, gamePGN, rlSettings->rawPolicyProbabilityTemperature); */
 	// random starting move
 	unique_ptr<Node_switching_game> state = init_starting_state_from_random_moves(gamePGN,0,gameIdx%2==0);
+	gamePGN.starting_color = gameIdx%2==0?"Blue":"Red";
 	assert (state->who_won()==NOPLAYER); // If this fails, ply is to high.
 	EvalInfo evalInfo;
 	Onturn gameResult;
@@ -182,11 +274,11 @@ void SelfPlay::generate_game(bool verbose)
 			mctsAgent->apply_move_to_tree(evalInfo.bestMove, true);
 		}
 
-		if (!isQuickSearch && !exporter->is_file_full()) {
+		if (!isQuickSearch) {
 			if (rlSettings->lowPolicyClipThreshold > 0) {
 				sharpen_distribution(evalInfo.policyProbSmall, rlSettings->lowPolicyClipThreshold);
 			}
-			exporter->save_sample(state.get(), evalInfo);
+			exporter.save_sample(state.get(), evalInfo);
 			++generatedSamples;
 		}
 		play_move_and_update(evalInfo, state.get(), gamePGN, gameResult, false);
@@ -201,10 +293,10 @@ void SelfPlay::generate_game(bool verbose)
 	stats["num_moves"]+=state->move_num;
 
 	// Finish up exporter work. Does not export yet.
-	exporter->new_game(gameResult);
+	exporter.new_game(gameResult);
 
-	set_game_result_to_pgn(gameResult);
-	write_game_to_pgn(filenamePGNSelfplay, verbose);
+	set_game_result_to_pgn(gameResult,gameIdx%2==0,gamePGN);
+	write_game_to_pgn(filenamePGNSelfplay, verbose, gamePGN);
 	clean_up(gamePGN, mctsAgent);
 	print_info(__LINE__,__FILE__,"Nodes per second",evalInfo.calculate_nps());
 
@@ -228,8 +320,9 @@ void SelfPlay::print_stats(){
 
 Onturn SelfPlay::generate_arena_game(MCTSAgent* redPlayer, MCTSAgent* bluePlayer, bool verbose, vector<int>& starting_moves, bool blue_starts)
 {
-	gamePGN.white = "Red";
-	gamePGN.black = "Blue";
+	gamePGN.red = "Red";
+	gamePGN.blue = "Blue";
+	gamePGN.starting_color = blue_starts?"Blue":"Red";
 	unique_ptr<Node_switching_game> state = init_starting_state_from_fixed_moves(gamePGN,starting_moves,blue_starts);
 	EvalInfo evalInfo;
 
@@ -256,8 +349,8 @@ Onturn SelfPlay::generate_arena_game(MCTSAgent* redPlayer, MCTSAgent* bluePlayer
 		play_move_and_update(evalInfo, state.get(), gamePGN, gameResult, false);
 	}
 	while(gameResult == NOPLAYER);
-	set_game_result_to_pgn(gameResult);
-	write_game_to_pgn(filenamePGNArena, verbose);
+	set_game_result_to_pgn(gameResult,blue_starts,gamePGN);
+	write_game_to_pgn(filenamePGNArena, verbose, gamePGN);
 	clean_up(gamePGN, redPlayer);
 	bluePlayer->clear_game_history();
 	return gameResult;
@@ -269,20 +362,22 @@ void clean_up(GamePGN& gamePGN, MCTSAgent* mctsAgent)
 	mctsAgent->clear_game_history();
 }
 
-void SelfPlay::write_game_to_pgn(const std::string& pgnFileName, bool verbose)
+void SelfPlay::write_game_to_pgn(const std::string& pgnFileName, bool verbose, GamePGN & pgn)
 {
 	ofstream pgnFile;
 	pgnFile.open(pgnFileName, std::ios_base::app);
 	if (verbose) {
-		cout << endl << gamePGN << endl;
+		cout << endl << pgn << endl;
 	}
-	pgnFile << gamePGN << endl;
+	pgnFile << pgn << endl;
 	pgnFile.close();
 }
 
-void SelfPlay::set_game_result_to_pgn(Onturn res)
+void SelfPlay::set_game_result_to_pgn(Onturn res,bool bluestarts, GamePGN & pgn)
 {
-	gamePGN.result = result[res];
+	if ((bluestarts && res==RED)||((!bluestarts) && res==BLUE))
+		pgn.result = "0-1";
+	else pgn.result = "1-0";
 }
 
 void SelfPlay::reset_speed_statistics()
@@ -314,26 +409,31 @@ void SelfPlay::export_number_generated_games() const
 	gameIdxFile.close();
 }
 
-
-void SelfPlay::go(size_t numberOfGames)
+void SelfPlay::go(size_t num_threads, size_t parallel_games_per_thread, size_t total_games_per_thread, vector<unique_ptr<NN_api>> & netBatches)
 {
 	reset_speed_statistics();
-	gamePGN.white = mctsAgent->get_name();
-	gamePGN.black = mctsAgent->get_name();
+	vector<vector<unique_ptr<TrainDataExporter>>> exporters(num_threads);
+	vector<map<string,double>> all_stats(num_threads); 
+	thread** threads = new thread*[num_threads];
 
-	if (numberOfGames == 0) {
-		while(!exporter->is_file_full()) {
-			generate_game(true);
+	for (size_t i = 0; i<num_threads;++i){
+		for (size_t j = 0; j<parallel_games_per_thread;++j){
+			exporters[i].push_back(make_unique<TrainDataExporter>(exporter.output_folder));
 		}
+		threads[i] = new thread(generate_parallel_games, parallel_games_per_thread, netBatches[i].get(), &exporters[i], &all_stats[i], total_games_per_thread, this);
 	}
-	else {
-		for (size_t idx = 0; idx < numberOfGames; ++idx) {
-			generate_game(true);
-		}
-	}
+
 	print_stats();
-	exporter->export_game_samples();
-	export_number_generated_games();
+	for (size_t i = 0; i < num_threads; ++i) {
+			threads[i]->join();
+	}
+	ofstream gameIdxFile;
+	gameIdxFile.open(fileNameGameIdx);
+	gameIdxFile << exporter.gameStartPtr.size();
+	gameIdxFile.close();
+	exporter = TrainDataExporter::merged_from_many(exporters,exporter.output_folder);
+	exporter.export_game_samples();
+	delete[] threads;
 }
 
 TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGames)

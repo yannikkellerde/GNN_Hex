@@ -203,11 +203,6 @@ public:
      */
     void wait_to_finish_last_search();
 
-    /**
-     * @brief stop_search Stops the current search if an mcts agent has been defined
-     */
-    void stop_search();
-
 private:
     /**
      * @brief engine_info Returns a string about the engine version and authors
@@ -237,7 +232,7 @@ private:
      * @param type Which type of agent should be used, default is 0. 
      * @return Pointer to the new MCTSAgent object
      */
-    unique_ptr<MCTSAgent> create_new_mcts_agent(NN_api* netSingle, vector<unique_ptr<NN_api>>& netBatches, SearchSettings* searchSettings, MCTSAgentType type = MCTSAgentType::kDefault);
+    unique_ptr<MCTSAgent> create_new_mcts_agent(NN_api* netSingle, SearchSettings* searchSettings, MCTSAgentType type = MCTSAgentType::kDefault);
 
     /**
      * @brief create_new_net_single Factory to create and load a new model from a given directory

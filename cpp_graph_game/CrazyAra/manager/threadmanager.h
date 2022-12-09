@@ -40,13 +40,13 @@ using namespace std;
 
 struct ThreadManagerData {
     const Node* rootNode;
-    vector<SearchThread*> searchThreads;
+    SearchThread* searchThread;
     EvalInfo* evalInfo;
     int remainingMoveTimeMS;
     float lastValueEval;
 
-    ThreadManagerData(const Node* rootNode, vector<SearchThread*> searchThreads, EvalInfo* evalInfo, float lastValueEval) :
-        rootNode(rootNode), searchThreads(searchThreads), evalInfo(evalInfo), remainingMoveTimeMS(0), lastValueEval(lastValueEval)
+    ThreadManagerData(const Node* rootNode, SearchThread* searchThread, EvalInfo* evalInfo, float lastValueEval) :
+        rootNode(rootNode), searchThread(searchThread), evalInfo(evalInfo), remainingMoveTimeMS(0), lastValueEval(lastValueEval)
     {}
 };
 
@@ -140,7 +140,7 @@ void run_thread_manager(ThreadManager* t);
  * @brief stop_search_threads Stops all search threads in the given list
  * @param searchThreads Vector of mcts search threads
  */
-void stop_search_threads(vector<SearchThread*>& searchThreads);
+void stop_search_thread(SearchThread*& searchThreads);
 
 /**
  * @brief can_prolong_search Returns true if it is allowed to prolong the current search

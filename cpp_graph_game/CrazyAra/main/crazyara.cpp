@@ -97,10 +97,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 		token.clear(); // Avoid a stale if getline() returns empty or blank line
 		is >> skipws >> token;
 
-		if (token == "stop" || token == "quit") {
-			stop_search();
-		}
-		else if (token == "uci") {
+		if (token == "uci") {
 			cout << engine_info()
 				<< "uciok" << endl;
 		}
@@ -195,16 +192,6 @@ void CrazyAra::wait_to_finish_last_search()
 	}
 }
 
-void CrazyAra::stop_search()
-{
-	if (mctsAgent != nullptr) {
-		mctsAgent->stop();
-		wait_to_finish_last_search();
-	}
-}
-
-
-
 void CrazyAra::export_search_tree(istringstream &is)
 {
 	string depth, filename;
@@ -233,10 +220,10 @@ void CrazyAra::selfplay(istringstream &is)
 {
 	prepare_search_config_structs();
 	speedcheck.track_next("selfplay");
-	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
+	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
 	size_t numberOfGames;
 	is >> numberOfGames;
-	selfPlay.go(numberOfGames);
+	selfPlay.go(Options["Threads"],Options["Num_Parallel_Games"],numberOfGames,netBatches);
 	cout << "readyok" << endl;
 	speedcheck.stop_track("selfplay");
 }
@@ -245,10 +232,10 @@ void CrazyAra::arena(istringstream &is)
 {
 	assert (((string)Options["Model_Path_Contender"]).length()>0);
 	prepare_search_config_structs();
-	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &rlSettings, Options);
+	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
 	netSingleContender = create_new_net_single(Options["Model_Path_Contender"]);
-	netBatchesContender = create_new_net_batches(Options["Model_Path_Contender"]);
-	mctsAgentContender = create_new_mcts_agent(netSingleContender.get(), netBatchesContender, &searchSettings);
+	/* netBatchesContender = create_new_net_batches(Options["Model_Path_Contender"]); */
+	mctsAgentContender = create_new_mcts_agent(netSingleContender.get(), &searchSettings);
 	size_t numberOfGames;
 	is >> numberOfGames;
 	TournamentResult tournamentResult = selfPlay.go_arena(mctsAgentContender.get(), numberOfGames);
@@ -279,12 +266,12 @@ void CrazyAra::multimodel_arena(istringstream &is, const string &modelDirectory1
 		is >> folder;
 		modelDir1 = "m" + std::to_string(folder) + "/";
 	}
-	auto mcts1 = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings, static_cast<MCTSAgentType>(type));
+	auto mcts1 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
 	if (modelDir1 != "")
 	{
 		netSingle = create_new_net_single(modelDir1);
 		netBatches = create_new_net_batches(modelDir1);
-		mcts1 = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings, static_cast<MCTSAgentType>(type));
+		mcts1 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
 	}
 
 	is >> type;
@@ -294,15 +281,15 @@ void CrazyAra::multimodel_arena(istringstream &is, const string &modelDirectory1
 		is >> folder;
 		modelDir2 = "m" + std::to_string(folder) + "/";
 	}
-	auto mcts2 = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings, static_cast<MCTSAgentType>(type));
+	auto mcts2 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
 	if (modelDir2 != "")
 	{
 		netSingleContender = create_new_net_single(modelDir2);
 		netBatchesContender = create_new_net_batches(modelDir2);
-		mcts2 = create_new_mcts_agent(netSingleContender.get(), netBatchesContender, &searchSettings, static_cast<MCTSAgentType>(type));
+		mcts2 = create_new_mcts_agent(netSingleContender.get(), &searchSettings, static_cast<MCTSAgentType>(type));
 	}
 
-	SelfPlay selfPlay(rawAgent.get(), mcts1.get(), &searchLimits, &playSettings, &rlSettings, Options);
+	SelfPlay selfPlay(rawAgent.get(), mcts1.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
 	size_t numberOfGames;
 	is >> numberOfGames;
 	TournamentResult tournamentResult = selfPlay.go_arena(mcts2.get(), numberOfGames);
@@ -420,7 +407,7 @@ bool CrazyAra::is_ready()
 		print_info(__LINE__,__FILE__,"loading model",string(Options["Model_Path"]));
 		netSingle = create_new_net_single(string(Options["Model_Path"]));
 		netBatches = create_new_net_batches(string(Options["Model_Path"]));
-		mctsAgent = create_new_mcts_agent(netSingle.get(), netBatches, &searchSettings);
+		mctsAgent = create_new_mcts_agent(netSingle.get(), &searchSettings);
 		rawAgent = make_unique<RawNetAgent>(netSingle.get(), &playSettings, false);
 		/* StateConstants::init(mctsAgent->is_policy_map()); */
 		timeoutThread.kill();
@@ -499,14 +486,14 @@ void CrazyAra::set_uci_option(istringstream &is, Node_switching_game& state)
 	}
 }
 
-unique_ptr<MCTSAgent> CrazyAra::create_new_mcts_agent(NN_api* netSingle, vector<unique_ptr<NN_api>>& netBatches, SearchSettings* searchSettings, MCTSAgentType type)
+unique_ptr<MCTSAgent> CrazyAra::create_new_mcts_agent(NN_api* netSingle, SearchSettings* searchSettings, MCTSAgentType type)
 {   
 	switch (type) {
 		case MCTSAgentType::kDefault:
-			return make_unique<MCTSAgent>(netSingle, netBatches, searchSettings, &playSettings);
+			return make_unique<MCTSAgent>(netSingle, searchSettings, &playSettings);
 		case MCTSAgentType::kRandom:
 			info_string("TYP 7 -> Random");
-			return make_unique<MCTSAgentRandom>(netSingle, netBatches, searchSettings, &playSettings);
+			return make_unique<MCTSAgentRandom>(netSingle, searchSettings, &playSettings);
 		default:
 			info_string("Unknown MCTSAgentType");
 			return nullptr;

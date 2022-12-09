@@ -750,7 +750,7 @@ class PV_torch_script(torch.nn.Module):
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
