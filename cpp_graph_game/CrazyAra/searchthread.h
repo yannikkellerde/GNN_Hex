@@ -32,8 +32,8 @@
 #include "constants.h"
 #include "agents/config/searchlimits.h"
 #include "util/fixedvector.h"
-#include "../hex_graph_game/shannon_node_switching_game.h"
-#include "../hex_graph_game/nn_api.h"
+#include "shannon_node_switching_game.h"
+#include "nn_api.h"
 
 
 enum NodeBackup : uint8_t {

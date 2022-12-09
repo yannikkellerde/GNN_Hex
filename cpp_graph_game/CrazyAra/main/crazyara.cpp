@@ -36,6 +36,7 @@
 #include "constants.h"
 #include "util.h"
 #include "util/speedcheck.h"
+#include "util/statlogger.h"
 
 
 CrazyAra::CrazyAra():
@@ -106,6 +107,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 			cout << "readyok" << endl;
 		}
 		else if (token == "speedsummary") speedcheck.summarize(cout);
+		else if (token == "statsummary") statlogger.summarize(cout);
 		else if (token == "setoption")  set_uci_option(is, *state.get());
 		else if (token == "go")         go(state.get(), is, evalInfo);
 		else if (token == "ucinewgame") ucinewgame();

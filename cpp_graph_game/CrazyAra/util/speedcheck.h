@@ -5,6 +5,9 @@
 #include <thread>
 #include <mutex>
 
+#if !defined(SPEEDCHECK_H)
+#define SPEEDCHECK_H
+
 class Speedcheck{
 	public:
 		std::map<std::string,std::mutex> threadlock;
@@ -19,3 +22,5 @@ class Speedcheck{
 };
 
 extern Speedcheck speedcheck;
+
+#endif

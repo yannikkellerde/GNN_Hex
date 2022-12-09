@@ -109,21 +109,20 @@ size_t MCTSAgent::init_root_node(Node_switching_game *state)
 	gcThread.oldRootNode = rootNode;
 	rootNode = get_root_node_from_tree(state);
 
-	if (rootNode != nullptr) {
-		// swap the states because now the old states are used
-		// This way the memory won't be freed for the next new move
-		nodesPreSearch = size_t(rootNode->get_visits());
-		if (rootNode->is_playout_node()) {
-			nodesPreSearch -= rootNode->get_free_visits();
-		}
-		info_string(nodesPreSearch, "nodes of former tree will be reused");
-	}
-	else {
-		print_info(__LINE__,__FILE__,"Num Verts for new root:",state->graph.num_vertices);
-		create_new_root_node(state);
-		nodesPreSearch = 0;
-	}
-	reachedTablebases = rootNode->is_tablebase() || reachedTablebases;
+	/* if (rootNode != nullptr) { */
+	/* 	// swap the states because now the old states are used */
+	/* 	// This way the memory won't be freed for the next new move */
+	/* 	nodesPreSearch = size_t(rootNode->get_visits()); */
+	/* 	if (rootNode->is_playout_node()) { */
+	/* 		nodesPreSearch -= rootNode->get_free_visits(); */
+	/* 	} */
+	/* 	info_string(nodesPreSearch, "nodes of former tree will be reused"); */
+	/* } */
+	/* else { */
+		/* print_info(__LINE__,__FILE__,"Num Verts for new root:",state->graph.num_vertices); */
+	create_new_root_node(state);
+	nodesPreSearch = 0;
+	/* } */
 	return nodesPreSearch;
 }
 
@@ -163,38 +162,62 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
 #else
 	rootNode = make_shared<Node>(state, searchSettings);
 #endif
-#ifdef SEARCH_UCT
-	unique_ptr<Node_switching_game> newState = unique_ptr<Node_switching_game>(state->clone());
-	rootNode->set_value(newState->random_rollout());
-	rootNode->enable_has_nn_results();
-#else
 	speedcheck.track_next("convert_graph");
 	vector<torch::Tensor> tens = state->convert_graph(net->device);
 	speedcheck.stop_track("convert_graph");
-	node_features.clear();
-	edge_indices.clear();
-	node_features.push_back(tens[0]);
-	edge_indices.push_back(tens[1]);
+	/* node_features.clear(); */
+	/* edge_indices.clear(); */
+	root_node_to_fill = true;
+	root_node_batch_idx = net->edge_indices.size(); 
+	net->node_features.push_back(tens[0]);
+	net->edge_indices.push_back(tens[1]);
 
-	std::vector<torch::jit::IValue> inputs;
-	torch::Tensor batch_ptr;
+	/* std::vector<torch::jit::IValue> inputs; */
+	/* torch::Tensor batch_ptr; */
 
-	speedcheck.track_next("collate");
-	inputs = collate_batch(node_features,edge_indices);
-	speedcheck.stop_track("collate");
-	speedcheck.track_next("nn predict");
-	vector<at::Tensor> tvec = net->predict(inputs);
-	speedcheck.stop_track("nn predict");
-	print_info(__LINE__,__FILE__,tvec.size());
-	probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax
-	valueOutputs = tvec[1];
-	batch_ptr = tvec[3];
-	print_info(__LINE__,__FILE__,probOutputs.size(0),node_features[0].sizes(),node_features.size());
+	/* speedcheck.track_next("collate"); */
+	/* inputs = collate_batch(node_features,edge_indices); */
+	/* speedcheck.stop_track("collate"); */
+	/* vector<at::Tensor> tvec = net->predict(inputs); */
+	/* probOutputs = tvec[0].exp(); // We expect the output from net to be log-softmax */
+	/* valueOutputs = tvec[1]; */
+	/* batch_ptr = tvec[3]; */
+	/* size_t tbHits = 0; */
+	/* fill_nn_results(0, false, valueOutputs, probOutputs, batch_ptr, rootNode.get(), tbHits, */
+	/* 		searchSettings, rootNode->is_tablebase()); */
+	/* rootNode->prepare_node_for_visits(); */
+}
+
+void MCTSAgent::fill_root_nn_results(){
+	assert(root_node_to_fill);
+	root_node_to_fill = false;
 	size_t tbHits = 0;
-	fill_nn_results(0, false, valueOutputs, probOutputs, batch_ptr, rootNode.get(), tbHits,
-			searchSettings, rootNode->is_tablebase());
-#endif
+	fill_nn_results(root_node_batch_idx,false,net->valueOutputs,net->probOutputs,net->batch_ptr,rootNode.get(),tbHits,searchSettings,rootNode->is_tablebase());
 	rootNode->prepare_node_for_visits();
+	if (rootNode->get_number_child_nodes() == 1) {
+		/* info_string("Only single move available -> early stopping"); */
+		handle_single_move();
+	}
+	else if (rootNode->get_number_child_nodes() == 0) {
+		info_string("The given position has no legal moves");
+	}
+	else{
+		if (searchSettings->dirichletEpsilon > 0.009f) {
+			/* info_string("apply dirichlet noise"); */
+			// TODO: Check for dirichlet compability
+			rootNode->apply_dirichlet_noise_to_prior_policy(searchSettings);
+			rootNode->fully_expand_node();
+		}
+
+		if (!rootNode->is_root_node()) {
+			rootNode->make_to_root();
+		}
+		searchThread->set_root_node(rootNode.get());
+		searchThread->set_root_state(rootState.get());
+		searchThread->set_search_limits(searchLimits);
+		searchThread->set_is_running(true);
+		searchThread->reset_stats();
+	}
 }
 
 void MCTSAgent::delete_old_tree()
@@ -286,40 +309,9 @@ void MCTSAgent::handle_single_move()
 	rootNode->set_q_value(0, targetEval);
 }
 
-void MCTSAgent::init_eval(){
+void MCTSAgent::create_unexpanded_root_nodes(){
 	rootState = unique_ptr<Node_switching_game>(state->clone());
 	evalInfo->nodesPreSearch = init_root_node(state);
-	if (rootNode->get_number_child_nodes() == 1) {
-		info_string("Only single move available -> early stopping");
-		handle_single_move();
-	}
-	else if (rootNode->get_number_child_nodes() == 0) {
-		info_string("The given position has no legal moves");
-	}
-	else {
-		if (searchSettings->dirichletEpsilon > 0.009f) {
-			info_string("apply dirichlet noise");
-			// TODO: Check for dirichlet compability
-			rootNode->apply_dirichlet_noise_to_prior_policy(searchSettings);
-			rootNode->fully_expand_node();
-		}
-
-		if (!rootNode->is_root_node()) {
-			rootNode->make_to_root();
-		}
-		info_string("hash size: ", mapWithMutex.hashTable.size());
-		if (mapWithMutex.hashTable.size() > MAX_HASH_SIZE) {
-			info_string("clear hash");
-			mapWithMutex.hashTable.clear();
-		}
-		info_string("run mcts search");
-		searchThread->set_root_node(rootNode.get());
-		searchThread->set_root_state(rootState.get());
-		searchThread->set_search_limits(searchLimits);
-		searchThread->set_reached_tablebases(reachedTablebases);
-		searchThread->set_is_running(true);
-		searchThread->reset_stats();
-	}
 }
 
 void MCTSAgent::eval_step_start(){
@@ -349,15 +341,15 @@ void MCTSAgent::evaluate_board_state()
 	rootState = unique_ptr<Node_switching_game>(state->clone());
 	evalInfo->nodesPreSearch = init_root_node(state);
 	if (rootNode->get_number_child_nodes() == 1) {
-		info_string("Only single move available -> early stopping");
+		/* info_string("Only single move available -> early stopping"); */
 		handle_single_move();
 	}
 	else if (rootNode->get_number_child_nodes() == 0) {
-		info_string("The given position has no legal moves");
+		/* info_string("The given position has no legal moves"); */
 	}
 	else {
 		if (searchSettings->dirichletEpsilon > 0.009f) {
-			info_string("apply dirichlet noise");
+			/* info_string("apply dirichlet noise"); */
 			// TODO: Check for dirichlet compability
 			rootNode->apply_dirichlet_noise_to_prior_policy(searchSettings);
 			rootNode->fully_expand_node();
@@ -366,12 +358,12 @@ void MCTSAgent::evaluate_board_state()
 		if (!rootNode->is_root_node()) {
 			rootNode->make_to_root();
 		}
-		info_string("hash size: ", mapWithMutex.hashTable.size());
+		/* info_string("hash size: ", mapWithMutex.hashTable.size()); */
 		if (mapWithMutex.hashTable.size() > MAX_HASH_SIZE) {
-			info_string("clear hash");
+			/* info_string("clear hash"); */
 			mapWithMutex.hashTable.clear();
 		}
-		info_string("run mcts search");
+		/* info_string("run mcts search"); */
 		run_mcts_search();
 		update_stats();
 	}
@@ -395,7 +387,7 @@ void MCTSAgent::run_mcts_search()
 	/* threadManager = make_unique<ThreadManager>(&tData, &tInfo, &tParams); */
 	/* unique_ptr<thread> tManager = make_unique<thread>(run_thread_manager, threadManager.get()); */
 	/* runnerMutex.unlock(); */
-	print_info(__LINE__,__FILE__,rootNode->get_node_count());
+	/* print_info(__LINE__,__FILE__,rootNode->get_node_count()); */
 }
 
 

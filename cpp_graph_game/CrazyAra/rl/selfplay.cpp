@@ -39,7 +39,7 @@
 void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, GamePGN& gamePGN, Onturn& gameResult, bool make_random_move)
 {
 	string sanMove = state->format_action(evalInfo.bestMove);
-	print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove);
+	/* print_info(__LINE__,__FILE__,"Playing move",evalInfo.bestMove); */
 	speedcheck.track_next("make move");
 	if (make_random_move){
 		state->make_move(state->get_random_action(),false,NOPLAYER,true);
@@ -50,7 +50,7 @@ void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, 
 	speedcheck.stop_track("make move");
 	gameResult = state->who_won();
 
-	print_info(__LINE__,__FILE__,"gameResult",gameResult);
+	/* print_info(__LINE__,__FILE__,"gameResult",gameResult); */
 
 	if (gameResult!=NOPLAYER) {
 		sanMove += "#";
@@ -124,11 +124,11 @@ void SelfPlay::check_for_resignation(const bool allowResingation, const EvalInfo
 	}
 	if (evalInfo.bestMoveQ[0] < rlSettings->resignThreshold) {
 		if (state->onturn == RED) {
-			print_info(__LINE__,__FILE__,"Blue resigned");
+			/* print_info(__LINE__,__FILE__,"Blue resigned"); */
 			gameResult = RED;
 		}
 		else {
-			print_info(__LINE__,__FILE__,"Red resigned");
+			/* print_info(__LINE__,__FILE__,"Red resigned"); */
 			gameResult = BLUE;
 		}
 	}
@@ -144,6 +144,7 @@ void SelfPlay::reset_search_params(bool isQuickSearch)
 }
 
 void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<TrainDataExporter>> * exporters, map<string,double> * stats, int total_games_to_generate, SelfPlay * sp){
+	speedcheck.track_next("initialization");
 	assert(total_games_to_generate>=num_games);
 	int game_restarts_left = total_games_to_generate-num_games;
 	srand(unsigned(int(time(nullptr))));
@@ -163,13 +164,27 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 		pgns[i].starting_color = i%2==0?"Blue":"Red";
 		agents.push_back(make_unique<MCTSAgent>(net,sp->searchSettings,sp->playSettings));
 	}
+	speedcheck.stop_track("initialization");
 	do{
+		speedcheck.track_next("init_eval");
 		for (int i=0;i<num_games;++i){
 			if (gameResults[i] == NOPLAYER){
 				agents[i]->set_search_settings(states[i].get(), &searchLimits, &evalInfos[i]);
-				agents[i]->init_eval();
+				agents[i]->create_unexpanded_root_nodes();
 			}
 		}
+		speedcheck.stop_track("init_eval");
+		speedcheck.track_next("root_prediction");
+		if (net->node_features.size()>0){
+			net->predict_stored();
+			for (int i=0;i<num_games;++i){
+				if (agents[i]->root_node_to_fill){
+					agents[i]->fill_root_nn_results();
+				}
+			}
+		}
+		speedcheck.stop_track("root_prediction");
+		speedcheck.track_next("mcts_loop");
 		do{
 			changed = false;
 			for (int i=0;i<num_games;++i){
@@ -188,7 +203,9 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 			}
 		}
 		while(changed);
-		print_info(__LINE__,__FILE__,"bout to make a move");
+		speedcheck.stop_track("mcts_loop");
+		/* print_info(__LINE__,__FILE__,"bout to make a move"); */
+		speedcheck.track_next("actual_moving");
 		for (int i=0;i<num_games;++i){
 			if (gameResults[i] == NOPLAYER){
 				agents[i]->eval_stop();
@@ -224,6 +241,7 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 				}
 			}
 		}
+		speedcheck.stop_track("actual_moving");
 	}
 	while(any_of(gameResults.begin(),gameResults.end(),[](Onturn res){return res==NOPLAYER;}));
 	for (int i=0;i<num_games;++i){
@@ -298,7 +316,7 @@ void SelfPlay::generate_game(bool verbose)
 	set_game_result_to_pgn(gameResult,gameIdx%2==0,gamePGN);
 	write_game_to_pgn(filenamePGNSelfplay, verbose, gamePGN);
 	clean_up(gamePGN, mctsAgent);
-	print_info(__LINE__,__FILE__,"Nodes per second",evalInfo.calculate_nps());
+	/* print_info(__LINE__,__FILE__,"Nodes per second",evalInfo.calculate_nps()); */
 
 	// measure time statistics
 	if (verbose) {
@@ -423,10 +441,11 @@ void SelfPlay::go(size_t num_threads, size_t parallel_games_per_thread, size_t t
 		threads[i] = new thread(generate_parallel_games, parallel_games_per_thread, netBatches[i].get(), &exporters[i], &all_stats[i], total_games_per_thread, this);
 	}
 
-	print_stats();
 	for (size_t i = 0; i < num_threads; ++i) {
 			threads[i]->join();
 	}
+	print_stats();
+	speedcheck.track_next("file_export");
 	ofstream gameIdxFile;
 	gameIdxFile.open(fileNameGameIdx);
 	gameIdxFile << exporter.gameStartPtr.size();
@@ -434,6 +453,7 @@ void SelfPlay::go(size_t num_threads, size_t parallel_games_per_thread, size_t t
 	exporter = TrainDataExporter::merged_from_many(exporters,exporter.output_folder);
 	exporter.export_game_samples();
 	delete[] threads;
+	speedcheck.stop_track("file_export");
 }
 
 TournamentResult SelfPlay::go_arena(MCTSAgent *mctsContender, size_t numberOfGames)
@@ -490,10 +510,6 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 		const size_t moveIdx = random_choice(eval.policyProbSmall);
 		eval.bestMove = eval.legalMoves[moveIdx];
 
-		print_info(__LINE__, __FILE__, "init best move ",eval.bestMove);
-		print_info(__LINE__, __FILE__, "init move idx",eval.legalMoves);
-		print_info(__LINE__, __FILE__, "pps size ",eval.policyProbSmall.size());
-		print_info(__LINE__, __FILE__, "legal moves ",eval.legalMoves);
 		gamePGN.gameMoves.push_back(state->format_action(eval.legalMoves[moveIdx]));
 		speedcheck.track_next("make move");
 		state->make_move(eval.bestMove,false,NOPLAYER,true);

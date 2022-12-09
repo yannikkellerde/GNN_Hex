@@ -35,6 +35,7 @@
 #include "config/rlsettings.h"
 #include "shannon_node_switching_game.h"
 #include "main/customuci.h"
+#include "nn_api.h"
 using namespace CUSTOM_UCI;
 
 /**

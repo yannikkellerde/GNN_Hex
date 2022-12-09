@@ -545,7 +545,6 @@ float Node::get_value() const
 
 float Node::get_value_display() const
 {
-		print_info(__LINE__,__FILE__,d.get());
     if (is_win_node_type(d->nodeType)) {
         return WIN_VALUE;
     }

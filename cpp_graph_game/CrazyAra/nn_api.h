@@ -9,6 +9,10 @@
 
 class NN_api{
 	public:
+#ifdef DO_DEBUG
+		double avg_batch_size;
+		int n_batch_sizes_yet;
+#endif
 		torch::Tensor probOutputs;
 		torch::Tensor valueOutputs;
 		std::vector<torch::Tensor> edge_indices;

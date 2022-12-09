@@ -115,7 +115,7 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
     }
     pv.push_back(rootNode->get_action(childIdx));
 
-		print_info(__LINE__,__FILE__,"Root is solved",is_win_node_type(rootNode->get_node_type()),evalInfo.movesToMate[idx]);
+		/* print_info(__LINE__,__FILE__,"Root is solved",is_win_node_type(rootNode->get_node_type()),evalInfo.movesToMate[idx]); */
 
     Node* nextNode = rootNode->get_child_node(childIdx);
     // make sure the nextNode has been expanded (e.g. when inference of the NN is too slow on the given hardware to evaluate the next node in time)
@@ -170,7 +170,7 @@ void sort_eval_lists(EvalInfo& evalInfo, vector<size_t>& indices)
     apply_permutation_in_place(evalInfo.policyProbSmall, p);
     apply_permutation_in_place(evalInfo.legalMoves, p);
     apply_permutation_in_place(indices, p);
-		print_info(__LINE__,__FILE__,"sorted eval lists",evalInfo.legalMoves,evalInfo.policyProbSmall);
+		/* print_info(__LINE__,__FILE__,"sorted eval lists",evalInfo.legalMoves,evalInfo.policyProbSmall); */
 }
 
 void update_eval_info(EvalInfo& evalInfo, const Node* rootNode, size_t tbHits, size_t selDepth, const SearchSettings* searchSettings)

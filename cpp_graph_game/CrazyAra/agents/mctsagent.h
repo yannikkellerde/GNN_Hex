@@ -68,6 +68,8 @@ public:
     // boolean which indicates if the same node was requested twice for analysis
     bool reusedFullTree;
 		bool search_active;
+		bool root_node_to_fill=false;
+		int root_node_batch_idx;
 
     // saves the overall nps for each move during the game
     float overallNPS;
@@ -88,7 +90,9 @@ public:
     MCTSAgent(const MCTSAgent&) = delete;
     MCTSAgent& operator=(MCTSAgent const&) = delete;
 
-		void init_eval();
+		void create_unexpanded_root_nodes();
+
+		void fill_root_nn_results();
 
 		void eval_step_start();
 

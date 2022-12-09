@@ -36,8 +36,8 @@
 #endif
 #include <torch/script.h>
 #include <torch/csrc/jit/api/module.h>
-#include "../../hex_graph_game/shannon_node_switching_game.h"
-#include "../../hex_graph_game/nn_api.h"
+#include "shannon_node_switching_game.h"
+#include "nn_api.h"
 
 namespace crazyara {
 typedef torch::jit::script::Module Module;
