@@ -900,7 +900,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
     elif name == "policy_value":
         model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=args.hidden_channels,hidden_layers=args.num_layers,policy_layers=args.head_layers,value_layers=args.head_layers,norm=None,act="relu")
     elif name == "HexAra":
-        model = PV_torch_script(hidden_channels=25,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
+        model = PV_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
     else:
         print(name)
         raise NotImplementedError

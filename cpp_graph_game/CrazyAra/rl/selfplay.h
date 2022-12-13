@@ -65,8 +65,6 @@ public:
     string filenamePGNArena;
     string fileNameGameIdx;
     size_t gameIdx;
-    float gamesPerMin;
-    float samplesPerMin;
     size_t backupNodes;
     float backupDirichletEpsilon;
     float backupQValueWeight;
@@ -86,7 +84,6 @@ public:
         RLSettings* rlSettings, OptionsMap& options);
     ~SelfPlay();
 
-		void print_stats();
     /**
      * @brief go Starts the self play game generation for a given number of games
      * @param numberOfGames Number of games to generate
@@ -103,24 +100,7 @@ public:
      * @return Score in respect to the contender, as floating point number.
      *  Wins give 1.0 points, 0.5 for draw, 0.0 for loss.
      */
-    TournamentResult go_arena(MCTSAgent *mctsContender, size_t numberOfGames);
-
-    /**
-     * @brief generate_game Generates a new game in self play mode
-     * @param variant Current chess variant
-     */
-    void generate_game(bool verbose);
-
-    /**
-     * @brief generate_arena_game Generates a game of the current NN weights vs the new acquired weights
-     * @param whitePlayer MCTSAgent which will play with the white pieces
-     * @param blackPlayer MCTSAgent which will play with the black pieces
-     * @param variant Current chess variant
-     * @param fen Starting position. If empty, the standard starting or a random position (for 960 games) will be used.
-     * The fen will be stored in gamePGN.fen.
-     * @param verbose If true the games will printed to stdout
-     */
-    Onturn generate_arena_game(MCTSAgent *whitePlayer, MCTSAgent *blackPlayer, bool verbose, vector<int>& starting_moves, bool breaker_starts);
+			void go_arena(vector<unique_ptr<NN_api>> & net_player_batches,vector<unique_ptr<NN_api>> & net_contender_batches, size_t num_games, size_t total_games_per_thread, size_t num_threads);
 
     /**
      * @brief write_game_to_pgn Writes the game log to a pgn file
@@ -134,16 +114,6 @@ public:
      * @param res Game result
      */
     void set_game_result_to_pgn(Onturn res,bool bluestarts,GamePGN & gamePGN);
-
-    /**
-     * @brief reset_speed_statistics Resets the interal measurements for gameIdx, gamesPerMin and samplesPerMin
-     */
-    void reset_speed_statistics();
-
-    /**
-     * @brief speed_statistic_report Updates the speed statistics and prints a summary to std-out
-     */
-    void speed_statistic_report(float elapsedTimeMin, size_t generatedSamples);
 
     /**
      * @brief export_number_generated_games Creates a file which describes how many games have been generated in the newly created .zip-file
@@ -242,5 +212,8 @@ void apply_raw_policy_temp(EvalInfo& eval, float rawPolicyProbTemp);
 size_t clip_ply(size_t ply, size_t maxPly);
 
 
-void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<TrainDataExporter>>  * exporters, map<string,double>* stats, int total_games_to_generate, SelfPlay * sp);
+void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<TrainDataExporter>>  * exporters, int total_games_to_generate, SelfPlay * sp, int idx);
+
+void generate_parallel_arena_games(int num_games, NN_api * net_player, NN_api * net_contender, int total_games_to_generate, SelfPlay * sp);
+
 #endif

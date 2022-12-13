@@ -164,15 +164,6 @@ public:
      */
     void arena(istringstream &is);
 
-   /**
-     * @brief multimodel_arena Alternative to the arena method which enables us to define two different models to use in the match and also define the mctsagent types to use.
-     * @param is Input string representing both agent types and the number of games to play
-     * @param modelDirectory1 name of the model directory of agent 1
-     * @param modelDirectory2 name of the model directory of agent 2
-     * @param isModelInInputStream boolean that informs the program if the modeldirectory are part of the input string or not
-     */
-    void multimodel_arena(istringstream &is, const string &modelDirectory1, const string &modelDirectory2, bool isModelInInputStream);
-
     /**
      * @brief roundrobin is an extension to the multimodel_arena method,
      * enabling the user to additionally define a model directory for each agent.
@@ -246,7 +237,7 @@ private:
      * @param modelDirectory Model directory where the .params and .json files are stored
      * @return Vector of pointers to the newly createded objects. For every thread a sepreate net.
      */
-    vector<unique_ptr<NN_api>> create_new_net_batches(const string& modelDirectory);
+    vector<unique_ptr<NN_api>> create_new_net_batches(const string& modelDirectory, int threads=0);
 
     /**
      * @brief set_uci_option Updates an UCI option using the given input stream and set changedUCIoption to true.

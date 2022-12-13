@@ -34,20 +34,18 @@ class RLLoop:
     This class uses the C++ binary to generate games and updates the network from the newly acquired games
     """
 
-    def __init__(self, args, rl_config, nb_arena_games=100, lr_reduction=0.0001, k_steps=0):
+    def __init__(self, args, rl_config, nb_arena_games=100, lr_reduction=0.0001):
         """
         Constructor
         :param args: Command line arguments, see parse_args() for details.
         :param nb_arena_games: Number of games which will be generated in a tournament setting in order to determine
         :param lr_reduction: Learning rate reduction of maximum learning rate after a single NN update
         if the updated NN weights are stronger than the old one and by how much.
-        :param k_steps: Amount of total batch-updates for the NN so far (sets the tensorboard offset properly and will
         be written to the new model filenames to track how many iterations the model has trained in total)
         """
         self.args = args
         self.tc = TrainConfig()
-        wandb.init(project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde",
-                   mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
+        wandb.init(resume=True,project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         self.rl_config = rl_config
 
@@ -58,7 +56,6 @@ class RLLoop:
             raise IOError(f'Number of games should be even to avoid giving a player an advantage')
         self.nb_arena_games = nb_arena_games
         self.lr_reduction = lr_reduction
-        self.tc.k_steps = k_steps
         self.device_name = f'{args.context}_{args.device_id}'
         self.model_name = ""  # will be set in initialize()
         self.did_contender_win = False
@@ -89,7 +86,7 @@ class RLLoop:
         """
         self.model_name = self.file_io.get_current_model_pt_file()
         self.binary_io = BinaryIO(binary_path=self.file_io.binary_dir+self.current_binary_name)
-        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir, self.rl_config.model_name, is_arena)
+        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
         self.binary_io.load_network()
 
     def check_for_new_model(self):
@@ -122,24 +119,11 @@ class RLLoop:
         print("generated:",self.file_io.get_number_generated_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_number_generated_files() >= number_files_to_update:
             self.binary_io.stop_process()
-            self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,
-                                                   self.did_contender_win)
+            self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
             # start training using a process to ensure memory clearing afterwards
             self.tc.device_id = self.args.device_id
             logging.info("Start Training")
-            queue = Queue()  # start a subprocess to be memory efficient
-            # process = Process(target=update_network, args=(queue, self.nn_update_index,
-            #                                                self.file_io.get_current_model_pt_file(),
-            #                                                not self.args.no_trace_torch,
-            #                                                main_config, self.tc,
-            #                                                self.file_io.model_contender_dir))
-            # process.start()
-            update_network(queue,self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
-            self.tc.k_steps = queue.get() + 1
-            # process.join()  # this blocks until the process terminates
-
-            if self.tc.max_lr > self.tc.min_lr:
-                self.tc.max_lr = max(self.tc.max_lr - self.lr_reduction, self.tc.min_lr * 10)
+            update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
 
             self.file_io.move_training_logs(self.nn_update_index)
 
@@ -147,10 +131,11 @@ class RLLoop:
 
             self.initialize()
             logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
-            self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games)
+            self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
             if self.did_contender_win is True:
                 logging.info("REPLACING current generator with contender")
                 self.file_io.replace_current_model_with_contender()
+                self.file_io.store_arena_pgn(wandb.run.step+1)
             else:
                 logging.info("KEEPING current generator")
 
@@ -168,7 +153,7 @@ class RLLoop:
                 plt.imshow(im)
                 plt.axis("off")
                 fig = plt.gcf()
-                logs["starting_eval"] = wandb.Image(fig,caption="starting eval")
+                logs["starting_eval"] = fig
             wandb.log(logs)
 
 
@@ -256,13 +241,13 @@ def main():
         #     logging.info(f'{rl_loop.rl_config.nb_nn_updates} NN updates reached, shutting down')
         #     break
 
-        success, statistics = rl_loop.binary_io.generate_games()
+        success, statistics = rl_loop.binary_io.generate_games(rl_config.nb_selfplay_games_per_thread)
         if success:
             rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
-            statistics["Binary failed"] = 0
+            statistics["stats/Binary_failed"] = 0
             wandb.log(statistics)
         else:
-            wandb.log({"Binary failed":1})
+            wandb.log({"stats/Binary_failed":1})
             print("BINARY Errored, doing restart")
             rl_loop.binary_io.stop_process()
             rl_loop.initialize()

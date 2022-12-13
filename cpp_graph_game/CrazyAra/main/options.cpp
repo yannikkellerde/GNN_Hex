@@ -37,10 +37,10 @@ using namespace std;
 
 void OptionsUCI::init(OptionsMap &o)
 {
-		o["Hex_Size"]											 << Option(11,1,21);
-		o["Num_Parallel_Games"]						 << Option(64,1,2048);
+		o["Hex_Size"]											 << Option(7,1,21);
+		o["Num_Parallel_Games"]						 << Option(128,1,2048);
     o["Allow_Early_Stopping"]          << Option(true);
-    o["Batch_Size"]                    << Option(4, 1, 8192);
+    o["Batch_Size"]                    << Option(8, 1, 8192);
     o["Centi_CPuct_Init"]              << Option(250, 1, 99999);
 #ifdef USE_RL
     o["Centi_Dirichlet_Epsilon"]       << Option(25, 0, 99999);
@@ -52,6 +52,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Epsilon_Greedy"]          << Option(5, 0, 100);
 #ifdef USE_RL
     o["Centi_Node_Temperature"]        << Option(100, 1, 99999);
+    /* o["Centi_Node_Temperature"]        << Option(10, 1, 99999); */
 #else
     o["Centi_Node_Temperature"]        << Option(170, 1, 99999);
 #endif
@@ -65,6 +66,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Centi_Random_Move_Factor"]      << Option(0, 0, 99);
 #ifdef USE_RL
     o["Centi_Temperature"]             << Option(80, 0, 99999);
+    /* o["Centi_Temperature"]             << Option(10, 0, 99999); */
 #else
     o["Centi_Temperature"]             << Option(170, 0, 99999);
 #endif
@@ -82,14 +84,10 @@ void OptionsUCI::init(OptionsMap &o)
     o["Last_Device_ID"]                << Option(0, 0, 99999);
     o["MCTS_Solver"]                   << Option(true);
     o["Model_Path"]               		 << Option(string("/home/kappablanca/github_repos/Gabor_Graph_Networks/data/RL/model/HexAra/graph_sage_model.pt").c_str());
-    o["Model_Path_Contender"]          << Option(string("").c_str());
+    o["Model_Path_Contender"]          << Option(string("/home/kappablanca/github_repos/Gabor_Graph_Networks/data/RL/model/HexAra/graph_sage_model.pt").c_str());
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
-#ifdef USE_RL
     o["Nodes"]                         << Option(100, 0, 99999999);
-#else
-    o["Nodes"]                         << Option(0, 0, 99999999);
-#endif
     o["Nodes_Limit"]                   << Option(0, 0, 999999999);
     o["Precision"]                     << Option("float32", {"float32", "int8"});
 #ifdef USE_RL
@@ -98,7 +96,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Reuse_Tree"]                    << Option(true);
 #endif
 #ifdef USE_RL
-    o["Temperature_Moves"]             << Option(15, 0, 99999); // originally 15
+    o["Temperature_Moves"]             << Option(10, 0, 99999); // originally 15
 #else
     o["Temperature_Moves"]             << Option(0, 0, 99999);
 #endif
@@ -109,7 +107,7 @@ void OptionsUCI::init(OptionsMap &o)
 #else
     o["Simulations"]                   << Option(0, 0, 99999999);
 #endif
-    o["Threads"]                       << Option(6, 1, 512);
+    o["Threads"]                       << Option(10, 1, 512);
     o["Timeout_MS"]                    << Option(0, 0, 99999999);
     // we repeat e.g. "crazyhouse" in the list because of problem in XBoard/Winboard CrazyAra#23
     o["UCI_Variant"]                   << Option(string("HEX").c_str(), {"HEX"});

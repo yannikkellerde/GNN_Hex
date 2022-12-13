@@ -280,7 +280,8 @@ void Node::mcts_policy_based_on_wins(DynamicVector<double> &mctsPolicy) const
 #else
             if (childNode->d->nodeType == WIN) {
 #endif
-            mctsPolicy[childIdx] = 1.0f;
+							mctsPolicy[childIdx] = 1.0f;
+							return;
             }
         }
         ++childIdx;
@@ -291,19 +292,29 @@ void Node::mcts_policy_based_on_losses(DynamicVector<double> &mctsPolicy) const
 {
     mctsPolicy = 0;
     ChildIdx childIdx = 0;
-    ChildIdx longestChildIdx = 0;
+    vector<ChildIdx> longestChildIdx;
     size_t endInPly = 0;
     for (auto it = d->childNodes.begin(); it != d->childNodes.end(); ++it) {
         const Node* childNode = it->get();
         if (childNode != nullptr && childNode->d != nullptr) {
-            if (childNode->d->endInPly > endInPly) {
-                endInPly = childNode->d->endInPly;
-                longestChildIdx = childIdx;
+            if (childNode->d->endInPly >= endInPly) {
+							if (childNode->d->endInPly > endInPly) {
+								longestChildIdx.clear();
+								endInPly = childNode->d->endInPly;
+							}
+							longestChildIdx.push_back(childIdx);
             }
         }
         ++childIdx;
     }
-    mctsPolicy[longestChildIdx] = 1.0f;
+		if (longestChildIdx.size()==0){
+			mctsPolicy = 1.0f/mctsPolicy.size();
+		}
+		else{
+			for (ChildIdx idx:longestChildIdx){
+				mctsPolicy[idx] = 1.0f/longestChildIdx.size();
+			}
+		}
 }
 
 void Node::prune_losses_in_mcts_policy(DynamicVector<double> &mctsPolicy) const
@@ -936,8 +947,8 @@ size_t get_best_action_index(const Node *curNode, bool fast, float qValueWeight,
     }
     if (curNode->get_node_type() == LOSS) {
         // choose node which delays the mate
-        size_t longestPVlength = 0;
-        size_t childIdx = 0;
+        int longestPVlength = -1;
+        int childIdx = -1;
         for (size_t idx = 0; idx < curNode->get_number_child_nodes(); ++idx) {
 						if (curNode->get_child_node(idx)==nullptr||curNode->get_child_node(idx)->d==nullptr){
 							print_info(__LINE__,__FILE__,"WARNING:","nullptr problem catched");
@@ -948,6 +959,10 @@ size_t get_best_action_index(const Node *curNode, bool fast, float qValueWeight,
                 childIdx = idx;
             }
         }
+				if (childIdx==-1){
+						print_info(__LINE__,__FILE__,"WARNING:","No non-nullptr child node");
+						return argmax(curNode->get_child_number_visits());
+				}
         return childIdx;
     }
     if (fast) {

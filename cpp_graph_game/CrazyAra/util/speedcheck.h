@@ -18,6 +18,7 @@ class Speedcheck{
 		Speedcheck();
 		void track_next(const std::string& what);
 		void stop_track(const std::string& what);
+		void stop_track_mean(const std::string& what);
 		void summarize(std::ostream& write_here);
 };
 

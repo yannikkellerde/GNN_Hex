@@ -1,11 +1,15 @@
 import torch
 from GN0.models import get_pre_defined
 import time
+import os
 
 if __name__ == "__main__":
     model = get_pre_defined("HexAra")
     traced = torch.jit.script(model)
-    traced.save("data/RL/model/HexAra/graph_sage_model.pt")
+    path = "data/RL/model/HexAra/graph_sage_model.pt"
+    os.makedirs(os.path.dirname(path),exist_ok=True)
+
+    traced.save(path)
     # traced.save("data/test_model.pt")
 
     torch.save({

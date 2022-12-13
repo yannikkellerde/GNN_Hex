@@ -112,7 +112,10 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 		else if (token == "go")         go(state.get(), is, evalInfo);
 		else if (token == "ucinewgame") ucinewgame();
 		else if (token == "isready")    is_ready<true>();
-		else if (token == "play")       playmode(mctsAgent.get(),rawAgent.get(),&searchLimits,&evalInfo);
+		else if (token == "play"){
+			prepare_search_config_structs();
+			playmode(mctsAgent.get(),rawAgent.get(),&searchLimits,&evalInfo);
+		}
 
 		// Additional custom non-UCI commands, mainly for debugging
 		else if (token == "root")       mctsAgent->print_root_node();
@@ -128,7 +131,6 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 		else if (token == "arena")      arena(is);
 		// Test if the new modes are also usable for chess and others
 
-		else if (token == "match")   multimodel_arena(is, "", "", true);
 		else if (token == "tournament")   roundrobin(is);
 #endif   
 		else
@@ -225,7 +227,7 @@ void CrazyAra::selfplay(istringstream &is)
 	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
 	size_t numberOfGames;
 	is >> numberOfGames;
-	selfPlay.go(Options["Threads"],Options["Num_Parallel_Games"],numberOfGames,netBatches);
+	selfPlay.go(Options["Threads"],std::min((int)numberOfGames,(int)Options["Num_Parallel_Games"]),numberOfGames,netBatches);
 	cout << "readyok" << endl;
 	speedcheck.stop_track("selfplay");
 }
@@ -233,72 +235,27 @@ void CrazyAra::selfplay(istringstream &is)
 void CrazyAra::arena(istringstream &is)
 {
 	assert (((string)Options["Model_Path_Contender"]).length()>0);
+	int numberOfGames;
+	int threads;
+	int pgames = Options["Num_Parallel_Games"];
+	is >> numberOfGames;
+	is >> threads;
 	prepare_search_config_structs();
 	SelfPlay selfPlay(rawAgent.get(), mctsAgent.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
-	netSingleContender = create_new_net_single(Options["Model_Path_Contender"]);
-	/* netBatchesContender = create_new_net_batches(Options["Model_Path_Contender"]); */
-	mctsAgentContender = create_new_mcts_agent(netSingleContender.get(), &searchSettings);
-	size_t numberOfGames;
-	is >> numberOfGames;
-	TournamentResult tournamentResult = selfPlay.go_arena(mctsAgentContender.get(), numberOfGames);
+	netBatchesContender = create_new_net_batches(Options["Model_Path_Contender"], threads);
+	if (netBatches.size()<threads){
+		netBatches= create_new_net_batches(Options["Model_Path"], threads);
+	}
+	selfPlay.go_arena(netBatches,netBatchesContender,std::min(numberOfGames,pgames),numberOfGames,threads);
 
 	cout << "Arena summary" << endl;
-	cout << "Score of Contender vs Producer: " << tournamentResult << endl;
-	if (tournamentResult.score() > 0.5f) {
+	cout << "Contender winrate: " << statlogger.mean_statistics["contender_wins"].first << endl;
+	if (statlogger.mean_statistics["contender_wins"].first > 0.5f) {
 		cout << "replace" << endl;
 	}
 	else {
 		cout << "keep" << endl;
 	}
-	write_tournament_result_to_csv(tournamentResult, "arena_results.csv");
-}
-
-void CrazyAra::multimodel_arena(istringstream &is, const string &modelDirectory1, const string &modelDirectory2, bool isModelInInputStream)
-{
-	SearchLimits searchLimits;
-	searchLimits.nodes = size_t(Options["Nodes"]);
-
-	// create two MCTS agents
-	int type;
-	int folder;
-	is >> type;
-	string modelDir1 = modelDirectory1;
-	if (isModelInInputStream)
-	{
-		is >> folder;
-		modelDir1 = "m" + std::to_string(folder) + "/";
-	}
-	auto mcts1 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
-	if (modelDir1 != "")
-	{
-		netSingle = create_new_net_single(modelDir1);
-		netBatches = create_new_net_batches(modelDir1);
-		mcts1 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
-	}
-
-	is >> type;
-	string modelDir2 = modelDirectory2;
-	if (isModelInInputStream)
-	{
-		is >> folder;
-		modelDir2 = "m" + std::to_string(folder) + "/";
-	}
-	auto mcts2 = create_new_mcts_agent(netSingle.get(), &searchSettings, static_cast<MCTSAgentType>(type));
-	if (modelDir2 != "")
-	{
-		netSingleContender = create_new_net_single(modelDir2);
-		netBatchesContender = create_new_net_batches(modelDir2);
-		mcts2 = create_new_mcts_agent(netSingleContender.get(), &searchSettings, static_cast<MCTSAgentType>(type));
-	}
-
-	SelfPlay selfPlay(rawAgent.get(), mcts1.get(), &searchLimits, &playSettings, &searchSettings, &rlSettings, Options);
-	size_t numberOfGames;
-	is >> numberOfGames;
-	TournamentResult tournamentResult = selfPlay.go_arena(mcts2.get(), numberOfGames);
-
-	cout << "Arena summary" << endl;
-	cout << "Score of Agent1 vs Agent2: " << tournamentResult << endl;
-	write_tournament_result_to_csv(tournamentResult, "mcts_arena_results.csv");
 }
 
 void CrazyAra::roundrobin(istringstream &is)
@@ -342,7 +299,6 @@ void CrazyAra::roundrobin(istringstream &is)
 		std::string m1 = "m" + std::to_string(agents[token1].number_of_model_folder) + "/";
 		std::string m2 = "m" + std::to_string(agents[token2].number_of_model_folder) + "/";
 		std::istringstream iss(comb + " " + std::to_string(numberofgames));
-		multimodel_arena(iss, m1, m2, false);
 	}
 
 	exit(0);
@@ -457,15 +413,16 @@ unique_ptr<NN_api> CrazyAra::create_new_net_single(const string& modelPath)
 	return make_unique<NN_api>(modelPath,device);
 }
 
-vector<unique_ptr<NN_api>> CrazyAra::create_new_net_batches(const string& modelPath)
+vector<unique_ptr<NN_api>> CrazyAra::create_new_net_batches(const string& modelPath, int threads)
 {
-	vector<unique_ptr<NN_api>> netBatches;
+	if (threads==0) threads = Options["Threads"];
+	vector<unique_ptr<NN_api>> someNetBatches;
 	for (int deviceId = int(Options["First_Device_ID"]); deviceId <= int(Options["Last_Device_ID"]); ++deviceId) {
-		for (size_t i = 0; i < size_t(Options["Threads"]); ++i) {
-			netBatches.push_back(create_new_net_single(modelPath));
+		for (size_t i = 0; i < size_t(threads); ++i) {
+			someNetBatches.push_back(create_new_net_single(modelPath));
 		}
 	}
-	return netBatches;
+	return someNetBatches;
 }
 
 void CrazyAra::set_uci_option(istringstream &is, Node_switching_game& state)

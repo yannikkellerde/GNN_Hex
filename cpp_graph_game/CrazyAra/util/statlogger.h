@@ -16,11 +16,14 @@ class Statlogger{
 		std::map<std::string,double> min_statistics;
 		
 		Statlogger();
+		void reset_key(const std::string & what);
+
 		void log_mean_statistic(const std::string& what, double number);
 		void log_sum_statistic(const std::string& what, double number);
 		void log_max_statistic(const std::string& what, double number);
 		void log_min_statistic(const std::string& what, double number);
 		void summarize(std::ostream& write_here);
+		void print_statistics(std::ostream& write_here);
 };
 
 extern Statlogger statlogger;

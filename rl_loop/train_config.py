@@ -54,9 +54,6 @@ class TrainConfig:
 
     log_metrics_to_tensorboard: bool = True
 
-    # k_steps_initial defines how many steps have been trained before
-    # (k_steps_initial != 0 if you continue training from a checkpoint)
-    k_steps_initial: int = 0
     # these are the weights to continue training with
     # symbol_file = 'model_init-symbol.json' # model-1.19246-0.603-symbol.json'
     # params_file = 'model_init-0000.params' # model-1.19246-0.603-0223.params'
@@ -65,8 +62,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    max_lr: float = 0.001 / div_factor  # 0.35 / div_factor
-    min_lr: float = 0.0005 / div_factor  # 0.2 / div_factor  # 0.00001
+    lr: float = 0.002 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
@@ -81,9 +77,11 @@ class TrainConfig:
     normalize: bool = True  # define whether to normalize input data to [01]
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 5
+    nb_training_epochs: int = 1
 
-    policy_loss_factor: float = 0.003  # 0.99
+    training_keep_files: int = 30
+
+    policy_loss_factor: float = 0.001  # 0.99
 
     # gradient scaling for the plys to end output
     plys_to_end_loss_factor: float = 0.1
@@ -104,9 +102,6 @@ class TrainConfig:
     # Boolean if the policy target is one-hot encoded (sparse=True) or a target distribution (sparse=False)
     sparse_policy_label: bool = False
 
-    # total of training iterations
-    total_it: int = None
-
     # adds a small mlp to infer the value loss from wdl and plys_to_end_output
     use_mlp_wdl_ply: bool = False
     # enables training with ply to end head
@@ -115,9 +110,9 @@ class TrainConfig:
     use_wdl: bool = False
 
     # loads a previous checkpoint if the loss increased significantly
-    use_spike_recovery: bool = True
+    use_spike_recovery: bool = False
     # weight the value loss a lot lower than the policy loss in order to prevent overfitting
-    val_loss_factor: float = 0.5  # 0.01
+    val_loss_factor: float = 1  # 0.01
     # weight for the wdl loss
     wdl_loss_factor: float = 0.4
 
@@ -128,8 +123,6 @@ class TrainConfig:
 @dataclass
 class TrainObjects:
     """Defines training objects which must be set before the training"""
-    lr_schedule = None  # learning rate schedule
-    momentum_schedule = None
     metrics = None
     variant_metrics = None
 

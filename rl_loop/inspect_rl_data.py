@@ -42,8 +42,8 @@ def visualize_data(data,do_board_index=False):
     shape[t2] = "circle"
     color[t1] = (0,0,1,1)
     color[t2] = (0,0,1,1)
-    size[t1] = 25
-    size[t2] = 25
+    size[t1] = 125/HEX_SIZE
+    size[t2] = 125/HEX_SIZE
     position[t1] = [0,yend/2]
     position[t2] = [1.5*HEX_SIZE*scale,yend/2]
     for feat,bi,pi in zip(data["node_features"][2:],data["board_indices"][2:],data["policy"]):
@@ -55,7 +55,7 @@ def visualize_data(data,do_board_index=False):
             text[v] = str(int(bi))
         else:
             text[v] = f"{pi:.3f}"
-        size[v] = 25
+        size[v] = 125/HEX_SIZE
 
     for i in range(data["edge_indices"].size(1)):
         if data["edge_indices"][0][i]<data["edge_indices"][1][i]:

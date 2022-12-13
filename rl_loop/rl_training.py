@@ -10,13 +10,12 @@ Functionality for conducting a single NN update within the reinforcement learnin
 import sys
 import glob
 import logging
+import wandb
 from pathlib import Path
 
 sys.path.append("../../../")
 from rl_loop.train_config import TrainConfig, TrainObjects
 from rl_loop.dataset_loader import load_pgn_dataset,_get_loader
-from DeepCrazyhouse.src.training.lr_schedules.lr_schedules import MomentumSchedule, LinearWarmUp,\
-    CosineAnnealingSchedule
 from rl_loop.train_util import get_metrics
 from GN0.models import get_pre_defined
 from rl_loop.trainer_agent_pytorch import TrainerAgentPytorch, load_torch_state, save_torch_state, get_context, export_as_script_module
@@ -25,11 +24,10 @@ from torch_geometric.loader import DataLoader
 import os
 
 
-def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name):
+def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name):
     """
     Creates a new NN checkpoint in the model contender directory after training using the game files stored in the
      training directory
-    :param queue: Queue object used to return items
     :param nn_update_idx: Defines how many updates of the nn has already been done. This index should be incremented
     after every update.
     :param symbol_filename: Architecture definition file
@@ -40,7 +38,6 @@ def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, 
     :param main_config: Dict of the main_config (imported from main_config.py)
     :param train_config: Dict of the train_config (imported from train_config.py)
     :param model_contender_dir: String of the contender directory path
-    :return: k_steps_final
     """
 
     # set the context on CPU, switch to GPU if there is one available (strongly recommended for training)
@@ -56,16 +53,6 @@ def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, 
 
     val_data = _get_loader(train_config, dataset_type="val")
 
-    # calculate how many iterations per epoch exist
-    nb_it_per_epoch = len(val_data) * train_config.nb_parts
-    # one iteration is defined by passing 1 batch and doing backprop
-    train_config.total_it = int(nb_it_per_epoch * train_config.nb_training_epochs)
-
-    train_objects.lr_schedule = CosineAnnealingSchedule(train_config.min_lr, train_config.max_lr, max(train_config.total_it * .7, 1))
-    train_objects.lr_schedule = LinearWarmUp(train_objects.lr_schedule, start_lr=train_config.min_lr, length=max(train_config.total_it * .25, 1))
-    train_objects.momentum_schedule = MomentumSchedule(train_objects.lr_schedule, train_config.min_lr, train_config.max_lr,
-                                         train_config.min_momentum, train_config.max_momentum)
-
     net = _get_net(ctx, train_config, pt_filename)
 
     train_objects.metrics = get_metrics(train_config)
@@ -73,28 +60,23 @@ def update_network(queue, nn_update_idx, pt_filename, trace_torch, main_config, 
     train_config.export_weights = True  # save intermediate results to handle spikes
     train_agent = TrainerAgentPytorch(net, val_data, train_config, train_objects, use_rtpt=False)
 
-    # iteration counter used for the momentum and learning rate schedule
-    cur_it = train_config.k_steps_initial * train_config.batch_steps
-    (k_steps_final, val_value_loss_final, val_policy_loss_final, val_value_acc_sign_final,
-     val_policy_acc_final), (_, _) = train_agent.train(cur_it)
+    (val_value_loss_final, val_policy_loss_final, val_value_acc_sign_final,
+     val_policy_acc_final), _ = train_agent.train()
     prefix = os.path.join(model_contender_dir,"weights-%.5f-%.5f-%.3f-%.3f" % (val_value_loss_final, val_policy_loss_final,
                                                                    val_value_acc_sign_final, val_policy_acc_final))
 
-    _export_net(trace_torch, k_steps_final, net, prefix,
+    _export_net(trace_torch, net, prefix,
                 train_config, model_contender_dir, model_name)
 
-    logging.info("k_steps_final %d" % k_steps_final)
-    queue.put(k_steps_final)
 
-
-def _export_net(trace_torch, k_steps_final, net, prefix,
+def _export_net(trace_torch, net, prefix,
                 train_config, model_contender_dir, model_name):
     """
     Export function saves both the architecture and the weights and optionally saves it as onnx
     """
     net.eval()
-    save_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.max_lr),
-                     '%s-%04d.pt' % (prefix, k_steps_final))
+    save_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.lr),
+                     '%s-%04d.pt' % (prefix, wandb.run.step))
     if trace_torch:
         export_as_script_module(net,os.path.join(model_contender_dir,model_name+"_model.pt"))
 
@@ -105,5 +87,5 @@ def _get_net(ctx, train_config, pt_filename):
     net = get_pre_defined("HexAra")
     net.to(ctx)
     if pt_filename!="":
-        load_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.max_lr), pt_filename, train_config.device_id)
+        load_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.lr), pt_filename, train_config.device_id)
     return net

@@ -142,10 +142,11 @@ void set_eval_for_single_pv(EvalInfo& evalInfo, const Node* rootNode, size_t idx
             }
         }
         else {
-            evalInfo.bestMoveQ[idx] = -nextNode->get_value();
+					evalInfo.bestMoveQ[idx] = -nextNode->get_value();
         }
     }
     else {
+				evalInfo.pv[idx] = pv;
         evalInfo.bestMoveQ[idx] = Q_INIT;
     }
     evalInfo.movesToMate[idx] = 0;

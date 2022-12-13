@@ -67,152 +67,99 @@ class TrainerAgentPytorch:
         self.ordering = list(range(self.tc.nb_parts))  # define a list which describes the order of the processed batches
 
         # few variables which are internally used
-        self.val_loss_best = self.val_p_acc_best = self.k_steps_best = \
+        self.val_loss_best = self.val_p_acc_best = \
             self.old_label = self.value_out = self.t_s = None
         self.patience_cnt = self.batch_proc_tmp = None
         # calculate how many log states will be processed
-        self.k_steps_end = round(self.tc.total_it / self.tc.batch_steps)
-        if self.k_steps_end == 0:
-            self.k_steps_end = 1
-        self.k_steps = self.cur_it = self.nb_spikes = self.old_val_loss = self.continue_training = self.t_s_steps = None
+        self.nb_spikes = self.old_val_loss = self.continue_training = self.t_s_steps = None
         self._train_iter = self.graph_exported = self.val_metric_values = self.val_loss = self.val_p_acc = None
         self.val_metric_values_best = None
 
         self.use_rtpt = use_rtpt
 
-        if use_rtpt:
-            # we use k-steps instead of epochs here
-            self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='crazyara',
-                             max_iterations=self.k_steps_end-self.tc.k_steps_initial)
 
-    def train(self, cur_it=None):
+    def train(self):
         """
         Training model
-        :param cur_it: Current iteration which is used for the learning rate and momentum schedule.
          If set to None it will be initialized
         :return: return_metrics_and_stop_training()
         """
 
-        self._setup_variables(cur_it)
+        self._setup_variables()
         self._model.train()  # set training mode
 
-        while self.continue_training:
-            # reshuffle the ordering of the training game batches (shuffle works in place)
-            random.shuffle(self.ordering)
+        # reshuffle the ordering of the training game batches (shuffle works in place)
+        random.shuffle(self.ordering)
+        if self.use_rtpt:
+            # we use k-steps instead of epochs here
+            self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='hexara',
+                             max_iterations=len(self.ordering))
+            self.rtpt.start()
 
-            self.epoch += 1
-            logging.info("EPOCH %d", self.epoch)
-            logging.info("=========================")
-            self.t_s_steps = time()
+        self.epoch += 1
+        logging.info("EPOCH %d", self.epoch)
+        logging.info("=========================")
+        self.t_s_steps = time()
 
-            for part_id in tqdm(self.ordering):
-                train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+        for part_id in tqdm(self.ordering):
+            train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+            if self.use_rtpt:
+                # update process title according to loss
+                self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
 
-                for _, batch in enumerate(train_loader):
-                    data = self.train_update(batch)
+            for _, batch in enumerate(train_loader):
+                data = self.train_update(batch)
 
-                    # add the graph representation of the network to the tensorboard log file
-                    # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
-                    #     self.sum_writer.add_graph(self._model, data)
-                    #     self.graph_exported = True
+                # add the graph representation of the network to the tensorboard log file
+                # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
+                #     self.sum_writer.add_graph(self._model, data)
+                #     self.graph_exported = True
 
-                    if self.batch_proc_tmp >= self.tc.batch_steps or self.cur_it >= self.tc.total_it:  # show metrics every thousands steps
-                        train_metric_values, val_metric_values = self.evaluate(train_loader)
+        train_metric_values, val_metric_values = self.evaluate(train_loader)
+        # update the val_loss_value to compare with using spike recovery
+        self.old_val_loss = val_metric_values["loss"]
+        logs = {}
+        # log the metric values to wandb
+        self._log_metrics(train_metric_values, log_dict=logs, prefix="train_")
+        self._log_metrics(val_metric_values, log_dict=logs, prefix="val_")
 
-                        if self.use_rtpt:
-                            # update process title according to loss
-                            self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
-                        if self.tc.use_spike_recovery and (
-                                self.old_val_loss * self.tc.spike_thresh < val_metric_values["loss"]
-                                or torch.isnan(val_metric_values["loss"])
-                        ):  # check for spikes
-                            self.nb_spikes += 1
-                            logging.warning(
-                                "Spike %d/%d occurred - val_loss: %.3f",
-                                self.nb_spikes,
-                                self.tc.max_spikes,
-                                val_metric_values["loss"],
-                            )
-                            if self.nb_spikes >= self.tc.max_spikes:
-                                self.val_loss = val_metric_values["loss"]
-                                self.val_p_acc = val_metric_values["policy_acc"]
-                                logging.debug("The maximum number of spikes has been reached. Stop training.")
-                                # finally stop training because the number of lr drops has been achieved
-                                print()
-                                print(
-                                    "Elapsed time for training(hh:mm:ss): "
-                                    + str(datetime.timedelta(seconds=round(time() - self.t_s)))
-                                )
+        # check if a new checkpoint shall be created
+        if self.val_loss_best is None or val_metric_values["loss"] < self.val_loss_best:
+            # update val_loss_best
+            self.val_loss_best = val_metric_values["loss"]
+            self.val_p_acc_best = val_metric_values["policy_acc"]
+            self.val_metric_values_best = val_metric_values
 
-                                return return_metrics_and_stop_training(self.k_steps, val_metric_values, self.k_steps_best,
-                                                                        self.val_metric_values_best)
+            if self.tc.export_weights:
+                model_prefix = "model-%.5f-%.3f-%04d"\
+                               % (self.val_loss_best, self.val_p_acc_best, wandb.run.step)
+                filepath = Path(self.tc.export_dir + f"weights/{model_prefix}.pt")
+                # the export function saves both the architecture and the weights
+                save_torch_state(self._model, self.optimizer, filepath)
+                print()
+                logging.info("Saved checkpoint to %s", filepath)
 
-                            logging.debug("Recover to latest checkpoint")
-                            model_path = self.tc.export_dir + "weights/model-%.5f-%.3f-%04d.pt" % (
-                                self.val_loss_best,
-                                self.val_p_acc_best,
-                                self.k_steps_best,
-                            )  # Load the best model once again
-                            logging.debug("load current best model:%s", model_path)
-                            load_torch_state(self._model, self.optimizer, model_path, self.tc.device_id)
-                            self.k_steps = self.k_steps_best
-                            logging.debug("k_step is back at %d", self.k_steps_best)
-                            # print the elapsed time
-                            self.t_delta = time() - self.t_s_steps
-                            print(" - %.ds" % self.t_delta)
-                            self.t_s_steps = time()
-                        else:
-                            # update the val_loss_value to compare with using spike recovery
-                            self.old_val_loss = val_metric_values["loss"]
-                            logs = {}
-                            # log the metric values to tensorboard
-                            self._log_metrics(train_metric_values, log_dict=logs, global_step=self.k_steps, prefix="train_")
-                            self._log_metrics(val_metric_values, log_dict=logs, global_step=self.k_steps, prefix="val_")
+        # print the elapsed time
+        self.t_delta = time() - self.t_s_steps
+        print(" - %.ds" % self.t_delta)
+        self.t_s_steps = time()
 
-                            # check if a new checkpoint shall be created
-                            if self.val_loss_best is None or val_metric_values["loss"] < self.val_loss_best:
-                                # update val_loss_best
-                                self.val_loss_best = val_metric_values["loss"]
-                                self.val_p_acc_best = val_metric_values["policy_acc"]
-                                self.val_metric_values_best = val_metric_values
-                                self.k_steps_best = self.k_steps
+        logs["lr"] = TrainConfig.lr
+        wandb.log(logs);
 
-                                if self.tc.export_weights:
-                                    model_prefix = "model-%.5f-%.3f-%04d"\
-                                                   % (self.val_loss_best, self.val_p_acc_best, self.k_steps_best)
-                                    filepath = Path(self.tc.export_dir + f"weights/{model_prefix}.pt")
-                                    # the export function saves both the architecture and the weights
-                                    save_torch_state(self._model, self.optimizer, filepath)
-                                    print()
-                                    logging.info("Saved checkpoint to %s", filepath)
+        logging.info("Training done")
+        # finally stop training because the number of lr drops has been achieved
+        print()
+        print(
+            "Elapsed time for training(hh:mm:ss): "
+            + str(datetime.timedelta(seconds=round(time() - self.t_s)))
+        )
 
-                                patience_cnt = 0  # reset the patience counter
-                            # print the elapsed time
-                            self.t_delta = time() - self.t_s_steps
-                            print(" - %.ds" % self.t_delta)
-                            self.t_s_steps = time()
+        # make sure to empty cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-                            logs["lr"] = self.to.lr_schedule(self.cur_it);
-                            # logs["lr"] = self.tc.max_lr;
-                            logs["samples_per_second"] = int(torch.max(data.batch)) * self.tc.batch_steps / self.t_delta
-                            logs["momentum"] = self.to.momentum_schedule(self.cur_it)
-                            wandb.log(logs);
-
-                            if self.cur_it >= self.tc.total_it:
-                                logging.info("The number of given iterations has been reached")
-                                # finally stop training because the number of lr drops has been achieved
-                                print()
-                                print(
-                                    "Elapsed time for training(hh:mm:ss): "
-                                    + str(datetime.timedelta(seconds=round(time() - self.t_s)))
-                                )
-
-                                # make sure to empty cache
-                                if torch.cuda.is_available():
-                                    torch.cuda.empty_cache()
-
-                                return return_metrics_and_stop_training(self.k_steps, val_metric_values, self.k_steps_best,
-                                                                        self.val_metric_values_best)
+        return return_metrics_and_stop_training(val_metric_values, self.val_metric_values_best)
 
     def evaluate(self, train_loader):
         # log the current learning rate
@@ -220,13 +167,8 @@ class TrainerAgentPytorch:
         self.batch_proc_tmp -= self.tc.batch_steps
         ms_step = ((time() - self.t_s_steps) / self.tc.batch_steps) * 1000  # measure elapsed time
         # update the counters
-        self.k_steps += 1
         self.patience_cnt += 1
-        logging.info("Step %dK/%dK - %dms/step", self.k_steps, self.k_steps_end, ms_step)
         logging.info("-------------------------")
-        logging.debug("Iteration %d/%d", self.cur_it, self.tc.total_it)
-        logging.debug("lr: %.7f - momentum: %.7f", self.to.lr_schedule(self.cur_it),
-                      self.to.momentum_schedule(self.cur_it))
         train_metric_values = evaluate_metrics(
             self.to.metrics,
             train_loader,
@@ -271,16 +213,15 @@ class TrainerAgentPytorch:
         )
         combined_loss.backward()
         for param_group in self.optimizer.param_groups:
-            param_group['lr'] = self.to.lr_schedule(self.cur_it)  # update the learning rate
-            if 'momentum' in param_group:
-                param_group['momentum'] = self.to.momentum_schedule(self.cur_it)  # update the momentum
+            param_group['lr'] = TrainConfig.lr  # update the learning rate
+            # if 'momentum' in param_group:
+            #     param_group['momentum'] = self.to.momentum_schedule(self.cur_it)  # update the momentum
 
         self.optimizer.step()
-        self.cur_it += 1
         self.batch_proc_tmp += 1
         return batch
 
-    def _log_metrics(self, metric_values, global_step, log_dict, prefix="train_"):
+    def _log_metrics(self, metric_values, log_dict, prefix="train_"):
         """
         Logs a dictionary object of metric value to the console and to tensorboard
         if _log_metrics_to_tensorboard is set to true
@@ -294,39 +235,29 @@ class TrainerAgentPytorch:
             log_dict[f'{name}/{prefix.replace("_", "")}'] = metric_values[name]
             # add the metrics to the tensorboard event file
 
-    def _setup_variables(self, cur_it):
+    def _setup_variables(self):
         if self.tc.seed is not None:
             random.seed(self.tc.seed)
         # define and initialize the variables which will be used
         self.t_s = time()
         # track on how many batches have been processed in this epoch
         self.patience_cnt = self.epoch = self.batch_proc_tmp = 0
-        self.k_steps = self.tc.k_steps_initial  # counter for thousands steps
-        if cur_it is None:
-            self.cur_it = self.tc.k_steps_initial * 1000
-        else:
-            self.cur_it = cur_it
         self.nb_spikes = 0  # count the number of spikes that have been detected
         # initialize the loss to compare with, with a very high value
         self.old_val_loss = 9000
         self.graph_exported = False  # create a state variable to check if the net architecture has been reported yet
         self.continue_training = True
-        self.optimizer.lr = self.to.lr_schedule(self.cur_it)
-        if self.tc.optimizer_name == "nag":
-            self.optimizer.momentum = self.to.momentum_schedule(self.cur_it)
+        self.optimizer.lr = TrainConfig.lr
         if not self.ordering:  # safety check to prevent eternal loop
             raise Exception("You must have at least one part file in your planes-dataset directory!")
-        if self.use_rtpt:
-            # Start the RTPT tracking
-            self.rtpt.start()
 
 
 def create_optimizer(model: nn.Module, train_config: TrainConfig):
     if train_config.optimizer_name == "nag":  # torch.optim.SGD uses Nestorov momentum already
-        return torch.optim.SGD(model.parameters(), lr=train_config.max_lr, momentum=train_config.max_momentum,
+        return torch.optim.SGD(model.parameters(), lr=train_config.lr, momentum=train_config.max_momentum,
                                weight_decay=train_config.wd)
     elif train_config.optimizer_name == "adam":
-        return torch.optim.Adam(model.parameters(), lr=train_config.max_lr, weight_decay=train_config.wd)
+        return torch.optim.Adam(model.parameters(), lr=train_config.lr, weight_decay=train_config.wd)
     raise Exception(f"Selected optimizer {train_config.optimizer_name} is not supported.")
 
 
@@ -491,8 +422,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
     model.train()  # return back to training mode
     return metric_values
 
-def return_metrics_and_stop_training(k_steps, val_metric_values, k_steps_best, val_metric_values_best):
-    return (k_steps,
-            val_metric_values["value_loss"], val_metric_values["policy_loss"],
+def return_metrics_and_stop_training(val_metric_values, val_metric_values_best):
+    return (val_metric_values["value_loss"], val_metric_values["policy_loss"],
             val_metric_values["value_acc_sign"], val_metric_values["policy_acc"]), \
-           (k_steps_best, val_metric_values_best)
+            val_metric_values_best

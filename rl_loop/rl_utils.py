@@ -117,6 +117,19 @@ def get_log_filename(args, rl_config):
         return "%s/%s_%d.log" % (rl_config.binary_dir, args.context, args.device_id)
     return None
 
+def move_oldest_files(from_dir, to_dir, keep_num):
+    """
+    Moves all files from a given directory to a destination directory
+    :param from_dir: Origin directory where the files are located
+    :param to_dir: Destination directory where all files (including subdirectories directories) will be moved
+    :return:
+    """
+    file_paths = [os.path.join(from_dir,x) for x in os.listdir(from_dir)]
+    file_paths.sort(key=lambda x:os.path.getmtime(x))
+    file_paths.reverse()
+
+    for file_path in file_paths[keep_num:]:
+        os.rename(file_path, os.path.join(to_dir, os.path.basename(file_path)))
 
 def move_all_files(from_dir, to_dir):
     """

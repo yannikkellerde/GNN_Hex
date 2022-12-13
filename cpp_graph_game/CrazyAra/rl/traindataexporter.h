@@ -143,6 +143,8 @@ public:
      */
     void save_sample(const Node_switching_game* pos, const EvalInfo& eval);
 
+		static TrainDataExporter merged_from_many(vector<unique_ptr<TrainDataExporter>> & exporters, const string & file_name_export);
+
 		static TrainDataExporter merged_from_many(vector<vector<unique_ptr<TrainDataExporter>>> & exporters, const string & file_name_export);
 
     /**

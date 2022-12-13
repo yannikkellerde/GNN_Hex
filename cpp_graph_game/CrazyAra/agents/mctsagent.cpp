@@ -338,38 +338,15 @@ void MCTSAgent::eval_stop(){
 
 void MCTSAgent::evaluate_board_state()
 {
-	rootState = unique_ptr<Node_switching_game>(state->clone());
-	evalInfo->nodesPreSearch = init_root_node(state);
-	if (rootNode->get_number_child_nodes() == 1) {
-		/* info_string("Only single move available -> early stopping"); */
-		handle_single_move();
+	create_unexpanded_root_nodes();
+	net->predict_stored();
+	fill_root_nn_results();
+	while (do_more_eval()){
+		eval_step_start();
+		net->predict_stored();
+		eval_step_stop();
 	}
-	else if (rootNode->get_number_child_nodes() == 0) {
-		/* info_string("The given position has no legal moves"); */
-	}
-	else {
-		if (searchSettings->dirichletEpsilon > 0.009f) {
-			/* info_string("apply dirichlet noise"); */
-			// TODO: Check for dirichlet compability
-			rootNode->apply_dirichlet_noise_to_prior_policy(searchSettings);
-			rootNode->fully_expand_node();
-		}
-
-		if (!rootNode->is_root_node()) {
-			rootNode->make_to_root();
-		}
-		/* info_string("hash size: ", mapWithMutex.hashTable.size()); */
-		if (mapWithMutex.hashTable.size() > MAX_HASH_SIZE) {
-			/* info_string("clear hash"); */
-			mapWithMutex.hashTable.clear();
-		}
-		/* info_string("run mcts search"); */
-		run_mcts_search();
-		update_stats();
-	}
-	update_eval_info(*evalInfo, rootNode.get(), tbHits, maxDepth, searchSettings);
-	lastValueEval = evalInfo->bestMoveQ[0];
-	lastSideToMove = state->onturn;
+	eval_stop();
 	update_nps_measurement(evalInfo->calculate_nps());
 }
 

@@ -16,7 +16,8 @@ import numpy as np
 from typing import Tuple
 
 from rl_loop.main_config import main_config
-from rl_loop.rl_utils import create_dir, move_all_files
+from rl_loop.train_config import TrainConfig
+from rl_loop.rl_utils import create_dir, move_all_files, move_oldest_files
 
 
 class FileIO:
@@ -52,6 +53,7 @@ class FileIO:
         self.model_dir_archive = os.path.join(binary_dir, "export/archive/model")
         self.logs_dir_archive = os.path.join(binary_dir, "export/logs")
         self.logs_dir = os.path.join(binary_dir, "logs")
+        self.arena_pgns_dir = os.path.join(binary_dir, "arena_pgns")
 
         self._create_directories()
 
@@ -60,6 +62,9 @@ class FileIO:
         main_config["planes_val_dir"] = os.path.join(binary_dir, "export/val/")
         assert os.path.isdir(main_config["planes_train_dir"]) is not False, \
             f'Please provide valid main_config["planes_train_dir"] directory'
+
+    def store_arena_pgn(self,model_num):
+        os.rename(os.path.join(self.binary_data_output,"arena_games.pgn"),os.path.join(self.arena_pgns_dir,f"arena_games_{model_num}.pgn"))
 
     def _create_directories(self):
         """
@@ -75,6 +80,7 @@ class FileIO:
         create_dir(self.val_dir_archive)
         create_dir(self.model_contender_dir)
         create_dir(self.model_dir_archive)
+        create_dir(self.model_dir)
         create_dir(self.logs_dir_archive)
 
     def _include_data_from_replay_memory(self, nb_files: int, fraction_for_selection: float):
@@ -85,8 +91,9 @@ class FileIO:
         """
         file_names = os.listdir(self.train_dir_archive)
 
+        file_names.sort(key=lambda x:os.path.getmtime(os.path.join(self.train_dir_archive,x)))
         # invert ordering (most recent files are on top)
-        file_names = file_names[::-1]
+        file_names.reverse()
 
         if len(file_names) < nb_files:
             logging.info("Not enough replay memory available. Only current data will be used")
@@ -124,7 +131,7 @@ class FileIO:
         Moves files from training, validation dir into archive directory
         :return:
         """
-        move_all_files(self.train_dir, self.train_dir_archive)
+        move_oldest_files(self.train_dir, self.train_dir_archive, TrainConfig.training_keep_files)
         move_all_files(self.val_dir, self.val_dir_archive)
 
     def _remove_files_in_weight_dir(self):
@@ -143,12 +150,13 @@ class FileIO:
         :param device_name: The currently active device name (context_device-id)
         :return:
         """
-        export_dir, time_stamp = self.create_export_dir(device_name)
-        os.rename(os.path.join(self.binary_data_output,"torch"),os.path.join(export_dir,"torch"))
+        data_folders = [os.path.join(self.binary_data_output,x) for x in os.listdir(self.binary_data_output) if os.path.isdir(os.path.join(self.binary_data_output,x))]
+        for folder in data_folders:
+            export_dir, time_stamp = self.create_export_dir(device_name,os.path.basename(folder))
+            os.rename(os.path.join(folder,"torch"),os.path.join(export_dir,"torch"))
+            os.rename(os.path.join(folder, "games.pgn"), os.path.join(export_dir, "games.pgn"))
 
-        self.move_game_data_to_export_dir(export_dir, device_name)
-
-    def create_export_dir(self, device_name: str) -> Tuple[str, str]:
+    def create_export_dir(self, device_name: str, idx) -> Tuple[str, str]:
         """
         Create a directory in the 'export_dir_gen_data' path,
         where the name consists of the current date, time and device ID.
@@ -157,7 +165,7 @@ class FileIO:
         """
         # include current timestamp in dataset export file
         time_stamp = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H-%M-%S")
-        time_stamp_dir = os.path.join(self.export_dir_gen_data,f'{time_stamp}-{device_name}/')
+        time_stamp_dir = os.path.join(self.export_dir_gen_data,f'{time_stamp}-{idx}-{device_name}/')
         # create a directory of the current time_stamp
         if not os.path.exists(time_stamp_dir):
             os.makedirs(time_stamp_dir)
@@ -179,18 +187,6 @@ class FileIO:
         :return:
         """
         return len([x for x in os.listdir(self.export_dir_gen_data) if os.path.isdir(os.path.join(self.export_dir_gen_data,x))])
-
-    def move_game_data_to_export_dir(self, export_dir: str, device_name: str):
-        """
-        Moves the generated games saved in .pgn format and the number how many games have been generated
-        to the given export directory.
-        :param export_dir: Export directory for the newly generated data
-        :param device_name: The currently active device name (context_device-id)
-        """
-        file_names = ["games.pgn",
-                      "gameIdx.txt"]
-        for file_name in file_names:
-            os.rename(os.path.join(self.binary_data_output, file_name), os.path.join(export_dir, file_name))
 
     def move_training_logs(self, nn_update_index):
         """

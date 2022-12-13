@@ -87,6 +87,27 @@ void TrainDataExporter::save_side_to_move(Onturn col)
 	gameValue.push_back(-(col * 2 - 1)); // Save 1 for red and -1 for blue initially. Multiply with -1 in the end if blue wins.
 }
 
+TrainDataExporter TrainDataExporter::merged_from_many(vector<unique_ptr<TrainDataExporter>> & exporters, const string& file_name_export){
+	TrainDataExporter out(file_name_export);
+	for (vector<unique_ptr<TrainDataExporter>>::iterator exp=exporters.begin();exp!=exporters.end();++exp){
+		TrainDataExporter * exporter = exp->get();
+		for_each(exporter->gameStartPtr.begin(), exporter->gameStartPtr.end(), [out](int &n){ n+=out.node_features.size(); });
+		out.gameStartPtr.insert(out.gameStartPtr.end(),make_move_iterator(exporter->gameStartPtr.begin()),make_move_iterator(exporter->gameStartPtr.end()));
+		out.node_features.insert(out.node_features.end(),make_move_iterator(exporter->node_features.begin()),make_move_iterator(exporter->node_features.end()));
+		out.edge_indices.insert(out.edge_indices.end(),make_move_iterator(exporter->edge_indices.begin()),make_move_iterator(exporter->edge_indices.end()));
+		out.gamePolicy.insert(out.gamePolicy.end(),make_move_iterator(exporter->gamePolicy.begin()),make_move_iterator(exporter->gamePolicy.end()));
+		out.gameValue.insert(out.gameValue.end(),make_move_iterator(exporter->gameValue.begin()),make_move_iterator(exporter->gameValue.end()));
+		out.gameBestMoveQ.insert(out.gameBestMoveQ.end(),make_move_iterator(exporter->gameBestMoveQ.begin()),make_move_iterator(exporter->gameBestMoveQ.end()));
+		out.gamePlysToEnd.insert(out.gamePlysToEnd.end(),make_move_iterator(exporter->gamePlysToEnd.begin()),make_move_iterator(exporter->gamePlysToEnd.end()));
+
+#ifdef DO_DEBUG
+		out.board_indices.insert(out.board_indices.end(),make_move_iterator(exporter->board_indices.begin()),make_move_iterator(exporter->board_indices.end()));
+		out.moves.insert(out.moves.end(),make_move_iterator(exporter->moves.begin()),make_move_iterator(exporter->moves.end()));
+#endif
+	}
+	return out;
+}
+
 TrainDataExporter TrainDataExporter::merged_from_many(vector<vector<unique_ptr<TrainDataExporter>>> & exporters, const string& file_name_export){
 	TrainDataExporter out(file_name_export);
 	for (vector<vector<unique_ptr<TrainDataExporter>>>::iterator portvec=exporters.begin();portvec!=exporters.end();++portvec ){
