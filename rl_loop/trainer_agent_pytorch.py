@@ -88,72 +88,73 @@ class TrainerAgentPytorch:
         self._setup_variables()
         self._model.train()  # set training mode
 
-        # reshuffle the ordering of the training game batches (shuffle works in place)
-        random.shuffle(self.ordering)
-        if self.use_rtpt:
-            # we use k-steps instead of epochs here
-            self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='hexara',
-                             max_iterations=len(self.ordering))
-            self.rtpt.start()
-
-        self.epoch += 1
-        logging.info("EPOCH %d", self.epoch)
-        logging.info("=========================")
-        self.t_s_steps = time()
-
-        for part_id in tqdm(self.ordering):
-            train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+        for i in range(self.tc.nb_training_epochs):
+            # reshuffle the ordering of the training game batches (shuffle works in place)
+            random.shuffle(self.ordering)
             if self.use_rtpt:
-                # update process title according to loss
-                self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
+                # we use k-steps instead of epochs here
+                self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='hexara',
+                                 max_iterations=len(self.ordering))
+                self.rtpt.start()
 
-            for _, batch in enumerate(train_loader):
-                data = self.train_update(batch)
+            self.epoch += 1
+            logging.info("EPOCH %d", self.epoch)
+            logging.info("=========================")
+            self.t_s_steps = time()
 
-                # add the graph representation of the network to the tensorboard log file
-                # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
-                #     self.sum_writer.add_graph(self._model, data)
-                #     self.graph_exported = True
+            for part_id in tqdm(self.ordering):
+                train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+                if self.use_rtpt:
+                    # update process title according to loss
+                    self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
 
-        train_metric_values, val_metric_values = self.evaluate(train_loader)
-        # update the val_loss_value to compare with using spike recovery
-        self.old_val_loss = val_metric_values["loss"]
-        logs = {}
-        # log the metric values to wandb
-        self._log_metrics(train_metric_values, log_dict=logs, prefix="train_")
-        self._log_metrics(val_metric_values, log_dict=logs, prefix="val_")
+                for _, batch in enumerate(train_loader):
+                    data = self.train_update(batch)
 
-        # check if a new checkpoint shall be created
-        if self.val_loss_best is None or val_metric_values["loss"] < self.val_loss_best:
-            # update val_loss_best
-            self.val_loss_best = val_metric_values["loss"]
-            self.val_p_acc_best = val_metric_values["policy_acc"]
-            self.val_metric_values_best = val_metric_values
+                    # add the graph representation of the network to the tensorboard log file
+                    # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
+                    #     self.sum_writer.add_graph(self._model, data)
+                    #     self.graph_exported = True
 
-            if self.tc.export_weights:
-                model_prefix = "model-%.5f-%.3f-%04d"\
-                               % (self.val_loss_best, self.val_p_acc_best, wandb.run.step)
-                filepath = Path(self.tc.export_dir + f"weights/{model_prefix}.pt")
-                # the export function saves both the architecture and the weights
-                save_torch_state(self._model, self.optimizer, filepath)
-                print()
-                logging.info("Saved checkpoint to %s", filepath)
+            train_metric_values, val_metric_values = self.evaluate(train_loader)
+            # update the val_loss_value to compare with using spike recovery
+            self.old_val_loss = val_metric_values["loss"]
+            logs = {}
+            # log the metric values to wandb
+            self._log_metrics(train_metric_values, log_dict=logs, prefix="train_")
+            self._log_metrics(val_metric_values, log_dict=logs, prefix="val_")
 
-        # print the elapsed time
-        self.t_delta = time() - self.t_s_steps
-        print(" - %.ds" % self.t_delta)
-        self.t_s_steps = time()
+            # check if a new checkpoint shall be created
+            if self.val_loss_best is None or val_metric_values["loss"] < self.val_loss_best:
+                # update val_loss_best
+                self.val_loss_best = val_metric_values["loss"]
+                self.val_p_acc_best = val_metric_values["policy_acc"]
+                self.val_metric_values_best = val_metric_values
 
-        logs["lr"] = TrainConfig.lr
-        wandb.log(logs);
+                if self.tc.export_weights:
+                    model_prefix = "model-%.5f-%.3f-%04d"\
+                                   % (self.val_loss_best, self.val_p_acc_best, wandb.run.step)
+                    filepath = Path(self.tc.export_dir + f"weights/{model_prefix}.pt")
+                    # the export function saves both the architecture and the weights
+                    save_torch_state(self._model, self.optimizer, filepath)
+                    print()
+                    logging.info("Saved checkpoint to %s", filepath)
 
-        logging.info("Training done")
-        # finally stop training because the number of lr drops has been achieved
-        print()
-        print(
-            "Elapsed time for training(hh:mm:ss): "
-            + str(datetime.timedelta(seconds=round(time() - self.t_s)))
-        )
+            # print the elapsed time
+            self.t_delta = time() - self.t_s_steps
+            print(" - %.ds" % self.t_delta)
+            self.t_s_steps = time()
+
+            logs["lr"] = TrainConfig.lr
+            wandb.log(logs);
+
+            logging.info("Training done")
+            # finally stop training because the number of lr drops has been achieved
+            print()
+            print(
+                "Elapsed time for training(hh:mm:ss): "
+                + str(datetime.timedelta(seconds=round(time() - self.t_s)))
+            )
 
         # make sure to empty cache
         if torch.cuda.is_available():

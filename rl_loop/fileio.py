@@ -82,6 +82,7 @@ class FileIO:
         create_dir(self.model_dir_archive)
         create_dir(self.model_dir)
         create_dir(self.logs_dir_archive)
+        create_dir(self.arena_pgns_dir)
 
     def _include_data_from_replay_memory(self, nb_files: int, fraction_for_selection: float):
         """

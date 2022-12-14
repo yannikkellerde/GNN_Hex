@@ -62,7 +62,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.002 # lr is so high, because of low policy loss factor
+    lr: float = 0.0005 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
@@ -77,7 +77,7 @@ class TrainConfig:
     normalize: bool = True  # define whether to normalize input data to [01]
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 1
+    nb_training_epochs: int = 60
 
     training_keep_files: int = 30
 

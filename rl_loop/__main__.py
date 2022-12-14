@@ -29,6 +29,7 @@ from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network
 import torch, wandb
 
+
 class RLLoop:
     """
     This class uses the C++ binary to generate games and updates the network from the newly acquired games
@@ -43,6 +44,7 @@ class RLLoop:
         if the updated NN weights are stronger than the old one and by how much.
         be written to the new model filenames to track how many iterations the model has trained in total)
         """
+        self.arena_start = False # Set to true to continue a run that failed at arena stage
         self.args = args
         self.tc = TrainConfig()
         wandb.init(resume=True,project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
@@ -116,18 +118,20 @@ class RLLoop:
         :param number_files_to_update: Number of newly generated files needed to trigger a new NN update
         :return: True, if enough training data was availble and a training run has been executed.
         """
-        print("generated:",self.file_io.get_number_generated_files(),"\nrequired:",number_files_to_update)
-        if self.file_io.get_number_generated_files() >= number_files_to_update:
-            self.binary_io.stop_process()
-            self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
-            # start training using a process to ensure memory clearing afterwards
-            self.tc.device_id = self.args.device_id
-            logging.info("Start Training")
-            update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
+        print("generated:",self.file_io.get_number_generated_files(),"\nrequired:",number_files_to_update, "\nArena start:",self.arena_start)
+        if self.file_io.get_number_generated_files() >= number_files_to_update or self.arena_start:
+            if not self.arena_start:
+                self.binary_io.stop_process()
+                self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
+                # start training using a process to ensure memory clearing afterwards
+                self.tc.device_id = self.args.device_id
+                logging.info("Start Training")
+                update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
 
-            self.file_io.move_training_logs(self.nn_update_index)
+                self.file_io.move_training_logs(self.nn_update_index)
 
-            self.nn_update_index += 1
+                self.nn_update_index += 1
+            self.arena_start = False
 
             self.initialize()
             logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')

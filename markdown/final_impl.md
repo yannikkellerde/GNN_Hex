@@ -1,4 +1,4 @@
-# Maybe final big implementation part
+# Implementation: multithreaded and with large batch sizes
 ## Before:
 1 cpu thread, only one game at once, batch size 8 to prevent exploding virtual loss  
 Experiment: 100 Nodes per MCTS, Hex size 5
@@ -60,3 +60,15 @@ Experiment: 100 Nodes per MCTS, Hex size 5
 	- It is surprising that nn prediction takes so few time. I guess large batch sizes are processed very efficiently.
 	- I could try to save some make-move time by caching the graphs at each node. However, with 10\*64 MCTS running in parallel, that might be too much on the ram.
 + Is 1 game every 3 seconds fast enough to get enough training data? I am not sure...
+	- If not, I am kind of out of ideas here...
++ I just did some experiments on 7x7, using 800 nodes. I did iterations in batches of 4000 games which take around 40 minutes to compute. Then I found that it can be useful to do really heavy training on the generated games (e.g. 60 epochs) which then results in a model that clearly beats the previous competitor model. Maybe this approach can also work for 11x11 and learn a reasonable model after a few days.
+
+# Other impl. stuff
++ I tried naively switching mean aggr to sum aggr in GraphSage (torch\_geometric allows this). However this resulted in unstable training.
+	- Need to investigate more / try other graph architecture that works better with sum aggregation.
++ (https://github.com/QueensGambit/CrazyAra/issues/189#issuecomment-1346154751)[https://github.com/QueensGambit/CrazyAra/issues/189#issuecomment-1346154751] -> maybe bootstrapping from CrazyAra wasn't that great of an idea after all. Anyway, I am more aggressively replacing things I don't understand now.
+
+# Misc
++ **I think this is the time where I need compute.**
++ I'm on vacation from 28th of December till 4th of January
++ Maybe mid-thesis presentation in the week starting January 9th?

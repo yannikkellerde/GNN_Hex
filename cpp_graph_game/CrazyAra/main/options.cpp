@@ -87,7 +87,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Model_Path_Contender"]          << Option(string("/home/kappablanca/github_repos/Gabor_Graph_Networks/data/RL/model/HexAra/graph_sage_model.pt").c_str());
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
-    o["Nodes"]                         << Option(100, 0, 99999999);
+    o["Nodes"]                         << Option(800, 0, 99999999);
     o["Nodes_Limit"]                   << Option(0, 0, 999999999);
     o["Precision"]                     << Option("float32", {"float32", "int8"});
 #ifdef USE_RL
