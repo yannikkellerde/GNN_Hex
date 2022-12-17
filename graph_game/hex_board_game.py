@@ -342,7 +342,7 @@ class Hex_board(Abstract_board_game):
         return vprop
 
 
-def build_hex_grid(colors,labels=None,fig=None):
+def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True):
     if labels is not None:
         labels = [[str(x)[:6] for x in y] for y in labels]
     if fig is not None:
@@ -355,13 +355,13 @@ def build_hex_grid(colors,labels=None,fig=None):
     xend = xstart+1.5*(size-1)
     yend = ystart+np.sqrt(3/4)*(size-1)
     ax.set_aspect('equal')
-    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="r",alpha=0.7)
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="b" if border_swap else "r",alpha=0.7)
     ax.add_patch(tri)
-    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="b",alpha=0.7)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="r" if border_swap else "b",alpha=0.7)
     ax.add_patch(tri)
-    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="r",alpha=0.7)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="b" if border_swap else "r",alpha=0.7)
     ax.add_patch(tri)
-    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="b",alpha=0.7)
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="r" if border_swap else "b",alpha=0.7)
     ax.add_patch(tri)
     for i,cylist in enumerate(colors):
         for j,color in enumerate(cylist):
@@ -373,7 +373,8 @@ def build_hex_grid(colors,labels=None,fig=None):
     plt.autoscale(enable=True)
     plt.axis("off")
     plt.tight_layout()
-    plt.pause(0.001)
+    if do_pause:
+        plt.pause(0.001)
     return fig
 
 if __name__=="__main__":

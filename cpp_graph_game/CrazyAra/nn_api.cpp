@@ -25,6 +25,9 @@ vector<at::Tensor> NN_api::predict(vector<torch::Tensor> inputs){
 
 
 void NN_api::predict_stored(){
+	if (node_features.size()==0){
+		return; // nothing to do
+	}
 	speedcheck.track_next("collate");
 	std::vector<torch::jit::IValue> inputs;
 	statlogger.log_mean_statistic("avg batch size",node_features.size());

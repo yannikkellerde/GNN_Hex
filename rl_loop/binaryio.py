@@ -35,6 +35,9 @@ class BinaryIO:
         self.proc.stdin.write(b"starting_eval\n")
         self.proc.stdin.flush()
         self.read_output(b"readyok\n", check_error=True)
+        self.proc.stdin.write(b"swapmap\n")
+        self.proc.stdin.flush()
+        self.read_output(b"readyok\n", check_error=True)
 
 
     def compare_new_weights(self, nb_arena_games: int, threads:int) -> Tuple[bool,float]:

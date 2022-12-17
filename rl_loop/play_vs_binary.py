@@ -38,7 +38,10 @@ def read_output(proc, last_line=b"readyok\n", check_error=True):
                 print(str(line))
 
 def play_vs_binary(binary_path, model_path):
-    global hex_size
+    global hex_size,border_swap,prev_red_squares,prev_blue_squares
+    border_swap = False
+    prev_blue_squares = []
+    prev_red_squares = []
     def onclick(event):
         plt.title("")
         if not hasattr(event,"xdata") or event.xdata is None:
@@ -52,8 +55,11 @@ def play_vs_binary(binary_path, model_path):
         read_and_draw()
 
     def onpress(event):
-        global hex_size
+        global hex_size,border_swap,prev_blue_squares,prev_red_squares
         if event.key == "r":
+            prev_blue_squares = []
+            prev_red_squares = []
+            border_swap = False
             proc.stdin.write(b"reset\n")
             proc.stdin.flush()
             read_and_draw()
@@ -63,12 +69,18 @@ def play_vs_binary(binary_path, model_path):
             proc.stdin.flush()
             read_and_draw()
         elif event.key == "+":
+            border_swap = False
+            prev_blue_squares = []
+            prev_red_squares = []
             hex_size+=1
             set_coords()
             proc.stdin.write(f"reset {hex_size}\n".encode())
             proc.stdin.flush()
             read_and_draw()
         elif event.key == "-":
+            border_swap = False
+            prev_blue_squares = []
+            prev_red_squares = []
             hex_size-=1
             set_coords()
             proc.stdin.write(f"reset {hex_size}\n".encode())
@@ -98,10 +110,15 @@ def play_vs_binary(binary_path, model_path):
 
 
     def read_and_draw():
+        global prev_red_squares,prev_blue_squares,border_swap
         info = read_output(proc,b"readyok\n", check_error=True)
         board = Hex_board()
         board.size = hex_size
         board.position = ["f"]*(hex_size*hex_size)
+        if (info["board_moves_blue:"] == prev_red_squares and prev_red_squares) or (info["board_moves_red:"] == prev_blue_squares and prev_blue_squares):
+            border_swap = not border_swap
+        prev_red_squares = info["board_moves_red:"]
+        prev_blue_squares = info["board_moves_blue:"]
         for move in info["board_moves_blue:"]:
             board.position[int(move)] = "b"
         for move in info["board_moves_red:"]:
@@ -123,7 +140,7 @@ def play_vs_binary(binary_path, model_path):
         labels = np.array(policy).reshape((board.size,board.size))
         fig.clear()
         fig.add_subplot()
-        build_hex_grid(colors,labels,fig=fig)
+        build_hex_grid(colors,labels,fig=fig,border_swap=border_swap)
     def set_coords():
         global coords
         xstart = -(hex_size//2)*1.5
@@ -136,7 +153,7 @@ def play_vs_binary(binary_path, model_path):
     just_prints =  ["Value:","Dead_move","Engine_move:","Response:","Winner:"]
     plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
-    hex_size = 5
+    hex_size = 7
     set_coords()
     fig = plt.gcf()
     proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)

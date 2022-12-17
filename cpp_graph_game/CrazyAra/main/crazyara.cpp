@@ -102,8 +102,13 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 			cout << engine_info()
 				<< "uciok" << endl;
 		}
+		else if (token == "swapmap"){
+			gen_swap_map(Options["Hex_Size"],netSingle.get());
+			cout << "readyok" << endl;
+		}
+
 		else if (token == "starting_eval"){
-			starting_eval_img(Options["Hex_Size"],netSingle.get());
+			gen_starting_eval_file(Options["Hex_Size"],netSingle.get());
 			cout << "readyok" << endl;
 		}
 		else if (token == "speedsummary") speedcheck.summarize(cout);

@@ -14,7 +14,9 @@
 
 int repeatable_random_choice(std::vector<int>& vec);
 
-void starting_eval_img(int hex_size, NN_api* net);
+void gen_swap_map(int hex_size, NN_api* net);
+
+void gen_starting_eval_file(int hex_size, NN_api* net);
 
 std::vector<torch::jit::IValue> collate_batch(std::vector<torch::Tensor> & node_features, std::vector<torch::Tensor> & edge_index);
 

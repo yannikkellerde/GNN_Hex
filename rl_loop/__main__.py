@@ -27,6 +27,7 @@ from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig
 from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network
+from rl_loop.plotting import show_eval_from_file
 import torch, wandb
 
 
@@ -47,7 +48,6 @@ class RLLoop:
         self.arena_start = False # Set to true to continue a run that failed at arena stage
         self.args = args
         self.tc = TrainConfig()
-        wandb.init(resume=True,project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         self.rl_config = rl_config
 
@@ -60,11 +60,12 @@ class RLLoop:
         self.lr_reduction = lr_reduction
         self.device_name = f'{args.context}_{args.device_id}'
         self.model_name = ""  # will be set in initialize()
-        self.did_contender_win = False
+        self.did_contender_win = True
 
         # change working directory (otherwise binary would generate .zip files at .py location)
         os.chdir(self.file_io.binary_dir)
         self.tc.cwd = self.file_io.binary_dir
+        wandb.init(resume=True,project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         # The original binary name in TrainConfig will always stay the same & be a substring of the updated name
         self.current_binary_name = get_current_binary_name(self.file_io.binary_dir, self.rl_config.binary_name)
@@ -152,12 +153,12 @@ class RLLoop:
             self.initialize()
             logs = dict(winrate=winrate);
             if self.did_contender_win:
+                plt.cla()
                 self.binary_io.generate_starting_eval_img()
-                im = img.imread("starting_eval.png")
-                plt.imshow(im)
-                plt.axis("off")
-                fig = plt.gcf()
-                logs["starting_eval"] = fig
+                fig = show_eval_from_file("starting_eval.txt",colored="top3")
+                logs["starting_policy"] = wandb.Image(fig)
+                fig = show_eval_from_file("swap_map.txt",colored=".5")
+                logs["swapmap"] = wandb.Image(fig)
             wandb.log(logs)
 
 
