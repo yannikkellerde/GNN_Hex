@@ -70,7 +70,7 @@ class TrainConfig:
 
     # name initials which are used to identify running training processes with rtpt
     # prefix for the process name in order to identify the process on a server
-    name_initials: str = "HexAra"
+    name_initials: str = "YK"
 
     nb_parts: int = None
 

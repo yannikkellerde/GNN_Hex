@@ -342,7 +342,7 @@ class Hex_board(Abstract_board_game):
         return vprop
 
 
-def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True):
+def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,fontsize=14):
     if labels is not None:
         labels = [[str(x)[:6] for x in y] for y in labels]
     if fig is not None:
@@ -368,7 +368,7 @@ def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True):
             coords = [xstart+0.5*j+i,ystart+np.sqrt(3/4)*j]
             hexagon = RegularPolygon((coords[0], coords[1]), numVertices=6, radius=np.sqrt(1/3), alpha=1, edgecolor='k', facecolor=color,linewidth=2)
             if labels is not None:
-                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=32-2*size)
+                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=14)
             ax.add_patch(hexagon)
     plt.autoscale(enable=True)
     plt.axis("off")

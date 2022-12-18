@@ -31,6 +31,7 @@ saved_models/
 compile_commands.json
 .cache/
 .ipynb_checkpoints/
+docker/HexAra
 
 gctest.py
 *.pyc

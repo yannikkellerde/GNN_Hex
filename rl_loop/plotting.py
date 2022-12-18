@@ -3,7 +3,7 @@ from graph_game.hex_board_game import build_hex_grid
 import numpy as np
 import sys
 
-def show_eval_from_file(fname:str,colored=".5"):
+def show_eval_from_file(fname:str,colored=".5",fontsize=8):
     with open(fname,"r") as f:
         evals = [float(x) for x in f.readline().split(" ") if len(x)>0]
     if colored == "sign":
@@ -35,7 +35,7 @@ def show_eval_from_file(fname:str,colored=".5"):
     fig = plt.gcf()
     fig.clear()
     fig.add_subplot()
-    return build_hex_grid(colors,labels,fig=fig,do_pause=False)
+    return build_hex_grid(colors,labels,fig=fig,do_pause=False,fontsize=fontsize)
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

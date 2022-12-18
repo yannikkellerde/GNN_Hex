@@ -93,7 +93,7 @@ class TrainerAgentPytorch:
             random.shuffle(self.ordering)
             if self.use_rtpt:
                 # we use k-steps instead of epochs here
-                self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='hexara',
+                self.rtpt = RTPT(name_initials=self.tc.name_initials, experiment_name='HexAra',
                                  max_iterations=len(self.ordering))
                 self.rtpt.start()
 

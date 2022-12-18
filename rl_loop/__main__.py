@@ -155,9 +155,9 @@ class RLLoop:
             if self.did_contender_win:
                 plt.cla()
                 self.binary_io.generate_starting_eval_img()
-                fig = show_eval_from_file("starting_eval.txt",colored="top3")
+                fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=7)
                 logs["starting_policy"] = wandb.Image(fig)
-                fig = show_eval_from_file("swap_map.txt",colored=".5")
+                fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=7)
                 logs["swapmap"] = wandb.Image(fig)
             wandb.log(logs)
 

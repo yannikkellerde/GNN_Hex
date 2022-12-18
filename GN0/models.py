@@ -21,7 +21,6 @@ from torch.nn import Linear,ModuleList
 import copy
 from math import sqrt
 from argparse import Namespace
-from GN0.util.util import log_softmax
 from torch_geometric.nn.resolver import (
     activation_resolver,
     normalization_resolver,

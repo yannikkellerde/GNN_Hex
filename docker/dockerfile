@@ -15,10 +15,11 @@ RUN python3.8 -m pip install matplotlib numpy scipy tqdm wandb rich blessings pl
 RUN python3.8 -m pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
 RUN python3.8 -m pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.11.0+cu113.html
 COPY .ssh/ ./.ssh/
+RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN git clone git@github.com:yannikkellerde/Gabor_Graph_Networks.git
 WORKDIR /root/Gabor_Graph_Networks/
 RUN mkdir data && mkdir data/RL && mkdir data/RL/models && mkdir data/RL/models/HexAra
-COPY cpp_graph_game/build/HexAra /root/Gabor_Graph_Networks/data/RL/HexAra
+COPY HexAra /root/Gabor_Graph_Networks/data/RL/HexAra
 RUN python3.8 -m pip install -e .
 WORKDIR /root/
 COPY .secrets/api_key .
