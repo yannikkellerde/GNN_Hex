@@ -1,26 +1,57 @@
-FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+#FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
 RUN apt-get update
 
 ENV TORCH_CUDA_ARCH_LIST=Volta;Turing
-RUN apt-get install -y git build-essential curl wget python3.8 python3-setuptools python3.8-dev
-WORKDIR /root
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python3.8 get-pip.py
-RUN echo "deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main" >> /etc/apt/sources.list
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-key 612DEFB798507F25
-RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
-RUN apt-get install -y pkg-config libcairo2-dev libjpeg-dev libgif-dev
-RUN python3.8 -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly
-RUN python3.8 -m pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
-RUN python3.8 -m pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.11.0+cu113.html
+RUN apt-get install -y git build-essential curl wget unzip cmake libblas-dev liblapack-dev vim
+WORKDIR /root
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+RUN bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
+ENV PATH="${PATH}:/root/miniconda3/bin"
+RUN conda create -n HexAra -y python=3.9
+RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython
+RUN conda install -n HexAra pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+RUN conda install -n HexAra pyg -c pyg
 COPY .ssh/ ./.ssh/
 RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN git clone git@github.com:yannikkellerde/Gabor_Graph_Networks.git
 WORKDIR /root/Gabor_Graph_Networks/
-RUN mkdir data && mkdir data/RL && mkdir data/RL/models && mkdir data/RL/models/HexAra
-COPY HexAra /root/Gabor_Graph_Networks/data/RL/HexAra
-RUN python3.8 -m pip install -e .
+RUN conda run -n HexAra python -m pip install -e .
+RUN mkdir data && mkdir data/RL && mkdir data/RL/models && mkdir data/RL/model/HexAra
+WORKDIR /root/Gabor_Graph_Networks/data/RL
 WORKDIR /root/
 COPY .secrets/api_key .
-RUN wandb login $(cat api_key)
+RUN /root/miniconda3/envs/HexAra/bin/wandb login $(cat api_key)
+
+WORKDIR /usr/local/include
+RUN wget https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-1.13.1%2Bcu117.zip
+RUN unzip libtorch-cxx11-abi-shared-with-deps-1.13.1+cu117.zip
+WORKDIR /root
+RUN mkdir dependency_repos
+WORKDIR /root/dependency_repos
+RUN git clone git@github.com:rusty1s/pytorch_scatter.git
+RUN git clone https://bitbucket.org/blaze-lib/blaze.git
+RUN git clone git@github.com:rusty1s/pytorch_sparse.git --recursive
+
+WORKDIR /root/dependency_repos/pytorch_scatter
+RUN mkdir build
+WORKDIR /root/dependency_repos/pytorch_scatter/build
+RUN cmake -DCMAKE_PREFIX_PATH="/usr/local/include/libtorch" -DWITH_CUDA=on ..
+RUN make -j8 && make install
+WORKDIR /root/dependency_repos/pytorch_sparse
+RUN mkdir build
+WORKDIR /root/dependency_repos/pytorch_sparse/build
+RUN cmake -DCMAKE_PREFIX_PATH="/usr/local/include/libtorch" -DWITH_CUDA=on ..
+RUN make -j8 && make install
+
+WORKDIR /root/depedency_repos/blaze
+RUN mkdir build
+WORKDIR /root/dependency_repos/blaze/build
+RUN cmake -DCMAKE_INSTALL_PREFIX=/usr/local/ ..
+RUN make install
+
+WORKDIR /root/GaborGraphNetworks/cpp_graph_game
+RUN mkdir /root/GaborGraphNetworks/cpp_graph_game/build
+WORKDIR /root/GaborGraphNetworks/cpp_graph_game/build
+RUN cmake -DCMAKE_PREFIX_PATH=/usr/local/include/libtorch -DCMAKE_EXPORT_COMPILE_COMMANDS=true -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="../../data/RL/" -DSINGLE_GRAPH=off .. && make -j8

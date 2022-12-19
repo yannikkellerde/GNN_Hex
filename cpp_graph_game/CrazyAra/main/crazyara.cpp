@@ -23,6 +23,8 @@
  * @author: queensgambit
  */
 
+#include <torchscatter/scatter.h>
+#include <torchsparse/sparse.h>
 #include "options.h"
 #include "crazyara.h"
 #include "playmode.h"
