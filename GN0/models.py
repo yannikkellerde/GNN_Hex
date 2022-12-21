@@ -4,6 +4,7 @@ from typing import Optional, List, Tuple, Dict, Type, Union, Callable, Any
 import torch.nn.functional as F
 from torch_geometric.nn.models import GraphSAGE
 from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn.norm import LayerNorm
 from torch_geometric.nn import MessagePassing
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import add_self_loops, degree
@@ -207,13 +208,20 @@ class ModifiedGraphSAGE(torch.nn.Module):
         x: Tensor,
         edge_index: Tensor,
     ) -> Tensor:
-        for i,conv in enumerate(self.convs):
-            x = conv(x, edge_index)
-            if i != self.num_layers - 1:
-                if self.norms is not None:
-                    x = self.norms[i](x)
-                if self.act is not None:
-                    x = self.act(x)
+        # This is obviously terribly redundant terrible code. But it is jit tracable.
+        if self.norms is None:
+            for i,conv in enumerate(self.convs):
+                x = conv(x, edge_index)
+                if i != self.num_layers - 1:
+                    if self.act is not None:
+                        x = self.act(x)
+        else:
+            for i,(norm,conv) in enumerate(zip(self.norms,self.convs)):
+                x = conv(x, edge_index)
+                if i != self.num_layers - 1:
+                    x = norm(x)
+                    if self.act is not None:
+                        x = self.act(x)
 
         return x
 
@@ -731,12 +739,12 @@ class GCN_with_glob(torch.nn.Module):
 class PV_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
         super().__init__()
-        self.gnn = ModifiedGraphSAGE(in_channels=in_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
+        self.gnn = ModifiedGraphSAGE(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,**gnn_kwargs)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers)
-        self.my_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
+        self.my_modules["value_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedGraphSAGE(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1)
 
         self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
         self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)

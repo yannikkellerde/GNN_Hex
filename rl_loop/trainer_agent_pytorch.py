@@ -58,7 +58,7 @@ class TrainerAgentPytorch:
         self._ctx = get_context(train_config.context, train_config.device_id)
 
         # define a summary writer that logs data and flushes to the file every 5 seconds
-        self.policy_loss = SoftCrossEntropyLoss()
+        self.policy_loss = CE_plus_mse_loss()  # In crazyara: SoftCrossEntropyLoss. In AlphaZero: CrossEntropy + MSE
         self.value_loss = nn.MSELoss()
 
         # Define the optimizer
@@ -202,9 +202,9 @@ class TrainerAgentPytorch:
         assert not torch.isnan(value_out).any()
         assert not torch.isnan(batch.y).any()
         assert not torch.isnan(batch.policy).any()
-        for start,fin in zip(bp[:-1],bp[1:]):
-            assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
-            assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
+        # for start,fin in zip(bp[:-1],bp[1:]):
+        #     assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
+        #     assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
         # policy_out = policy_out.softmax(dim=1)
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
         policy_loss = self.policy_loss(policy_out, batch.policy)
@@ -261,6 +261,14 @@ def create_optimizer(model: nn.Module, train_config: TrainConfig):
         return torch.optim.Adam(model.parameters(), lr=train_config.lr, weight_decay=train_config.wd)
     raise Exception(f"Selected optimizer {train_config.optimizer_name} is not supported.")
 
+class CE_plus_mse_loss(_Loss):
+    # From the alpha zero paper
+    def __init__(self, size_average=None, reduce=None, reduction: str = 'mean') -> None:
+        super(CE_plus_mse_loss, self).__init__(size_average, reduce, reduction)
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        # The input is already log softmax
+        return torch.sum(-target * input) + (torch.exp(input)-target)**2
 
 class SoftCrossEntropyLoss(_Loss):
     """
