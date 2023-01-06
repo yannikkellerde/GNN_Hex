@@ -182,6 +182,9 @@ class FileIO:
                 return os.path.join(self.model_dir,fname)
         raise FileNotFoundError("Model weights file not found")
 
+    def get_total_available_training_files(self) -> int:
+        return len([x for x in os.listdir(self.export_dir_gen_data) if os.path.isdir(os.path.join(self.export_dir_gen_data,x))])+len([x for x in os.listdir(self.train_dir) if os.path.isdir(os.path.join(self.train_dir,x))])
+
     def get_number_generated_files(self) -> int:
         """
         Returns the amount of file that have been generated since the last training run.
@@ -208,11 +211,14 @@ class FileIO:
         :param did_contender_win: Defines if the last contender won vs the generator
         """
         if did_contender_win:
-            self._move_train_val_data_into_archive()
+            move_oldest_files(self.train_dir, self.train_dir_archive, TrainConfig.training_keep_files)
+            if len(os.listdir(self.export_dir_gen_data)) > 0:
+                move_all_files(self.val_dir, self.val_dir_archive)
         # move last contender into archive
         move_all_files(self.model_contender_dir, self.model_dir_archive)
 
-        self._move_generated_data_to_train_val()
+        if len(os.listdir(self.export_dir_gen_data)) > 0:
+            self._move_generated_data_to_train_val()
         # We don’t need them anymore; the last model from last training has already been saved
         self._remove_files_in_weight_dir()
         self._include_data_from_replay_memory(rm_nb_files, rm_fraction_for_selection)

@@ -119,8 +119,8 @@ class RLLoop:
         :param number_files_to_update: Number of newly generated files needed to trigger a new NN update
         :return: True, if enough training data was availble and a training run has been executed.
         """
-        print("generated:",self.file_io.get_number_generated_files(),"\nrequired:",number_files_to_update, "\nArena start:",self.arena_start)
-        if self.file_io.get_number_generated_files() >= number_files_to_update or self.arena_start:
+        print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files,"\nrequired:",number_files_to_update)
+        if self.file_io.get_total_available_training_files() >= number_files_to_update or self.arena_start:
             if not self.arena_start:
                 self.binary_io.stop_process()
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
@@ -135,8 +135,13 @@ class RLLoop:
             self.arena_start = False
 
             self.initialize()
-            logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
-            self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
+            if self.rl_config.do_arena_eval:
+                logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
+                self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
+                logs = dict(winrate=winrate);
+            else:
+                logs = dict()
+                self.did_contender_win = True
             if self.did_contender_win is True:
                 logging.info("REPLACING current generator with contender")
                 self.file_io.replace_current_model_with_contender()
@@ -151,7 +156,6 @@ class RLLoop:
             self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
                                                           self.rtpt._get_title(), self.nn_update_index)
             self.initialize()
-            logs = dict(winrate=winrate);
             if self.did_contender_win:
                 plt.cla()
                 self.binary_io.generate_starting_eval_img()
@@ -242,20 +246,16 @@ def main():
         else:
             rl_loop.check_for_new_model()
 
-        # if rl_loop.nn_update_index >= rl_loop.last_nn_update_index:
-        #     logging.info(f'{rl_loop.rl_config.nb_nn_updates} NN updates reached, shutting down')
-        #     break
-
-        success, statistics = rl_loop.binary_io.generate_games(rl_config.nb_selfplay_games_per_thread)
-        if success:
-            rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
-            statistics["stats/Binary_failed"] = 0
-            wandb.log(statistics)
-        else:
-            wandb.log({"stats/Binary_failed":1})
-            print("BINARY Errored, doing restart")
-            rl_loop.binary_io.stop_process()
-            rl_loop.initialize()
+            success, statistics = rl_loop.binary_io.generate_games(rl_config.nb_selfplay_games_per_thread)
+            if success:
+                rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
+                statistics["stats/Binary_failed"] = 0
+                wandb.log(statistics)
+            else:
+                wandb.log({"stats/Binary_failed":1})
+                print("BINARY Errored, doing restart")
+                rl_loop.binary_io.stop_process()
+                rl_loop.initialize()
     wandb.finish()
 
 if __name__ == "__main__":
