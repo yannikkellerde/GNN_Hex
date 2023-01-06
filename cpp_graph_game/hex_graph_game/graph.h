@@ -25,6 +25,8 @@ class Graph{
 
 		Neighbors adjacent_vertices(int vertex) const;
 
+		std::vector<int> get_degree_histogram() const;
+
 		int num_neighbors(int vertex) const;
 
 		bool delete_edge(int v1, int v2);

@@ -4,6 +4,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set (CMAKE_CXX_STANDARD 17)
 
 add_definitions(-DDO_DEBUG)
+# add_definitions(-DLOG_DEGREE_HIST)
 
 option(WITH_CUDA 								 "Enable CUDA support" 		ON)
 option(USE_PROFILING             "Build with profiling"   OFF)

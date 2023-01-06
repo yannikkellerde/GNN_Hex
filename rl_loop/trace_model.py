@@ -1,10 +1,10 @@
 import torch
-from GN0.models import get_pre_defined
+from GN0.torch_script_models import PNA_torch_script,SAGE_torch_script
 import time
 import os
 
 if __name__ == "__main__":
-    model = get_pre_defined("HexAra")
+    model = SAGE_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
     traced = torch.jit.script(model)
     path = "data/RL/model/HexAra/graph_sage_model.pt"
     os.makedirs(os.path.dirname(path),exist_ok=True)

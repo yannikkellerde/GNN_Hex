@@ -220,6 +220,14 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 				(*exporters)[i]->save_sample(states[i].get(), evalInfos[i]);
 				++generatedSamples;
 				play_move_and_update(evalInfos[i], states[i].get(), pgns[i], gameResults[i], false);
+
+#ifdef LOG_DEGREE_HIST
+				vector<int> degree_stat = states[i]->graph.get_degree_histogram();
+				for (int i=0;i<degree_stat.size();++i){
+					statlogger.log_sum_statistic("degree_"+to_string(i),degree_stat[i]);
+				}
+#endif
+
 				if (gameResults[i]!=NOPLAYER){
 					statlogger.log_mean_statistic("red_wins",(gameResults[i]==RED));
 					statlogger.log_mean_statistic("first_player_winrate",((gameResults[i]==RED&&(pgns[i].starting_color=="Red"))||(gameResults[i]==BLUE&&(pgns[i].starting_color == "Blue"))));

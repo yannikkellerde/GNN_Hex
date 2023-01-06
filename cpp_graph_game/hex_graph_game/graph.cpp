@@ -53,6 +53,21 @@ int Graph::num_neighbors(int vertex) const{
 
 }
 
+vector<int> Graph::get_degree_histogram() const{
+	int max_degree = 0;
+	for (int i=0;i<edge_starts.size()-1;++i){
+		if (edge_starts[i+1]-edge_starts[i]>max_degree){
+			max_degree = edge_starts[i+1]-edge_starts[i];
+		}
+	}
+	vector<int> deg_hist(max_degree+1,0);
+	for (int i=0;i<edge_starts.size()-1;++i){
+		deg_hist[edge_starts[i+1]-edge_starts[i]]+=1;
+	}
+	return deg_hist;
+}
+
+
 bool Graph::delete_edge(int v1, int v2){
 	return delete_edge_onesided(v1,v2)&&delete_edge_onesided(v2,v1);
 }
