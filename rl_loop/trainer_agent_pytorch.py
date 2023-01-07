@@ -212,6 +212,7 @@ class TrainerAgentPytorch:
         combined_loss = (
                 self.tc.val_loss_factor * value_loss + self.tc.policy_loss_factor * policy_loss
         )
+        
         combined_loss.backward()
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = TrainConfig.lr  # update the learning rate
@@ -268,7 +269,7 @@ class CE_plus_mse_loss(_Loss):
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         # The input is already log softmax
-        return torch.sum(-target * input) + (torch.exp(input)-target)**2
+        return torch.sum(-target * input) + torch.sum((torch.exp(input)-target)**2)
 
 class SoftCrossEntropyLoss(_Loss):
     """

@@ -68,8 +68,9 @@ void play_move_and_update(const EvalInfo& evalInfo, Node_switching_game* state, 
 SelfPlay::SelfPlay(RawNetAgent* rawAgent, MCTSAgent* mctsAgent, SearchLimits* searchLimits, PlaySettings* playSettings, SearchSettings * searchSettings,
 		RLSettings* rlSettings, OptionsMap& options):
 	rawAgent(rawAgent), mctsAgent(mctsAgent), searchLimits(searchLimits), playSettings(playSettings), searchSettings(searchSettings),
-	rlSettings(rlSettings), gameIdx(0), options(options), folder("data/"), exporter("torch")
+	rlSettings(rlSettings), gameIdx(0), options(options), exporter("torch")
 {
+	folder = "data/"+to_string((int)options["First_Device_ID"])+"/";
 	gamePGN.variant = "hex";
 	time_t     now = time(0);
 	struct tm  tstruct;
@@ -447,11 +448,9 @@ void SelfPlay::go(size_t num_threads, size_t parallel_games_per_thread, size_t t
 	for (size_t i = 0; i < num_threads; ++i) {
 			threads[i]->join();
 	}
-	speedcheck.track_next("file_export");
 	/* exporter = TrainDataExporter::merged_from_many(exporters,exporter.output_folder); */
 	/* exporter.export_game_samples(); */
 	delete[] threads;
-	speedcheck.stop_track("file_export");
 	statlogger.log_mean_statistic("samples per sec",statlogger.mean_statistics["samples thread/sec"].first*num_threads);
 	statlogger.log_mean_statistic("games per sec",(num_threads*total_games_per_thread)/(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now()-selfplay_start).count()/1000.0f));
 	statlogger.print_statistics(cout);

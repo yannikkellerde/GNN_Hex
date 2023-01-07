@@ -8,6 +8,7 @@ Contains the main class to handle files and directories during Reinforcement Lea
 Additionally a function to compress zarr datasets is provided.
 """
 import os
+import shutil
 import glob
 import time
 import logging
@@ -25,7 +26,7 @@ class FileIO:
     Class to facilitate creation of directories, reading of file
     names and moving of files during Reinforcement Learning.
     """
-    def __init__(self, orig_binary_name: str, binary_dir: str, model_name:str, uci_variant: str, framework: str):
+    def __init__(self, orig_binary_name: str, binary_dir: str, model_name:str, uci_variant: str, framework: str, device_id:int):
         """
         Creates all necessary directories and sets all path variables.
         If no '*.param' file can be found in the 'binary-dir/model/' directory,
@@ -41,7 +42,7 @@ class FileIO:
         variant_suffix = f''
 
         # Hard coded directory paths
-        self.binary_data_output = os.path.join(binary_dir,"data")
+        self.binary_data_output = os.path.join(binary_dir,"data",str(device_id))
         self.model_dir = os.path.join(binary_dir, "model", orig_binary_name)
         self.export_dir_gen_data = os.path.join(binary_dir, "export","new_data")
         self.train_dir = os.path.join(binary_dir, "export/train")
@@ -50,6 +51,7 @@ class FileIO:
         self.train_dir_archive = os.path.join(binary_dir, "export/archive/train")
         self.val_dir_archive = os.path.join(binary_dir, "export/archive/val")
         self.model_contender_dir = os.path.join(binary_dir, "model_contender", orig_binary_name)
+        self.eval_checkpoint_dir = os.path.join(binary_dir, "export/eval_checkpoint_model", orig_binary_name)
         self.model_dir_archive = os.path.join(binary_dir, "export/archive/model")
         self.logs_dir_archive = os.path.join(binary_dir, "export/logs")
         self.logs_dir = os.path.join(binary_dir, "logs")
@@ -79,6 +81,7 @@ class FileIO:
         create_dir(self.train_dir_archive)
         create_dir(self.val_dir_archive)
         create_dir(self.model_contender_dir)
+        create_dir(self.eval_checkpoint_dir)
         create_dir(self.model_dir_archive)
         create_dir(self.model_dir)
         create_dir(self.logs_dir_archive)
@@ -232,6 +235,14 @@ class FileIO:
         files = glob.glob(_weight_dir + '/model-*')
         for f in files:
             os.remove(f)
+
+    def copy_model_to_eval_checkpoint(self):
+        for f in [os.path.join(self.eval_checkpoint_dir,x) for x in os.listdir(self.eval_checkpoint_dir)]:
+            os.remove(f)
+        shutil.copyfile(os.path.join(self.model_dir,self.model_name+"_model.pt"),os.path.join(self.eval_checkpoint_dir,self.model_name+"_model.pt"))
+        
+    def is_there_checkpoint(self):
+        return os.path.isfile(os.path.join(self.eval_checkpoint_dir,self.model_name+"_model.pt"))
 
     def replace_current_model_with_contender(self):
         """

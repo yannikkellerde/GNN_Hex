@@ -83,8 +83,8 @@ void OptionsUCI::init(OptionsMap &o)
     o["Fixed_Movetime"]                << Option(0, 0, 99999999);
     o["Last_Device_ID"]                << Option(0, 0, 99999);
     o["MCTS_Solver"]                   << Option(true);
-    o["Model_Path"]               		 << Option(string("./model/HexAra/graph_sage_model.pt").c_str());
-    o["Model_Path_Contender"]          << Option(string("./model_contender/HexAra/graph_sage_model.pt").c_str());
+    o["Model_Path"]               		 << Option(string("./model/HexAra/torch_script_model.pt").c_str());
+    o["Model_Path_Contender"]          << Option(string("./model_contender/HexAra/torch_script_model.pt").c_str());
     o["Move_Overhead"]                 << Option(20, 0, 5000);
     o["MultiPV"]                       << Option(1, 1, 99999);
     o["Nodes"]                         << Option(800, 0, 99999999);

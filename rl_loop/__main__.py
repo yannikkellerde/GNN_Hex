@@ -29,6 +29,7 @@ from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network
 from rl_loop.plotting import show_eval_from_file
 import torch, wandb
+import time
 
 
 class RLLoop:
@@ -51,7 +52,7 @@ class RLLoop:
 
         self.rl_config = rl_config
 
-        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name)
+        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name,device_id=args.device_id)
         self.binary_io = None
 
         if nb_arena_games % 2 == 1:
@@ -61,6 +62,7 @@ class RLLoop:
         self.device_name = f'{args.context}_{args.device_id}'
         self.model_name = ""  # will be set in initialize()
         self.did_contender_win = True
+        self.next_winrate_eval = time.time()
 
         # change working directory (otherwise binary would generate .zip files at .py location)
         os.chdir(self.file_io.binary_dir)
@@ -89,10 +91,10 @@ class RLLoop:
         """
         self.model_name = self.file_io.get_current_model_pt_file()
         self.binary_io = BinaryIO(binary_path=self.file_io.binary_dir+self.current_binary_name)
-        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
+        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir if self.rl_config.do_arena_eval else self.file_io.eval_checkpoint_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
         self.binary_io.load_network()
 
-    def check_for_new_model(self):
+    def check_for_new_model(self,evaluater=False):
         """
         Checks if the current neural network generator has been updated and restarts the executable if this is the case
         :return:
@@ -112,6 +114,18 @@ class RLLoop:
             self.binary_io.stop_process()
             self.rtpt.step()
             self.initialize()
+            if evaluater:
+                if time.time()>=self.next_winrate_eval:
+                    if self.file_io.is_there_checkpoint():
+                        logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
+                        self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
+                        logs = dict(winrate=winrate);
+                        if self.did_contender_win:
+                            self.file_io.store_arena_pgn(wandb.run.step+1)
+                        wandb.log(logs)
+                    self.file_io.copy_model_to_eval_checkpoint()
+                    self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
+
 
     def check_for_enough_train_data(self, number_files_to_update):
         """
@@ -119,12 +133,11 @@ class RLLoop:
         :param number_files_to_update: Number of newly generated files needed to trigger a new NN update
         :return: True, if enough training data was availble and a training run has been executed.
         """
-        print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files,"\nrequired:",number_files_to_update)
+        print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_total_available_training_files() >= number_files_to_update or self.arena_start:
             if not self.arena_start:
                 self.binary_io.stop_process()
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
-                # start training using a process to ensure memory clearing afterwards
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
                 update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
@@ -139,13 +152,14 @@ class RLLoop:
                 logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
                 self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
                 logs = dict(winrate=winrate);
+                if self.did_contender_win:
+                    self.file_io.store_arena_pgn(wandb.run.step+1)
             else:
                 logs = dict()
                 self.did_contender_win = True
             if self.did_contender_win is True:
                 logging.info("REPLACING current generator with contender")
                 self.file_io.replace_current_model_with_contender()
-                self.file_io.store_arena_pgn(wandb.run.step+1)
             else:
                 logging.info("KEEPING current generator")
 
@@ -184,6 +198,8 @@ def parse_args(cmd_args: list):
                         help="The given GPU index is used for training the neural network."
                              " The gpu trainer will stop generating games and update the network as soon as enough"
                              " training samples have been acquired.  (default: False)")
+    parser.add_argument("--evaluater", default=False, action="store_true",
+                        help="This process will do arena evals")
     parser.add_argument('--export-no-log', default=False, action="store_true",
                         help="By default the log messages are stored in {context}_{device}.log."
                              " If this parameter is enabled no log messages will be stored")
@@ -244,9 +260,10 @@ def main():
         if args.trainer:
             rl_loop.check_for_enough_train_data(rl_config.nn_update_files)
         else:
-            rl_loop.check_for_new_model()
-
+            rl_loop.check_for_new_model(evaluater=args.evaluater)
+            
             success, statistics = rl_loop.binary_io.generate_games(rl_config.nb_selfplay_games_per_thread)
+
             if success:
                 rl_loop.file_io.move_data_to_export_dir(rl_loop.device_name)
                 statistics["stats/Binary_failed"] = 0

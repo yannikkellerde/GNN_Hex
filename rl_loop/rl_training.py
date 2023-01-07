@@ -17,8 +17,8 @@ sys.path.append("../../../")
 from rl_loop.train_config import TrainConfig, TrainObjects
 from rl_loop.dataset_loader import load_pgn_dataset,_get_loader
 from rl_loop.train_util import get_metrics
-from GN0.models import get_pre_defined
 from rl_loop.trainer_agent_pytorch import TrainerAgentPytorch, load_torch_state, save_torch_state, get_context, export_as_script_module
+from GN0.torch_script_models import get_current_model
 import torch
 from torch_geometric.loader import DataLoader
 import os
@@ -84,7 +84,7 @@ def _get_net(ctx, train_config, pt_filename):
     """
     Loads the network object and weights.
     """
-    net = get_pre_defined("HexAra")
+    net = get_current_model()
     net.to(ctx)
     if pt_filename!="":
         load_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.lr), pt_filename, train_config.device_id)

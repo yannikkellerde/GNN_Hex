@@ -14,16 +14,18 @@ import os
 class RLConfig:
     """Dataclass storing the options (except UCI options) for executing reinforcement learning."""
     # How many arena games will be done to judge the quality of the new network
-    arena_games: int = 200
-    arena_threads: int = 5
+    arena_games: int = 100
+    arena_threads: int = 4
+    do_arena_eval: bool = False
+    winrate_eval_freq: int = 1800 # seconds
     # Directory where the executable is located and where the selfplay data will be stored
     binary_dir: str = os.path.abspath(f'data/RL/')
     binary_name: str = f'HexAra'
-    model_name: str = "graph_sage"
+    model_name: str = "torch_script"
     # How many times to train the NN, create a model contender or generate nn_update_files games
     nb_nn_updates: int = 10
     # How many new generated training files are needed to apply an update to the NN
-    nb_selfplay_games_per_thread: int = 400
+    nb_selfplay_games_per_thread: int = 10
     selfplay_threads = 10
     nn_update_files: int = 10
     precision: str = f'float16'

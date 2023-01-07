@@ -13,7 +13,7 @@ from typing import Tuple
 
 from subprocess import PIPE, Popen
 from dataclasses import fields
-from rl_loop.rl_config import UCIConfig, UCIConfigArena
+from rl_loop.rl_config import UCIConfig, UCIConfigArena, RLConfig
 from rl_loop.rl_utils import log_to_file_and_print
 
 

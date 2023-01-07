@@ -21,14 +21,23 @@ from torch_geometric.nn.resolver import (
 
 
 class ModifiedPNAConv(PNAConv):
-    def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
+
+    def message(self, x_i: Tensor, x_j: Tensor) -> Tensor:
+
+        h: Tensor = x_i  # Dummy.
+        h = torch.cat([x_i, x_j], dim=-1)
+
+        hs = [nn(h[:, i]) for i, nn in enumerate(self.pre_nns)]
+        return torch.stack(hs, dim=1)
+
+    def forward(self, x: Tensor, edge_index: Adj) -> Tensor:
         """"""
         if self.divide_input:
             x = x.view(-1, self.towers, self.F_in)
         else:
             x = x.view(-1, 1, self.F_in).repeat(1, self.towers, 1)
 
-        # propagate_type: (x: Tensor, edge_attr: OptTensor)
+        # propagate_type: (x: Tensor)
         out = self.propagate(edge_index, x=x, size=None)
 
         out = torch.cat([x, out], dim=-1)
@@ -166,36 +175,45 @@ class ModifiedBaseNet(torch.nn.Module):
                     if self.act is not None:
                         x = self.act(x)
         else:
+            assert len(self.norms)==len(self.convs)-1
             for i,(norm,conv) in enumerate(zip(self.norms,self.convs)):
                 x = conv(x, edge_index)
                 if i != self.num_layers - 1:
                     x = norm(x)
                     if self.act is not None:
                         x = self.act(x)
+            x = self.convs[-1](x,edge_index)
 
         return x
 
 # Statistics measured for hex 7x7
 deg_hist = torch.tensor([40,88,3444,8054,6863,3415,8412,1737,1205,300,100,4],dtype=torch.long)
+aggregators = ['mean', 'min', 'max']
+scalers = ['identity', 'amplification', 'attenuation']
+
+# aggregators = ['mean','max','min']
+# scalers = ['attenuation']
 
 class PNA_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3):
         super().__init__()
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedPNAConv,deg=deg_hist)
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators, scalers=scalers)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=value_layers,conv_class=ModifiedPNAConv,deg=deg_hist)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1,conv_class=ModifiedPNAConv,deg=deg_hist)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=value_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
 
         self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
         self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
+
+        self.pre_head_layer_norm = LayerNorm(hidden_channels)
 
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
-        embeds = self.gnn(x,edge_index)
+        embeds = self.pre_head_layer_norm(self.gnn(x,edge_index))
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
@@ -233,6 +251,7 @@ class PNA_torch_script(torch.nn.Module):
             output_graph_indices = torch.cat((output_graph_indices,output_graph_indices[-1:]))
 
         pi = scatter_log_softmax(pi,index=output_graph_indices)
+        return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
 
 class SAGE_torch_script(torch.nn.Module):
@@ -291,3 +310,7 @@ class SAGE_torch_script(torch.nn.Module):
 
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
+
+def get_current_model():
+    return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
+
