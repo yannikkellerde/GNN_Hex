@@ -113,18 +113,20 @@ class RLLoop:
 
             self.binary_io.stop_process()
             self.rtpt.step()
-            self.initialize()
             if evaluater:
                 if time.time()>=self.next_winrate_eval:
                     if self.file_io.is_there_checkpoint():
+                        self.initialize(is_arena=True)
                         logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
                         self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
                         logs = dict(winrate=winrate);
                         if self.did_contender_win:
                             self.file_io.store_arena_pgn(wandb.run.step+1)
                         wandb.log(logs)
+                        self.binary_io.stop_process()
                     self.file_io.copy_model_to_eval_checkpoint()
                     self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
+            self.initialize()
 
 
     def check_for_enough_train_data(self, number_files_to_update):
