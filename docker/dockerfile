@@ -13,7 +13,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64
 RUN bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
 ENV PATH="${PATH}:/root/miniconda3/bin"
 RUN conda create -n HexAra -y python=3.9
-RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython
+RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython rtpt
 RUN conda install -n HexAra pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
 RUN conda install -n HexAra pyg -c pyg
 COPY .ssh/ ./.ssh/
