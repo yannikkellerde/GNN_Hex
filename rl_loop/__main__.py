@@ -114,22 +114,22 @@ class RLLoop:
             if model_name != "" and model_name != self.model_name:
                 logging.info("Loading new model: %s" % model_name)
 
-            self.binary_io.stop_process()
             self.rtpt.step()
-        if evaluater:
-            if time.time()>=self.next_winrate_eval:
-                if self.file_io.is_there_checkpoint():
-                    self.initialize(is_arena=True)
-                    logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
-                    self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
-                    logs = dict(winrate=winrate);
-                    if self.did_contender_win:
-                        self.file_io.store_arena_pgn(wandb.run.step+1)
-                    wandb.log(logs)
-                    self.binary_io.stop_process()
-                self.file_io.copy_model_to_eval_checkpoint()
-                self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
+        self.binary_io.stop_process()
         self.initialize()
+
+    def evaluate(self):
+        if self.file_io.is_there_checkpoint():
+            self.initialize(is_arena=True)
+            logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
+            self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
+            logs = dict(winrate=winrate);
+            if self.did_contender_win:
+                self.file_io.store_arena_pgn(wandb.run.step+1)
+            wandb.log(logs)
+            self.binary_io.stop_process()
+        self.file_io.copy_model_to_eval_checkpoint()
+        self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
 
 
     def check_for_enough_train_data(self, number_files_to_update):
@@ -267,7 +267,11 @@ def main():
         if args.trainer:
             rl_loop.check_for_enough_train_data(rl_config.nn_update_files)
         else:
-            rl_loop.check_for_new_model(evaluater=args.evaluater)
+            rl_loop.check_for_new_model()
+            if args.evaluater:
+                if time.time()>=rl_loop.next_winrate_eval:
+                    rl_loop.evaluate()
+                    rl_loop.check_for_new_model()
             
             success, statistics = rl_loop.binary_io.generate_games(rl_config.nb_selfplay_games_per_thread)
 
@@ -278,8 +282,7 @@ def main():
             else:
                 wandb.log({"stats/Binary_failed":1})
                 print("BINARY Errored, doing restart")
-                rl_loop.binary_io.stop_process()
-                rl_loop.initialize()
+                rl_loop.check_for_new_model()
     wandb.finish()
 
 if __name__ == "__main__":

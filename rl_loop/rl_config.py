@@ -15,9 +15,9 @@ class RLConfig:
     """Dataclass storing the options (except UCI options) for executing reinforcement learning."""
     # How many arena games will be done to judge the quality of the new network
     arena_games: int = 100
-    arena_threads: int = 4
+    arena_threads: int = 6
     do_arena_eval: bool = False
-    winrate_eval_freq: int = 1800 # seconds
+    winrate_eval_freq: int = 3600 # seconds
     # Directory where the executable is located and where the selfplay data will be stored
     binary_dir: str = os.path.abspath(f'data/RL/')
     binary_name: str = f'HexAra'
