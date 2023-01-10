@@ -66,7 +66,7 @@ class FileIO:
             f'Please provide valid main_config["planes_train_dir"] directory'
 
     def store_arena_pgn(self,model_num):
-        os.rename(os.path.join(self.binary_data_output,"arena_games.pgn"),os.path.join(self.arena_pgns_dir,f"arena_games_{model_num}.pgn"))
+        shutil.move(os.path.join(self.binary_data_output,"arena_games.pgn"),os.path.join(self.arena_pgns_dir,f"arena_games_{model_num}.pgn"))
 
     def _create_directories(self):
         """
@@ -113,7 +113,7 @@ class FileIO:
 
         # move selected files into train dir
         for index in list(indices):
-            os.rename(os.path.join(self.train_dir_archive, file_names[index]), os.path.join(self.train_dir, file_names[index]))
+            shutil.move(os.path.join(self.train_dir_archive, file_names[index]), os.path.join(self.train_dir, file_names[index]))
 
     def _move_generated_data_to_train_val(self):
         """
@@ -124,11 +124,11 @@ class FileIO:
         file_names = os.listdir(self.export_dir_gen_data)
 
         # move the last file into the validation directory
-        os.rename(os.path.join(self.export_dir_gen_data, file_names[-1]), os.path.join(self.val_dir, file_names[-1]))
+        shutil.move(os.path.join(self.export_dir_gen_data, file_names[-1]), os.path.join(self.val_dir, file_names[-1]))
 
         # move the rest into the training directory
         for file_name in file_names[:-1]:
-            os.rename(os.path.join(self.export_dir_gen_data, file_name), os.path.join(self.train_dir, file_name))
+            shutil.move(os.path.join(self.export_dir_gen_data, file_name), os.path.join(self.train_dir, file_name))
 
     def _move_train_val_data_into_archive(self):
         """
@@ -157,8 +157,8 @@ class FileIO:
         data_folders = [os.path.join(self.binary_data_output,x) for x in os.listdir(self.binary_data_output) if os.path.isdir(os.path.join(self.binary_data_output,x))]
         for folder in data_folders:
             export_dir, time_stamp = self.create_export_dir(device_name,os.path.basename(folder))
-            os.rename(os.path.join(folder,"torch"),os.path.join(export_dir,"torch"))
-            os.rename(os.path.join(folder, "games.pgn"), os.path.join(export_dir, "games.pgn"))
+            shutil.move(os.path.join(folder,"torch"),os.path.join(export_dir,"torch"))
+            shutil.move(os.path.join(folder, "games.pgn"), os.path.join(export_dir, "games.pgn"))
 
     def create_export_dir(self, device_name: str, idx) -> Tuple[str, str]:
         """
@@ -201,8 +201,11 @@ class FileIO:
         """
         time_stamp = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H-%M-%S")
         dir_name = f'logs-{self.uci_variant}-update{nn_update_index}-{time_stamp}'
-        os.rename(self.logs_dir, os.path.join(self.logs_dir_archive, dir_name))
-        create_dir(self.logs_dir)
+        try:
+            shutil.move(self.logs_dir, os.path.join(self.logs_dir_archive, dir_name))
+            create_dir(self.logs_dir)
+        except Exception as e:
+            print("Failed to move logs",e)
 
     def prepare_data_for_training(self, rm_nb_files: int, rm_fraction_for_selection: float, did_contender_win: bool):
         """
@@ -214,9 +217,17 @@ class FileIO:
         :param did_contender_win: Defines if the last contender won vs the generator
         """
         if did_contender_win:
-            move_oldest_files(self.train_dir, self.train_dir_archive, TrainConfig.training_keep_files)
-            if len(os.listdir(self.export_dir_gen_data)) > 0:
-                move_all_files(self.val_dir, self.val_dir_archive)
+            for _ in range(3): # These files might still be owned/created by another process. Wait a while if that happens
+                try:
+                    move_oldest_files(self.train_dir, self.train_dir_archive, TrainConfig.training_keep_files)
+                    if len(os.listdir(self.export_dir_gen_data)) > 0:
+                        move_all_files(self.val_dir, self.val_dir_archive)
+                    break
+                except Exception as e:
+                    print("Warning",e)
+                    time.sleep(10)
+            else:
+                raise RuntimeError("Failed to move files")
         # move last contender into archive
         move_all_files(self.model_contender_dir, self.model_dir_archive)
 

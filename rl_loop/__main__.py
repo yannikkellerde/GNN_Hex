@@ -67,7 +67,11 @@ class RLLoop:
         # change working directory (otherwise binary would generate .zip files at .py location)
         os.chdir(self.file_io.binary_dir)
         self.tc.cwd = self.file_io.binary_dir
-        wandb.init(resume=True,project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
+        logpath = os.path.join(self.tc.export_dir,"wandb_logs",str(self.args.device_id))
+        os.makedirs(logpath,exist_ok=True)
+        id_map = {0:"19wl47yk",1:"1g2tv484",2:"3plstfph"}
+        wandb.init(resume="must",id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
+        # wandb.init(resume="must",id="19wl47yk",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         # The original binary name in TrainConfig will always stay the same & be a substring of the updated name
         self.current_binary_name = get_current_binary_name(self.file_io.binary_dir, self.rl_config.binary_name)
@@ -110,10 +114,9 @@ class RLLoop:
             self.nn_update_index = extract_nn_update_idx_from_binary_name(self.current_binary_name)
 
             # If a new model is available, the binary name has also changed
-            model_name = self.file_io.get_current_model_weight_file()
-            if model_name != "" and model_name != self.model_name:
-                logging.info("Loading new model: %s" % model_name)
-
+            # model_name = self.file_io.get_current_model_weight_file()
+            # if model_name != "" and model_name != self.model_name:
+            #     logging.info("Loading new model: %s" % model_name)
             self.rtpt.step()
         self.binary_io.stop_process()
         self.initialize()
@@ -127,6 +130,7 @@ class RLLoop:
             if self.did_contender_win:
                 self.file_io.store_arena_pgn(wandb.run.step+1)
             wandb.log(logs)
+            print("logging winrate",logs)
             self.binary_io.stop_process()
         self.file_io.copy_model_to_eval_checkpoint()
         self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
@@ -141,7 +145,7 @@ class RLLoop:
         print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_total_available_training_files() >= number_files_to_update or self.arena_start:
             if not self.arena_start:
-                self.binary_io.stop_process()
+                # self.binary_io.stop_process()
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
@@ -152,8 +156,8 @@ class RLLoop:
                 self.nn_update_index += 1
             self.arena_start = False
 
-            self.initialize()
             if self.rl_config.do_arena_eval:
+                self.initialize()
                 logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
                 self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
                 logs = dict(winrate=winrate);
@@ -170,18 +174,20 @@ class RLLoop:
 
             self.file_io.remove_intermediate_weight_files()
 
-            self.binary_io.stop_process()
+            # self.binary_io.stop_process()
             self.rtpt.step()  # BUG: process changes it's name 1 iteration too late, fix?
             self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
                                                           self.rtpt._get_title(), self.nn_update_index)
-            self.initialize()
+            # self.initialize()
             if self.did_contender_win:
+                self.initialize()
                 plt.cla()
                 self.binary_io.generate_starting_eval_img()
                 fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=7)
                 logs["starting_policy"] = wandb.Image(fig)
                 fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=7)
                 logs["swapmap"] = wandb.Image(fig)
+                self.binary_io.stop_process()
             wandb.log(logs)
         else:
             time.sleep(10)
@@ -248,7 +254,8 @@ def main():
     if args.trainer:
         rl_loop.current_binary_name = change_binary_name(rl_loop.file_io.binary_dir, rl_loop.current_binary_name,
                                                          rl_loop.rtpt._get_title(), rl_loop.nn_update_index)
-    rl_loop.initialize()
+    else:
+        rl_loop.initialize()
 
     logging.info(f'--------------- CONFIG SETTINGS ---------------')
     for key, value in sorted(vars(args).items()):
@@ -257,10 +264,11 @@ def main():
         logging.info(f'Train Config:       {key} = {value}')
     for key, value in sorted(dataclasses.asdict(rl_config).items()):
         logging.info(f'RL Options:         {key} = {value}')
-    for key, value in rl_loop.binary_io.get_uci_options().items():
-        logging.info(f'UCI Options:        {key} = {value}')
-    for key, value in sorted(dataclasses.asdict(UCIConfigArena()).items()):
-        logging.info(f'UCI Options Arena:  {key} = {value}')
+    if not args.trainer:
+        for key, value in rl_loop.binary_io.get_uci_options().items():
+            logging.info(f'UCI Options:        {key} = {value}')
+        for key, value in sorted(dataclasses.asdict(UCIConfigArena()).items()):
+            logging.info(f'UCI Options Arena:  {key} = {value}')
     logging.info(f'-----------------------------------------------')
 
     while True:

@@ -8,6 +8,7 @@ Utility functions to facilitate the reinforcement learning process.
 Main purposes: get and change binary name; simple methods to manipulate files & folders.
 """
 
+import shutil
 import re
 import os
 import glob
@@ -26,7 +27,7 @@ def change_binary_name(binary_dir: str, current_binary_name: str, process_name: 
     new_binary_name = f'{process_name[:idx]}_UP={nn_update_idx}{process_name[idx:]}'
 
     if not os.path.exists(os.path.join(binary_dir, new_binary_name)):
-        os.rename(os.path.join(binary_dir, current_binary_name), os.path.join(binary_dir, new_binary_name))
+        shutil.move(os.path.join(binary_dir, current_binary_name), os.path.join(binary_dir, new_binary_name))
         logging.info(f'Changed binary name to: {new_binary_name}')
 
     return new_binary_name
@@ -129,7 +130,7 @@ def move_oldest_files(from_dir, to_dir, keep_num):
     file_paths.reverse()
 
     for file_path in file_paths[keep_num:]:
-        os.rename(file_path, os.path.join(to_dir, os.path.basename(file_path)))
+        shutil.move(file_path, os.path.join(to_dir, os.path.basename(file_path)))
 
 def move_all_files(from_dir, to_dir):
     """
@@ -141,4 +142,4 @@ def move_all_files(from_dir, to_dir):
     file_names = os.listdir(from_dir)
 
     for file_name in file_names:
-        os.rename(os.path.join(from_dir, file_name), os.path.join(to_dir, file_name))
+        shutil.move(os.path.join(from_dir, file_name), os.path.join(to_dir, file_name))
