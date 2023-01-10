@@ -25,7 +25,7 @@ class RLConfig:
     # How many times to train the NN, create a model contender or generate nn_update_files games
     nb_nn_updates: int = 10
     # How many new generated training files are needed to apply an update to the NN
-    nb_selfplay_games_per_thread: int = 10
+    nb_selfplay_games_per_thread: int = 50
     selfplay_threads = 10
     nn_update_files: int = 10
     precision: str = f'float16'

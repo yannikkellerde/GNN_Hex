@@ -82,6 +82,9 @@ class RLLoop:
                          experiment_name=f'{self.rl_config.binary_name}_{self.rl_config.uci_variant}',
                          max_iterations=self.rl_config.nb_nn_updates, moving_avg_window_size=1)
         self.rtpt.start()
+        if self.current_binary_name == "HexAra":
+            self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
+                                                          self.rtpt._get_title(), self.nn_update_index)
 
     def initialize(self, is_arena=False):
         """
@@ -113,20 +116,20 @@ class RLLoop:
 
             self.binary_io.stop_process()
             self.rtpt.step()
-            if evaluater:
-                if time.time()>=self.next_winrate_eval:
-                    if self.file_io.is_there_checkpoint():
-                        self.initialize(is_arena=True)
-                        logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
-                        self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
-                        logs = dict(winrate=winrate);
-                        if self.did_contender_win:
-                            self.file_io.store_arena_pgn(wandb.run.step+1)
-                        wandb.log(logs)
-                        self.binary_io.stop_process()
-                    self.file_io.copy_model_to_eval_checkpoint()
-                    self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
-            self.initialize()
+        if evaluater:
+            if time.time()>=self.next_winrate_eval:
+                if self.file_io.is_there_checkpoint():
+                    self.initialize(is_arena=True)
+                    logging.info(f'Start arena tournament ({self.nb_arena_games} rounds)')
+                    self.did_contender_win, winrate = self.binary_io.compare_new_weights(self.nb_arena_games, self.rl_config.arena_threads)
+                    logs = dict(winrate=winrate);
+                    if self.did_contender_win:
+                        self.file_io.store_arena_pgn(wandb.run.step+1)
+                    wandb.log(logs)
+                    self.binary_io.stop_process()
+                self.file_io.copy_model_to_eval_checkpoint()
+                self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
+        self.initialize()
 
 
     def check_for_enough_train_data(self, number_files_to_update):
@@ -159,7 +162,7 @@ class RLLoop:
             else:
                 logs = dict()
                 self.did_contender_win = True
-            if self.did_contender_win is True:
+            if self.did_contender_win:
                 logging.info("REPLACING current generator with contender")
                 self.file_io.replace_current_model_with_contender()
             else:
@@ -180,6 +183,8 @@ class RLLoop:
                 fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=7)
                 logs["swapmap"] = wandb.Image(fig)
             wandb.log(logs)
+        else:
+            time.sleep(10)
 
 
 

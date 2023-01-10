@@ -370,7 +370,7 @@ bool CrazyAra::is_ready()
 		init_rl_settings();
 #endif
 		print_info(__LINE__,__FILE__,"loading model",string(Options["Model_Path"]));
-		netSingle = create_new_net_single(string(Options["Model_Path"]));
+		netSingle = create_new_net_single(string(Options["Model_Path"]),int(Options["First_Device_ID"]));
 		netBatches = create_new_net_batches(string(Options["Model_Path"]));
 		mctsAgent = create_new_mcts_agent(netSingle.get(), &searchSettings);
 		rawAgent = make_unique<RawNetAgent>(netSingle.get(), &playSettings, false);
@@ -405,14 +405,14 @@ string CrazyAra::engine_info()
 	return ss.str();
 }
 
-unique_ptr<NN_api> CrazyAra::create_new_net_single(const string& modelPath)
+unique_ptr<NN_api> CrazyAra::create_new_net_single(const string& modelPath, int device_id)
 {
 	torch::Device device(torch::kCPU,0);
 	if (Options["Context"] == "cpu"){
 		device = torch::Device(torch::kCPU,0);
 	}
 	else if (Options["Context"] == "gpu"){
-		device = torch::Device(torch::kCUDA,0);
+		device = torch::Device(torch::kCUDA,device_id);
 	}
 	else{
 		throw std::logic_error("Invalid Context");
@@ -426,7 +426,7 @@ vector<unique_ptr<NN_api>> CrazyAra::create_new_net_batches(const string& modelP
 	vector<unique_ptr<NN_api>> someNetBatches;
 	for (int deviceId = int(Options["First_Device_ID"]); deviceId <= int(Options["Last_Device_ID"]); ++deviceId) {
 		for (size_t i = 0; i < size_t(threads); ++i) {
-			someNetBatches.push_back(create_new_net_single(modelPath));
+			someNetBatches.push_back(create_new_net_single(modelPath,deviceId));
 		}
 	}
 	return someNetBatches;

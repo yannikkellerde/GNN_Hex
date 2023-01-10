@@ -230,7 +230,7 @@ private:
      * @param modelDirectory Model directory where the .params and .json files are stored
      * @return Pointer to the newly created object
      */
-    unique_ptr<NN_api> create_new_net_single(const string& modelDirectory);
+    unique_ptr<NN_api> create_new_net_single(const string& modelDirectory, int device_id);
 
     /**
      * @brief create_new_net_batches Factory to create and load a new model for batch-size access

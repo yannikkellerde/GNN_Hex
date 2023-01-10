@@ -28,7 +28,7 @@ class BinaryIO:
         :param binary_path: Path to the binary including the binary name
         """
         self.binary_dir = os.path.dirname(binary_path)
-        self.proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
+        self.proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',os.path.relpath(binary_path)], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
         # self.proc = Popen([binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
 
     def generate_starting_eval_img(self):
