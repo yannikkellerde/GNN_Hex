@@ -11,7 +11,7 @@
 # Training run on DGX
 + In contrast to [AlphaGo Zero](https://www.nature.com/articles/nature24270), [AlphaZero](https://arxiv.org/pdf/1712.01815.pdf) does always use the latest model for data generation instead of evaluating and only choosing new model based on winrate against previous.
 + I do that too now, running 1 training process and two data generation processes in parallel, always using the latest model for data generation. (3 GPU on DGX)
-+ Just starting to get things working without erroring. Still to find out if this will work.
++ Experiment started yesterday did not really seem to learn what it should. I'll try to figure it out next.
 
 # Misc
 + I found [this](https://arxiv.org/abs/2107.08387) paper which is pretty close to what I do.
