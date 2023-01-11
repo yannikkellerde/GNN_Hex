@@ -228,11 +228,17 @@ class BinaryIO:
                                                                  bytes(str(value), encoding="utf-8")))
         self.proc.stdin.flush()
 
-    def stop_process(self):
+    def stop_process(self,fail_ok=False):
         """
         Kills the process that is attached to the binary.
         :return:
         """
-        self.proc.kill()
+        if fail_ok:
+            try:
+                self.proc.kill()
+            except Exception as e:
+                print("Process kill",e)
+        else:
+            self.proc.kill()
         # sleep for 1 sec to ensure the process exited
         time.sleep(1)

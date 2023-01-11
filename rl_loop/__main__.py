@@ -96,6 +96,8 @@ class RLLoop:
         is_arena: Signals that UCI option should be set for arena comparison
         :return:
         """
+        if self.binary_io is not None:
+            self.binary_io.stop_process(True)
         self.model_name = self.file_io.get_current_model_pt_file()
         self.binary_io = BinaryIO(binary_path=self.file_io.binary_dir+self.current_binary_name)
         self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir if self.rl_config.do_arena_eval else self.file_io.eval_checkpoint_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
@@ -118,7 +120,6 @@ class RLLoop:
             # if model_name != "" and model_name != self.model_name:
             #     logging.info("Loading new model: %s" % model_name)
             self.rtpt.step()
-        self.binary_io.stop_process()
         self.initialize()
 
     def evaluate(self):
@@ -131,7 +132,6 @@ class RLLoop:
                 self.file_io.store_arena_pgn(wandb.run.step+1)
             wandb.log(logs)
             print("logging winrate",logs)
-            self.binary_io.stop_process()
         self.file_io.copy_model_to_eval_checkpoint()
         self.next_winrate_eval = time.time()+self.rl_config.winrate_eval_freq
 
@@ -145,7 +145,6 @@ class RLLoop:
         print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_total_available_training_files() >= number_files_to_update or self.arena_start:
             if not self.arena_start:
-                # self.binary_io.stop_process()
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
@@ -174,7 +173,6 @@ class RLLoop:
 
             self.file_io.remove_intermediate_weight_files()
 
-            # self.binary_io.stop_process()
             self.rtpt.step()  # BUG: process changes it's name 1 iteration too late, fix?
             self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
                                                           self.rtpt._get_title(), self.nn_update_index)
