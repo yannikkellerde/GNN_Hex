@@ -71,7 +71,7 @@ class RLLoop:
         os.makedirs(logpath,exist_ok=True)
         id_map = {0:"12g6288o",1:"kv1w8ron",2:"3djxz7z2"}
         name_map = {0:"trainer",1:"evaluater",2:"generator"}
-        wandb.init(resume="must",id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
+        wandb.init(resume='allow',id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
         wandb.run.name = name_map[int(self.args.device_id)]
         # wandb.init(resume="must",id="19wl47yk",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
@@ -105,7 +105,7 @@ class RLLoop:
         self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir if self.rl_config.do_arena_eval else self.file_io.eval_checkpoint_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
         self.binary_io.load_network()
 
-    def check_for_new_model(self,evaluater=False):
+    def check_for_new_model(self):
         """
         Checks if the current neural network generator has been updated and restarts the executable if this is the case
         :return:
