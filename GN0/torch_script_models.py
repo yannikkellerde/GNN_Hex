@@ -217,13 +217,12 @@ class PNA_torch_script(torch.nn.Module):
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
         should_swap = self.my_modules["swap_linear"](graph_parts)
         should_swap = should_swap.reshape(should_swap.size(0))
-        should_swap = torch.ones_like(should_swap)*100
         # should_swap = self.swap_activation(should_swap)
         pi = pi.reshape(pi.size(0))
 
@@ -275,13 +274,12 @@ class SAGE_torch_script(torch.nn.Module):
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
         should_swap = self.my_modules["swap_linear"](graph_parts)
         should_swap = should_swap.reshape(should_swap.size(0))
-        should_swap = torch.ones_like(should_swap)*100
         # should_swap = self.swap_activation(should_swap)
         pi = pi.reshape(pi.size(0))
 
@@ -312,5 +310,6 @@ class SAGE_torch_script(torch.nn.Module):
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
 def get_current_model():
-    return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
+    # return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
+    return SAGE_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
 

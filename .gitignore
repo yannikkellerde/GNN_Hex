@@ -19,6 +19,7 @@ Rainbow/
 alpha_zero_hex_graphs/
 fast_alphazero_general/
 Elo/
+testdata/
 model/
 .ssh/
 .secrets/

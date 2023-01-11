@@ -1,5 +1,6 @@
 import torch
-from GN0.models import get_pre_defined
+# from GN0.models import get_pre_defined
+from GN0.torch_script_models import get_current_model
 import time
 import random
 import numpy as np
@@ -7,7 +8,7 @@ import numpy as np
 device = "cuda"
 
 def load_model():
-    model = get_pre_defined("HexAra")
+    model = get_current_model()
     traced = torch.jit.script(model)
     model.to(device)
     return model
