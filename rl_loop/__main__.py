@@ -69,8 +69,10 @@ class RLLoop:
         self.tc.cwd = self.file_io.binary_dir
         logpath = os.path.join(self.tc.export_dir,"wandb_logs",str(self.args.device_id))
         os.makedirs(logpath,exist_ok=True)
-        id_map = {0:"19wl47yk",1:"1g2tv484",2:"3plstfph"}
+        id_map = {0:"12g6288o",1:"kv1w8ron",2:"3djxz7z2"}
+        name_map = {0:"trainer",1:"evaluater",2:"generator"}
         wandb.init(resume="must",id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
+        wandb.run.name = name_map[int(self.args.device_id)]
         # wandb.init(resume="must",id="19wl47yk",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
         # The original binary name in TrainConfig will always stay the same & be a substring of the updated name
