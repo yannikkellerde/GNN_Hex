@@ -74,6 +74,9 @@ def load_pgn_dataset(
     for i in range(len(out["node_features"])):
         data_list.append(Data(x=out["node_features"][i], edge_index=out["edge_indices"][i], y=out["value"][i], policy=out["policy"][i]))
 
+    print(data_list[-1].y, data_list[-1].shape)
+    print(sum([torch.sum(x.y) for x in data_list]),sum([len(x.y) for x in data_list]))
+
     return data_list
 
 

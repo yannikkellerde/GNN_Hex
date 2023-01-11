@@ -153,7 +153,7 @@ def play_vs_binary(binary_path, model_path):
     just_prints =  ["Value:","Dead_move","Engine_move:","Response:","Winner:"]
     plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
-    hex_size = 7
+    hex_size = 5
     set_coords()
     fig = plt.gcf()
     proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
