@@ -58,7 +58,8 @@ class TrainerAgentPytorch:
         self._ctx = get_context(train_config.context, train_config.device_id)
 
         # define a summary writer that logs data and flushes to the file every 5 seconds
-        self.policy_loss = CE_plus_mse_loss()  # In crazyara: SoftCrossEntropyLoss. In AlphaZero: CrossEntropy + MSE
+        # self.policy_loss = CE_plus_mse_loss()  # In crazyara: SoftCrossEntropyLoss. In AlphaZero: CrossEntropy + MSE
+        self.policy_loss = SoftCrossEntropyLoss()
         self.value_loss = nn.MSELoss()
 
         # Define the optimizer
@@ -402,9 +403,13 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
     :return:
     """
     reset_metrics(metrics)
+    value_1 = 0
+    value_neg_1 = 0
     model.eval()  # set model to evaluation mode
     with torch.no_grad():  # operations inside don't track history
         for i, batch in enumerate(data_iterator):
+            value_1 +=  torch.sum(batch.y)
+            value_neg_1 += len(batch.y)-torch.sum(batch.y)
             batch.to(ctx)
 
             policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
@@ -425,7 +430,8 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             if nb_batches and i+1 == nb_batches:
                 break
 
-    metric_values = {"loss": 0.01 * metrics["value_loss"].compute() + 0.99 * metrics["policy_loss"].compute()}
+    print("Value 1 percentage",value_1/(value_1+value_neg_1))
+    metric_values = {"loss": 0.99 * metrics["value_loss"].compute() + 0.01 * metrics["policy_loss"].compute()}
 
     for metric_name in metrics:
         metric_values[metric_name] = metrics[metric_name].compute()

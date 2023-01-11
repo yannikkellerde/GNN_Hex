@@ -37,7 +37,7 @@ using namespace std;
 
 void OptionsUCI::init(OptionsMap &o)
 {
-		o["Hex_Size"]											 << Option(7,1,21);
+		o["Hex_Size"]											 << Option(5,1,21);
 		o["Num_Parallel_Games"]						 << Option(128,1,2048);
     o["Allow_Early_Stopping"]          << Option(true);
     o["Batch_Size"]                    << Option(8, 1, 8192);

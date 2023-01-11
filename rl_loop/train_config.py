@@ -62,7 +62,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.0005 # lr is so high, because of low policy loss factor
+    lr: float = 0.001 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
