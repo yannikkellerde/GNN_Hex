@@ -225,7 +225,6 @@ class PNA_torch_script(torch.nn.Module):
         graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
         graph_parts = torch.cat([graph_parts_sum,graph_parts_max,graph_parts_min,graph_parts_mean],dim=1)
         value = self.my_modules["value_linear"](graph_parts)
-        print("Value:",value)
 
         should_swap = self.my_modules["swap_linear"](graph_parts)
         should_swap = should_swap.reshape(should_swap.size(0))
