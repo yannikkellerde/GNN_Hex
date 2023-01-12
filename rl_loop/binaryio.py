@@ -141,8 +141,11 @@ class BinaryIO:
                 killit = time.perf_counter()+3
                 print_all=True
             if "Statistic:" in strline:
-                parts = strline.strip().replace("\\n","").replace("'","").split(" ")
-                statistics["stats/"+parts[1]] = float(parts[2])
+                try:
+                    parts = strline.strip().replace("\\n","").replace("'","").split(" ")
+                    statistics["stats/"+parts[1]] = float(parts[2])
+                except Exception as e:
+                    print("Failed to read statistic",e)
             if print_all and line!=b"":
                 log_to_file_and_print(os.path.join(self.binary_dir,"logs","errors.log"),str(line))
             elif killit and time.perf_counter()>killit:
