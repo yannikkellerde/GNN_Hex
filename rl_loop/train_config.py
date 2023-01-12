@@ -30,7 +30,7 @@ class TrainConfig:
     # set the context on CPU switch to GPU if there is one available (strongly recommended for training)
     context: str = "gpu"
 
-    cpu_count: int = 1  # increasing above 1 may result in shared memory error
+    cpu_count: int = 8  # increasing above 1 may result in shared memory error
 
     device_id: int = 0
 
@@ -62,7 +62,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.001 # lr is so high, because of low policy loss factor
+    lr: float = 0.0005 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
@@ -87,6 +87,7 @@ class TrainConfig:
     # ratio for mixing the value return with the corresponding q-value
     # for a ratio of 0 no q-value information will be used
     q_value_ratio: float = 0.15
+    # q_value_ratio: float = 0
 
     # set a specific seed value for reproducibility
     seed: int = 42

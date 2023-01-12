@@ -256,12 +256,13 @@ class PNA_torch_script(torch.nn.Module):
 class SAGE_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
         super().__init__()
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
+        norm = None
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=norm,hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=norm,hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=norm,hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
 
         self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
         self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
@@ -274,7 +275,7 @@ class SAGE_torch_script(torch.nn.Module):
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
+        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
@@ -306,7 +307,10 @@ class SAGE_torch_script(torch.nn.Module):
             pi = torch.cat((pi,should_swap[-1:]))
             output_graph_indices = torch.cat((output_graph_indices,output_graph_indices[-1:]))
 
+        # print(torch.min(pi),torch.max(pi))
+        # print(pi)
         pi = scatter_log_softmax(pi,index=output_graph_indices)
+        # print(torch.min(pi),torch.max(pi))
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
 def get_current_model():

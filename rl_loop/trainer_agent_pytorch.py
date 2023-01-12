@@ -203,9 +203,9 @@ class TrainerAgentPytorch:
         assert not torch.isnan(value_out).any()
         assert not torch.isnan(batch.y).any()
         assert not torch.isnan(batch.policy).any()
-        # for start,fin in zip(bp[:-1],bp[1:]):
-        #     assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
-        #     assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
+        for start,fin in zip(bp[:-1],bp[1:]):
+            assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
+            assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
         # policy_out = policy_out.softmax(dim=1)
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
         policy_loss = self.policy_loss(policy_out, batch.policy)
@@ -403,13 +403,9 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
     :return:
     """
     reset_metrics(metrics)
-    value_1 = 0
-    value_neg_1 = 0
     model.eval()  # set model to evaluation mode
     with torch.no_grad():  # operations inside don't track history
         for i, batch in enumerate(data_iterator):
-            value_1 +=  torch.sum(batch.y)
-            value_neg_1 += len(batch.y)-torch.sum(batch.y)
             batch.to(ctx)
 
             policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
@@ -430,7 +426,6 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             if nb_batches and i+1 == nb_batches:
                 break
 
-    print("Value 1 percentage",value_1/(value_1+value_neg_1))
     metric_values = {"loss": 0.99 * metrics["value_loss"].compute() + 0.01 * metrics["policy_loss"].compute()}
 
     for metric_name in metrics:
