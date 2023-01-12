@@ -62,7 +62,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.0005 # lr is so high, because of low policy loss factor
+    lr: float = 0.001 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
@@ -111,7 +111,7 @@ class TrainConfig:
     # loads a previous checkpoint if the loss increased significantly
     use_spike_recovery: bool = False
     # weight the value loss a lot lower than the policy loss in order to prevent overfitting
-    val_loss_factor: float = 1  # 0.01
+    val_loss_factor: float = 1  # 1 changed
     # weight for the wdl loss
     wdl_loss_factor: float = 0.4
 

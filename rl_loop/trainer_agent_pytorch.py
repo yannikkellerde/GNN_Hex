@@ -13,6 +13,7 @@ import random
 import logging
 from pathlib import Path
 import torch
+import numpy as np
 import torch.nn as nn
 from time import time
 import datetime
@@ -203,12 +204,19 @@ class TrainerAgentPytorch:
         assert not torch.isnan(value_out).any()
         assert not torch.isnan(batch.y).any()
         assert not torch.isnan(batch.policy).any()
+        # swaps = []
         for start,fin in zip(bp[:-1],bp[1:]):
+            # swaps.append(batch.policy[fin-1])
+            # print(batch.policy[fin-1],torch.exp(policy_out[fin-1]))
             assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
             assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
-        # policy_out = policy_out.softmax(dim=1)
+
+        # print(torch.min(torch.tensor(swaps)),torch.mean(torch.tensor(swaps)),torch.max(torch.tensor(swaps)))
+
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
         policy_loss = self.policy_loss(policy_out, batch.policy)
+        # print(torch.std_mean(batch.policy))
+        # print(torch.std_mean(torch.exp(policy_out)))
         # weight the components of the combined loss
         combined_loss = (
                 self.tc.val_loss_factor * value_loss + self.tc.policy_loss_factor * policy_loss

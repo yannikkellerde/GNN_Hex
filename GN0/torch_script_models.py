@@ -209,6 +209,9 @@ class PNA_torch_script(torch.nn.Module):
 
         self.pre_head_layer_norm = LayerNorm(hidden_channels)
 
+        self.my_modules["value_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
+        self.my_modules["swap_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
+
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
@@ -217,7 +220,11 @@ class PNA_torch_script(torch.nn.Module):
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
+        graph_parts_sum = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
+        graph_parts_max = scatter(value_embeds,graph_indices,dim=0,reduce="max") # Is mean better?
+        graph_parts_min = scatter(value_embeds,graph_indices,dim=0,reduce="min") # Is mean better?
+        graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
+        graph_parts = torch.cat([graph_parts_sum,graph_parts_max,graph_parts_min,graph_parts_mean],dim=1)
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
 
@@ -252,32 +259,60 @@ class PNA_torch_script(torch.nn.Module):
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
+class MLP(torch.nn.Module):
+    def __init__(self,hidden_channels,num_hidden_layers,num_input,num_output,output_activation=None):
+        super().__init__()
+        self.layers = torch.nn.ModuleList()
+        if num_hidden_layers==0:
+            self.layers.append(torch.nn.Linear(num_input,num_output))
+        else:
+            self.layers.append(torch.nn.Linear(num_input,hidden_channels))
+            for i in range(num_hidden_layers-1):
+                self.layers.append(torch.nn.Linear(hidden_channels,hidden_channels))
+            self.layers.append(torch.nn.Linear(hidden_channels,num_output))
+        self.output_activation = output_activation
+
+    def forward(self,x):
+        for layer in self.layers:
+            x = F.relu(layer(x))
+        if self.output_activation is not None:
+            x = self.output_activation(x)
+        return x
+        
 
 class SAGE_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
         super().__init__()
-        norm = None
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=norm,hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=norm,hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=norm,hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
 
-        self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
-        self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
+        # self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels*4,1)
+        # self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels*4,1)
+        self.my_modules["value_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
+        self.my_modules["swap_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
+    
+        self.before_head_norm = LayerNorm(hidden_channels)
 
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
-        embeds = self.gnn(x,edge_index)
+        embeds = self.before_head_norm(self.gnn(x,edge_index))
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
+        graph_parts_sum = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
+        graph_parts_max = scatter(value_embeds,graph_indices,dim=0,reduce="max") # Is mean better?
+        graph_parts_min = scatter(value_embeds,graph_indices,dim=0,reduce="min") # Is mean better?
+        graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
+        graph_parts = torch.cat([graph_parts_sum,graph_parts_max,graph_parts_min,graph_parts_mean],dim=1)
         value = self.my_modules["value_linear"](graph_parts)
         value = self.value_activation(value)
+        # print(graph_parts)
 
         should_swap = self.my_modules["swap_linear"](graph_parts)
         should_swap = should_swap.reshape(should_swap.size(0))
@@ -307,13 +342,11 @@ class SAGE_torch_script(torch.nn.Module):
             pi = torch.cat((pi,should_swap[-1:]))
             output_graph_indices = torch.cat((output_graph_indices,output_graph_indices[-1:]))
 
-        # print(torch.min(pi),torch.max(pi))
-        # print(pi)
         pi = scatter_log_softmax(pi,index=output_graph_indices)
-        # print(torch.min(pi),torch.max(pi))
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
 def get_current_model():
     # return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
-    return SAGE_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
+    return PNA_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
+    # return SAGE_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
 

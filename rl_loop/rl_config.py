@@ -60,7 +60,7 @@ class UCIConfig:
     MCTS_Solver: bool = True
     MeanInitPly: int = 0  # default: 15
     Milli_Policy_Clip_Thresh: int = 10
-    Nodes: int = 800
+    Nodes: int = 200
     Reuse_Tree: str = False
     Search_Type: str = f'mcts'
     Selfplay_Chunk_Size: int = 128  # default: 128
