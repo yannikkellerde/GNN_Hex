@@ -204,15 +204,14 @@ class PNA_torch_script(torch.nn.Module):
         self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=value_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
         self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
 
-        self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels,1)
-        self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels,1)
 
         self.pre_head_layer_norm = LayerNorm(hidden_channels)
 
-        self.my_modules["value_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
+        self.value_activation = torch.nn.Tanh()
+
+        self.my_modules["value_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1,output_activation=self.value_activation)
         self.my_modules["swap_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
 
-        self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
@@ -226,7 +225,7 @@ class PNA_torch_script(torch.nn.Module):
         graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
         graph_parts = torch.cat([graph_parts_sum,graph_parts_max,graph_parts_min,graph_parts_mean],dim=1)
         value = self.my_modules["value_linear"](graph_parts)
-        value = self.value_activation(value)
+        print("Value:",value)
 
         should_swap = self.my_modules["swap_linear"](graph_parts)
         should_swap = should_swap.reshape(should_swap.size(0))
@@ -274,7 +273,9 @@ class MLP(torch.nn.Module):
 
     def forward(self,x):
         for layer in self.layers:
-            x = F.relu(layer(x))
+            x = layer(x)
+            if layer is not self.layers[-1]:
+                x = F.relu(x)
         if self.output_activation is not None:
             x = self.output_activation(x)
         return x
