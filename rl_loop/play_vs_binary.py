@@ -2,6 +2,7 @@ import os
 from subprocess import PIPE, Popen
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from matplotlib.patches import RegularPolygon
 import numpy as np
 import sys
 
