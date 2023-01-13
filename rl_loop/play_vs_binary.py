@@ -1,10 +1,45 @@
-from graph_game.hex_board_game import Hex_board, build_hex_grid
 import os
 from subprocess import PIPE, Popen
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+
+
+def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,fontsize=14):
+    if labels is not None:
+        labels = [[str(x)[:6] for x in y] for y in labels]
+    if fig is not None:
+        ax = fig.axes[0]
+    else:
+        fig, ax = plt.subplots(1,figsize=(16,16))
+    size = len(colors)
+    xstart = -(size//2)*1.5
+    ystart = -(size/2*np.sqrt(3/4))+0.5
+    xend = xstart+1.5*(size-1)
+    yend = ystart+np.sqrt(3/4)*(size-1)
+    ax.set_aspect('equal')
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="b" if border_swap else "r",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+0.5*(size-1)-0.5,yend+0.75]],color="r" if border_swap else "b",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xend+1.25,yend+0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="b" if border_swap else "r",alpha=0.7)
+    ax.add_patch(tri)
+    tri = plt.Polygon([[0,0],[xstart-1.25,ystart-0.75],[xstart+1*(size-1)+0.5,ystart-0.75]],color="r" if border_swap else "b",alpha=0.7)
+    ax.add_patch(tri)
+    for i,cylist in enumerate(colors):
+        for j,color in enumerate(cylist):
+            coords = [xstart+0.5*j+i,ystart+np.sqrt(3/4)*j]
+            hexagon = RegularPolygon((coords[0], coords[1]), numVertices=6, radius=np.sqrt(1/3), alpha=1, edgecolor='k', facecolor=color,linewidth=2)
+            if labels is not None:
+                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=14)
+            ax.add_patch(hexagon)
+    plt.autoscale(enable=True)
+    plt.axis("off")
+    plt.tight_layout()
+    if do_pause:
+        plt.pause(0.001)
+    return fig
 
 def set_uci_param(proc, name: str, value):
     if type(value) == bool:
@@ -112,17 +147,17 @@ def play_vs_binary(binary_path, model_path):
     def read_and_draw():
         global prev_red_squares,prev_blue_squares,border_swap
         info = read_output(proc,b"readyok\n", check_error=True)
-        board = Hex_board()
-        board.size = hex_size
-        board.position = ["f"]*(hex_size*hex_size)
+
+        size = hex_size
+        position = ["f"]*(hex_size*hex_size)
         if (info["board_moves_blue:"] == prev_red_squares and prev_red_squares) or (info["board_moves_red:"] == prev_blue_squares and prev_blue_squares):
             border_swap = not border_swap
         prev_red_squares = info["board_moves_red:"]
         prev_blue_squares = info["board_moves_blue:"]
         for move in info["board_moves_blue:"]:
-            board.position[int(move)] = "b"
+            position[int(move)] = "b"
         for move in info["board_moves_red:"]:
-            board.position[int(move)] = "r"
+            position[int(move)] = "r"
         policy = [""]*(hex_size*hex_size)
         if "Evaluation:" in info:
             for eval_comb in info["Evaluation:"]:
@@ -136,8 +171,8 @@ def play_vs_binary(binary_path, model_path):
             if key in info:
                 print(f"{key} {' '.join(info[key])}")
 
-        colors = [[("w" if y=="f" else y) for y in board.position[x:x+board.size]] for x in range(0,board.size*board.size,board.size)]
-        labels = np.array(policy).reshape((board.size,board.size))
+        colors = [[("w" if y=="f" else y) for y in position[x:x+size]] for x in range(0,size*size,size)]
+        labels = np.array(policy).reshape((size,size))
         fig.clear()
         fig.add_subplot()
         build_hex_grid(colors,labels,fig=fig,border_swap=border_swap)
