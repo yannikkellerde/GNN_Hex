@@ -161,6 +161,9 @@ def play_vs_binary(binary_path, model_path):
     proc.stdin.write(b"isready\n")
     proc.stdin.flush()
     read_output(proc,b"readyok\n", check_error=True)
+    proc.stdin.write(b"setoption name Nodes value 200\n")
+    proc.stdin.flush()
+
     proc.stdin.write(b"play\n")
     proc.stdin.flush()
     while 1:
