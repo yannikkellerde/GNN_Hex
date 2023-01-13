@@ -2,7 +2,7 @@
 + A: Not great.
 + Day: Friday, I spent the last 3 days trying to figure out why my model is behaving so weirdly.
 	- Observation 1: My model is not learning what's in the training data.
-	- Observation 2: When I transfer the model and current training data to my local machine and try to learn it in supervised fashion (not generating any new training data), it works.
+	- Observation 2: When I transfer the model and current training data to my local machine and try to learn it in supervised fashion (not generating any new training data), it works as expected.
 	- Observation 3: The **exact same model** gives vastly different outputs for the same inputs on my docker at the dgx and my local installation.
 	- Action: I push my 30GB docker image from the DGX to dockerhub and pull it at my local machine.
 	- Observation 4: Vastly different outputs on DGX vs my local machine for the exact same docker image.
