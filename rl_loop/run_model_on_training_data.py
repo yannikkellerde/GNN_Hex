@@ -13,6 +13,10 @@ device = "cuda"
 # checkpoint = torch.load(weights)
 # model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)
-output = model(dataset[0].x,dataset[0].edge_index,dataset[0].batch,dataset[0].ptr)
+data = dataset[0].to(device)
+ptr = torch.tensor([0,len(data.x)],dtype=torch.int64).to(device)
+batch = torch.zeros(data.x.shape[0],dtype=torch.int64).to(device)
+print(batch.shape,data.x.shape)
+output = model(data.x,data.edge_index,batch,ptr)
 for i in torch.exp(output[0]):
     print(i)
