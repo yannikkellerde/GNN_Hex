@@ -389,7 +389,7 @@ class DuellingTwoHeaded(torch.nn.Module):
         else:
             return self.forward(data.x,data.edge_index)
 
-class Duelling():
+class Duelling(torch.nn.Module):
     def __init__(self,GNN,*args,advantage_head=None,**kwargs):
         super().__init__()
         if advantage_head is not None:

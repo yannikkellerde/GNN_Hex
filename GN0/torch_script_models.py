@@ -9,8 +9,7 @@ from torch_geometric.data import Batch, Data
 from torch_scatter import scatter, scatter_mean
 from torch_scatter.composite import scatter_log_softmax
 from torch_geometric.typing import Adj, OptTensor, OptPairTensor, SparseTensor
-from torch_geometric.nn.aggr.scaler import DegreeScalerAggregation
-from torch_geometric.nn.models import PNA
+from torch_geometric.nn.aggr.scaler import DegreeScalerAggregation from torch_geometric.nn.models import PNA
 from torch.nn import Linear,ModuleList
 import torch.nn.functional as F
 import copy

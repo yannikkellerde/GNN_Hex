@@ -6,11 +6,13 @@
 	- Observation 3: The **exact same model** gives vastly different outputs for the same inputs on my docker at the dgx and my local installation.
 	- Action: I push my 30GB docker image from the DGX to dockerhub and pull it at my local machine.
 	- Observation 4: Vastly different outputs on DGX vs my local machine for the exact same docker image.
-		+ Switching the GPU on the DGX does not change anything.
-+ At this point, I give up for now.
-	- I think I eliminated all possible factors except the type of GPU.
-	- Getting different results depending on NVIDIA GeForce 1070 Ti vs Tesla V100 should not happen I think. That is what we have CUDA for.
-	- I'll definitely want to come back to this soon, but I think I need a break from this crazy bug fixing
-+ Next I'll focus on writing the thesis and I'll try to reproduce my old RainbowDQN results, so I have some results to write about in the paper already.
++ Day: Monday, I did some more tests
+	- This only happens if I load a torch\_script model in libtorch c++.
+	- So either libtorch, torch\_scatter/torch\_sparse c++ implementation or CUDA itself is betraying me.
+	- This is bad, but I don't have time to spend the whole next weeks trying to figure this out.
+	- I'll switch focus to preparing the RainbowDQN results for the thesis for now
 
-
+## RainbowDQN results
++ So I have this fairly good model I trained at the start of the thesis for 6 days and I just revived it
++ I do still have the logs of the run, but the elo evaluation during the training process is somewhat wrong
++ I think with my new knowledge I should be able to design a stronger model than the simple one I trained at the start.
