@@ -47,13 +47,28 @@ class MLP(torch.nn.Module):
             self.layers.append(torch.nn.Linear(hidden_channels,num_output))
         self.output_activation = output_activation
 
-    def grow_input_width(self,new_input_width):
+    def grow_input_width(self,new_input_width,new_hidden_channels):
         old_layer = self.layers[0]
-        self.num_input = new_input_width
-        self.layers[0] = torch.nn.Linear(new_input_width,self.hidden_channels).to(old_layer.weight.device)
+        self.layers[0] = torch.nn.Linear(new_input_width,new_hidden_channels).to(old_layer.weight.device)
         self.layers[0].weight.data.fill_(0)
-        self.linear.weight.data[:,:self.hidden_channels] = old_layer.weight.data
-        self.linear.bias.data[:] = old_layer.bias.data[:]
+        self.layers[0].bias.data.fill_(0)
+        self.layers[0].weight.data[:self.hidden_channels,:self.num_input] = old_layer.weight.data
+        self.layers[0].bias.data[:self.hidden_channels] = old_layer.bias.data[:]
+        for i in range(len(self.layers)-2):
+            old_layer = self.layers[i]
+            self.layers[i] = torch.nn.Linear(new_hidden_channels,new_hidden_channels).to(old_layer.weight.device)
+            self.layers[i].weight.data.fill_(0)
+            self.layers[i].bias.data.fill_(0)
+            self.layers[i].weight.data[:self.hidden_channels,:self.hidden_channels] = old_layer.weight.data
+            self.layers[i].bias.data[:self.hidden_channels] = old_layer.bias.data[:]
+
+        old_layer = self.layers[-1]
+        self.layers[-1] = torch.nn.Linear(new_hidden_channels,1).to(old_layer.weight.device)
+        self.layers[-1].weight.data.fill_(0)
+        self.layers[-1].weight.data[:,:self.hidden_channels] = old_layer.weight.data
+        self.layers[-1].bias.data[:] = old_layer.bias.data[:]
+        self.num_input = new_input_width
+        self.hidden_channels = new_hidden_channels
 
     def forward(self,x):
         for layer in self.layers:
@@ -129,8 +144,15 @@ def cachify_gnn(gnn:Type[BasicGNN]):
         supports_edge_weight = False
         supports_edge_attr = False
         supports_cache = True
-        def __init__(self,*args,out_channels: Optional[int] = None,**kwargs):
+        def __init__(self,*args,out_channels: Optional[int] = None, cached_norm=False,**kwargs):
+            if "conv_kwargs" in kwargs:
+                self.conv_kwargs = kwargs["conv_kwargs"]
+                kwargs.update(kwargs["conv_kwargs"])
+                del kwargs["conv_kwargs"]
+            else:
+                self.conv_kwargs = dict()
             super().__init__(*args,out_channels=out_channels,**kwargs)
+            self.cached_norm = cached_norm
             self.has_output = out_channels is not None
             self.has_cache = False
             if self.norms is not None and not self.has_output: # Add final norm layer after last hidden layer if not having output
@@ -142,35 +164,44 @@ def cachify_gnn(gnn:Type[BasicGNN]):
         def grow_depth(self,additional_layers):
             assert not self.has_output
             self.num_layers+=additional_layers
+            if gnn == GraphSAGE:
+                device = self.convs[0].lin_l.weight.device
+            else:
+                raise NotImplementedError("Grow not supported for this GNN type")
             for _ in range(additional_layers):
-                conv_layer = self.init_conv(self.hidden_channels,self.hidden_channels).to(self.convs[0].lin_l.weight.device)
+                conv_layer = self.init_conv(self.hidden_channels,self.hidden_channels,**self.conv_kwargs).to(device)
                 conv_layer.lin_l.weight.data[:] = 0
                 conv_layer.lin_l.bias.data[:] = 0
                 conv_layer.lin_r.weight.data[:] = torch.eye(self.hidden_channels)
                 self.convs.append(conv_layer)
             
                 if self.norms is not None:
-                    new_norm = self.norms[0].__class__(self.hidden_channels).to(self.convs[0].lin_l.weight.device)
-                    new_norm.mean_scale.data[:] = 0
+                    new_norm = self.norms[0].__class__(self.hidden_channels).to(device)
+                    if type(self.norms[0]) == CachedGraphNorm:
+                        new_norm.mean_scale.data[:] = 0
                     self.norms.append(new_norm)
             self.has_cache = False
 
         def grow_width(self,new_width,new_in_channels=None):
+            if gnn == GraphSAGE:
+                device = self.convs[0].lin_l.weight.device
+            else:
+                raise NotImplementedError("Grow not supported for this GNN type")
             old_convs = self.convs
             if new_in_channels is not None:
                 old_in_channels = self.in_channels
                 self.in_channels = new_in_channels
             self.convs = ModuleList()
-            self.convs.append(self.init_conv(self.in_channels,new_width).to(old_convs[0].lin_l.weight.device))
+            self.convs.append(self.init_conv(self.in_channels,new_width,**self.conv_kwargs).to(device))
             for _ in range(self.num_layers-2):
-                self.convs.append(self.init_conv(new_width,new_width).to(old_convs[0].lin_l.weight.device))
+                self.convs.append(self.init_conv(new_width,new_width,**self.conv_kwargs).to(device))
             if self.has_output:
                 self.convs.append(
-                    self.init_conv(new_width, self.out_channels).to(old_convs[0].lin_l.weight.device)
+                    self.init_conv(new_width, self.out_channels,**self.conv_kwargs).to(device)
                 )
             else:
                 self.convs.append(
-                    self.init_conv(new_width, new_width).to(old_convs[0].lin_l.weight.device))
+                    self.init_conv(new_width, new_width,**self.conv_kwargs).to(device))
             for i,(conv,old_conv) in enumerate(zip(self.convs,old_convs)):
                 if i == 0:
                     if new_in_channels is None:
@@ -193,10 +224,11 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             if self.norms is not None:
                 new_norms = ModuleList()
                 for i in range(self.num_layers-1 if self.has_output else self.num_layers):
-                    new_norm = self.norms[i].__class__(new_width).to(old_convs[0].lin_l.weight.device)
+                    new_norm = self.norms[i].__class__(new_width).to(device)
                     new_norm.weight.data[:self.hidden_channels] = self.norms[i].weight.data
                     new_norm.bias.data[:self.hidden_channels] = self.norms[i].bias.data
-                    new_norm.mean_scale.data[:self.hidden_channels] = self.norms[i].mean_scale.data
+                    if type(self.norms[0]) == CachedGraphNorm:
+                        new_norm.mean_scale.data[:self.hidden_channels] = self.norms[i].mean_scale.data
                     new_norms.append(new_norm)
                 self.norms = new_norms
 
@@ -216,7 +248,7 @@ def cachify_gnn(gnn:Type[BasicGNN]):
             return torch.stack(mean_caches),torch.stack(var_caches)
 
         def import_norm_cache(self,mean_cache,var_cache):
-            if self.norms is None:
+            if self.norms is None or not self.cached_norm:
                 return
             self.has_cache = True
             for i,norm in enumerate(self.norms):
@@ -224,7 +256,7 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 norm.var_cache = var_cache[i].to(norm.weight.device)
 
         def forward(self,x: Tensor,edge_index: Adj,*,edge_weight: OptTensor = None,edge_attr: OptTensor = None,set_cache: bool = False) -> Tensor:
-            if set_cache:
+            if set_cache and self.cached_norm:
                 self.has_cache = True
             xs: List[Tensor] = []
             for i in range(self.num_layers):
@@ -244,7 +276,10 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 if self.act is not None and self.act_first:
                     x = self.act(x)
                 if self.norms is not None:
-                    x = self.norms[i](x,set_cache=set_cache,use_cache=self.has_cache and not self.training)
+                    if self.cached_norm:
+                        x = self.norms[i](x,set_cache=set_cache,use_cache=self.has_cache and not self.training)
+                    else:
+                        x = self.norms[i](x)
                 if self.act is not None and not self.act_first:
                     x = self.act(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
@@ -283,11 +318,11 @@ class HeadNetwork(torch.nn.Module):
         self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
         self.value_head_type = value_head_type
+        self.hidden_channels = hidden_channels
         if value_head_type == "linear":
             self.value_head = Linear(self.hidden_channels*len(value_aggr_types),1)
         elif value_head_type == "mlp":
             self.value_head = MLP(self.hidden_channels//2,1,self.hidden_channels*len(value_aggr_types),1)
-        self.hidden_channels = hidden_channels
         self.out_channels = out_channels
         self.value_aggr_types = value_aggr_types
         if noisy_dqn:
@@ -313,7 +348,7 @@ class HeadNetwork(torch.nn.Module):
             self.value_head.weight.data[:,:self.hidden_channels] = old_head.weight.data
             self.value_head.bias.data[:] = old_head.bias.data[:]
         else:
-            self.value_head.grow_input_width(new_width)
+            self.value_head.grow_input_width(new_width*len(self.value_aggr_types),new_width//2)
 
 
         self.hidden_channels = new_width
@@ -341,7 +376,7 @@ class HeadNetwork(torch.nn.Module):
 
         for aggr_type in self.value_aggr_types:
             parts.append(scatter(x,graph_indices,dim=0,reduce=aggr_type))
-        graph_parts = torch.cat(parts)
+        graph_parts = torch.cat(parts,dim=1)
         value = self.value_head(graph_parts)
         return advantages,value
 
@@ -349,6 +384,11 @@ class DuellingTwoHeaded(torch.nn.Module):
     def __init__(self,GNN:Type[BasicGNN],advantage_head,gnn_kwargs,head_kwargs):
         super().__init__()
         self.gnn = GNN(**gnn_kwargs)
+        if "norm" in gnn_kwargs and gnn_kwargs["norm"]:
+            self.after_embed_norm = copy.deepcopy(gnn_kwargs["norm"])
+        else:
+            self.after_embed_norm = None
+
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
         self.value_activation = Tanh()
         self.advantage_activation = Tanh()
@@ -359,9 +399,16 @@ class DuellingTwoHeaded(torch.nn.Module):
         self.gnn.grow_depth(additional_layers)
 
     def grow_width(self,new_width):
+        old_width = self.gnn.hidden_channels
         self.gnn.grow_width(new_width)
         self.maker_head.grow_width(new_width,new_in_channels=new_width)
         self.breaker_head.grow_width(new_width,new_in_channels=new_width)
+        new_norm = self.after_embed_norm.__class__(new_width).to(self.after_embed_norm.weight.device)
+        new_norm.weight.data[:old_width] = self.after_embed_norm.weight.data
+        new_norm.bias.data[:old_width] = self.after_embed_norm.bias.data
+        if type(self.after_embed_norm) == CachedGraphNorm:
+            new_norm.mean_scale.data[:self.hidden_channels] = self.after_embed_norm.mean_scale.data
+        self.after_embed_norm = new_norm
 
     def export_norm_cache(self,*args):
         cache_list = []
@@ -399,6 +446,9 @@ class DuellingTwoHeaded(torch.nn.Module):
             embeds = self.gnn(x,edge_index,set_cache=set_cache)
         else:
             embeds = self.gnn(x,edge_index)
+
+        if self.after_embed_norm is not None:
+            embeds = self.after_embed_norm(embeds)
 
         if is_maker==1:
             if hasattr(self.maker_head,"supports_cache") and self.maker_head.supports_cache:
@@ -750,6 +800,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 in_channels=2,
                 num_layers=args.num_layers,
                 hidden_channels=args.hidden_channels,
+                cached_norm=True,
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ),head_kwargs=dict(
@@ -757,7 +808,28 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
                 noisy_dqn=args.noisy_dqn,
                 noise_sigma=args.noisy_sigma0,
+                cached_norm=True,
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
+                act="relu"
+            ))
+    elif name == "modern_two_headed":
+        model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,
+            gnn_kwargs=dict(
+                in_channels=2,
+                num_layers=args.num_layers,
+                hidden_channels=args.hidden_channels,
+                cached_norm=False,
+                norm=LayerNorm(args.hidden_channels) if args.norm else None,
+                act="relu"
+            ),head_kwargs=dict(
+                GNN=cachify_gnn(GraphSAGE),
+                value_head_type = "mlp",
+                value_aggr_types = ("sum","max","min","mean"),
+                num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
+                noisy_dqn=args.noisy_dqn,
+                noise_sigma=args.noisy_sigma0,
+                cached_norm=False,
+                norm=LayerNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
     elif name == "pna_two_headed":
@@ -770,7 +842,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 num_layers=args.num_layers,
                 hidden_channels=args.hidden_channels,
                 norm=LayerNorm(args.hidden_channels) if args.norm else None,
-                act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
+                cached_norm=False,
+                act="relu",conv_kwargs=dict(deg=deg_hist,aggregators=aggregators, scalers=scalers)
             ),head_kwargs=dict(
                 GNN=cachify_gnn(PNA),
                 value_head_type = "mlp",
@@ -779,6 +852,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 noisy_dqn=args.noisy_dqn,
                 noise_sigma=args.noisy_sigma0,
                 norm=LayerNorm(args.hidden_channels) if args.norm else None,
+                cached_norm=False,
                 act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
             ))
 

@@ -31,7 +31,7 @@ class Elo_handler():
         new_players = {}
         for keep_player in keep_players:
             if keep_player in self.players:
-                new_players[keep_player] = self.players[keep_players]
+                new_players[keep_player] = self.players[keep_player]
         self.size = new_hex_size
         self.players = new_players
 
@@ -47,13 +47,14 @@ class Elo_handler():
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[]):
         assert num_players>len(must_include_players)
-        if num_players > len(self.players)-2:
-            num_players = len(self.players)-2
+        ok_players = [x for x in self.players if self.players[x]["rating"] is not None and not self.players[x]["rating_fixed"]]
+        if num_players > len(ok_players):
+            num_players = len(ok_players)
         contestants = []
         contestants.extend(must_include_players)
         while len(contestants)<num_players:
-            new_name = random.choice(list(self.players.keys()))
-            if new_name not in contestants and not (self.players[new_name]["rating"] is None and self.players[new_name]["rating_fixed"]):
+            new_name = random.choice(ok_players)
+            if new_name not in contestants:
                 contestants.append(new_name)
 
         all_stats = []
@@ -65,12 +66,12 @@ class Elo_handler():
                         continue
                     if not "model" in self.players[p1] or self.players[p1]["model"] is None:
                         self.players[p1]["model"] = self.empty_model1
-                    if "checkpoint" in self.players[p1]:
+                    if "checkpoint" in self.players[p1] and self.players[p1]["checkpoint"] is not None:
                         self.load_into_empty_model(self.players[p1]["model"],self.players[p1]["checkpoint"])
 
-                    if not "model" in self.players[p2] or self.players[p1]["model"] is None:
-                        self.players[p1]["model"] = self.empty_model2
-                    if "checkpoint" in self.players[p2]:
+                    if not "model" in self.players[p2] or self.players[p2]["model"] is None:
+                        self.players[p2]["model"] = self.empty_model2
+                    if "checkpoint" in self.players[p2] and self.players[p2]["checkpoint"] is not None:
                         self.load_into_empty_model(self.players[p2]["model"],self.players[p2]["checkpoint"])
                     statistics = self.play_some_games(p1,p2,num_games_per_match,0,random_first_move=False,progress=False)
                     all_stats.append(statistics)
@@ -83,8 +84,6 @@ class Elo_handler():
         empty_model.load_state_dict(stuff["state_dict"])
         if "cache" in stuff and stuff["cache"] is not None:
             empty_model.import_norm_cache(*stuff["cache"])
-        else:
-            print("Warning, no cache")
 
     def score_some_statistics(self,statistics):
         player_expect_vs_score = defaultdict(lambda :dict(expectation=0,score=0,num_games=0))
@@ -94,14 +93,16 @@ class Elo_handler():
             keys = list(stats.keys())
             num_games = sum([int(x) for x in stats.values()])
             if self.get_rating(keys[0]) is None:
-                numerator_and_games[keys[0]]["numerator"] += self.get_rating(keys[1])*num_games+400*(stats[keys[0]]*2-num_games)
-                numerator_and_games[keys[0]]["num_games"] += num_games
+                if self.get_rating(keys[1]) is not None:
+                    numerator_and_games[keys[0]]["numerator"] += self.get_rating(keys[1])*num_games+400*(stats[keys[0]]*2-num_games)
+                    numerator_and_games[keys[0]]["num_games"] += num_games
             elif self.get_rating(keys[1]) is not None:
                 player_expect_vs_score[keys[0]]["expectation"] += (1/(1+10**((self.get_rating(keys[1])-self.get_rating(keys[0]))/400)))*num_games
                 player_expect_vs_score[keys[0]]["score"] += stats[keys[0]]
             if self.get_rating(keys[1]) is None:
-                numerator_and_games[keys[1]]["numerator"] += self.get_rating(keys[0])*num_games+400*(stats[keys[1]]*2-num_games)
-                numerator_and_games[keys[1]]["num_games"] += num_games
+                if self.get_rating(keys[0]) is not None:
+                    numerator_and_games[keys[1]]["numerator"] += self.get_rating(keys[0])*num_games+400*(stats[keys[1]]*2-num_games)
+                    numerator_and_games[keys[1]]["num_games"] += num_games
             elif self.get_rating(keys[0]) is not None:
                 player_expect_vs_score[keys[1]]["expectation"] += (1/(1+10**((self.get_rating(keys[0])-self.get_rating(keys[1]))/400)))*num_games
                 player_expect_vs_score[keys[1]]["score"] += stats[keys[1]]
@@ -119,7 +120,8 @@ class Elo_handler():
         columns = ["name","rating"]
         data = []
         for name in self.players:
-            data.append([name,self.get_rating(name)])
+            if self.get_rating(name) is not None:
+                data.append([name,self.get_rating(name)])
         data.sort(key=lambda x:-x[1])
         return columns,data
 
@@ -167,7 +169,7 @@ class Elo_handler():
                     current_player = p1
 
                     while len(games)>0:
-                        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True) for game in games]
+                        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
                         batch = Batch.from_data_list(datas)
 
                         if move_num == 0 and random_first_move and starting_moves is None:
@@ -176,7 +178,7 @@ class Elo_handler():
                             if self.players[current_player]["simple"]:
                                 actions = self.players[current_player]["model"](batch)
                             else:
-                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(device)
+                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
                                 actions = []
                                 for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):  # This isn't great, but I didn't find any method for sampling in pytorch_scatter. Maybe need to implement myself at some point.
                                     action_part = action_values[start+2:fin]
@@ -202,7 +204,7 @@ class Elo_handler():
                                     actions.append(action.item())
                             actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
                         elif move_num==0 and starting_moves is not None:
-                            actions = starting_moves
+                            actions = starting_moves[:len(games)]
 
 
                         to_del = []

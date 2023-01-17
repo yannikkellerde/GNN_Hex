@@ -1,0 +1,37 @@
+# This dockerfile was created when torch_geometics newest supported version was 11.7
+# As soon as torch_geometric and pytorch update their stuff more, this file probably won't work anymore
+# It can still work as a guide to get it going with newer versions though. Good luck.
+
+FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
+RUN apt-get update
+
+ENV TORCH_CUDA_ARCH_LIST=Volta;Turing
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
+RUN apt-get install -y git build-essential curl wget unzip cmake libblas-dev liblapack-dev vim
+WORKDIR /root
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+RUN bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
+ENV PATH="${PATH}:/root/miniconda3/bin"
+RUN conda create --name HexAra -c conda-forge graph-tool python=3.9
+RUN conda install -n HexAra pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+RUN conda install -n HexAra pyg -c pyg
+RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython rtpt alive-process
+COPY .ssh/ ./.ssh/
+RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
+RUN git clone git@github.com:yannikkellerde/Gabor_Graph_Networks.git
+WORKDIR /root/Gabor_Graph_Networks/
+RUN conda run -n HexAra python -m pip install -e .
+RUN mkdir data && mkdir data/RL && mkdir data/RL/model && mkdir data/RL/model/HexAra
+WORKDIR /root/Gabor_Graph_Networks/data/RL
+WORKDIR /root/
+COPY .secrets/api_key .
+RUN /root/miniconda3/envs/HexAra/bin/wandb login $(cat api_key)
+
+
+WORKDIR /root/Gabor_Graph_Networks/
+WORKDIR /root/miniconda3/envs/HexAra/lib/
+RUN rm libstdc++.so.6 && ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6 # Hacky, but this fixes some glibc version bullshit
+WORKDIR /root/miniconda3/lib/
+RUN rm libstdc++.so.6 && ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6 # Hacky, but this fixes some glibc version bullshit
+ENV LD_LIBRARY_PATH=/usr/local/include/libtorch/lib:LD_LIBRARY_PATH
+WORKDIR /root/Gabor_Graph_Networks/

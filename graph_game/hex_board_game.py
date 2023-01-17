@@ -267,7 +267,7 @@ class Hex_board(Abstract_board_game):
             labelist = [vprop[self.board_index_to_vertex[i]] for i in range(len(self.position))]
             labels = [["" if x == 0 else x for x in labelist[x:x+self.size]] for x in range(0,self.size**2,self.size)]
             if color_based_on_vprop:
-                colors = [[("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
+                colors = [["g" if type(x)==str else ("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
 
         return build_hex_grid(colors,labels,fig=fig)
 

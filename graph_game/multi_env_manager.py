@@ -31,11 +31,11 @@ class Env_manager():
 
     @property
     def starting_obs(self):
-        return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True)
+        return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
         
 
     def observe(self) -> List[Data]:
-        f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True) for env in self.envs]
+        f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
         # assert torch.all(Batch.from_data_list(f).x[:,2] == Batch.from_data_list(f).x[0,2])
         return f
 
