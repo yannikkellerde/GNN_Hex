@@ -1,7 +1,7 @@
 """TODO: Multiprocessing if it becomes nescessary"""
 
 from graph_game.graph_tools_games import Hex_game
-from GN0.convert_graph import convert_node_switching_game
+from GN0.util.convert_graph import convert_node_switching_game
 from typing import List, Tuple, Union
 from torch_geometric.data import Data, Batch
 import numpy as np

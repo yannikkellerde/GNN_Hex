@@ -35,6 +35,9 @@ class MLP(torch.nn.Module):
     def __init__(self,hidden_channels,num_hidden_layers,num_input,num_output,output_activation=None):
         super().__init__()
         self.layers = torch.nn.ModuleList()
+        self.num_input = num_input
+        self.num_output = num_output
+        self.hidden_channels = hidden_channels
         if num_hidden_layers==0:
             self.layers.append(torch.nn.Linear(num_input,num_output))
         else:
@@ -43,6 +46,14 @@ class MLP(torch.nn.Module):
                 self.layers.append(torch.nn.Linear(hidden_channels,hidden_channels))
             self.layers.append(torch.nn.Linear(hidden_channels,num_output))
         self.output_activation = output_activation
+
+    def grow_input_width(self,new_input_width):
+        old_layer = self.layers[0]
+        self.num_input = new_input_width
+        self.layers[0] = torch.nn.Linear(new_input_width,self.hidden_channels).to(old_layer.weight.device)
+        self.layers[0].weight.data.fill_(0)
+        self.linear.weight.data[:,:self.hidden_channels] = old_layer.weight.data
+        self.linear.bias.data[:] = old_layer.bias.data[:]
 
     def forward(self,x):
         for layer in self.layers:
@@ -267,11 +278,15 @@ class ActionValue(torch.nn.Module):
         return self.value_activation(res)
 
 class HeadNetwork(torch.nn.Module):
-    def __init__(self,in_channels,hidden_channels,out_channels,value_head,GNN:Type[BasicGNN],value_aggr_types=("mean",),noisy_dqn=True,noise_sigma=0,**gnn_kwargs):
+    def __init__(self,in_channels,hidden_channels,out_channels,GNN:Type[BasicGNN],value_head_type="linear",value_aggr_types=("mean",),noisy_dqn=True,noise_sigma=0,**gnn_kwargs):
         super().__init__()
         self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
-        self.value_head = value_head
+        self.value_head_type = value_head_type
+        if value_head_type == "linear":
+            self.value_head = Linear(self.hidden_channels*len(value_aggr_types),1)
+        elif value_head_type == "mlp":
+            self.value_head = MLP(self.hidden_channels//2,1,self.hidden_channels*len(value_aggr_types),1)
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
         self.value_aggr_types = value_aggr_types
@@ -289,12 +304,17 @@ class HeadNetwork(torch.nn.Module):
         self.linear.weight.data.fill_(0)
         self.linear.weight.data[:,:self.hidden_channels] = old_linear.weight.data
         self.linear.bias.data[:] = old_linear.bias.data[:]
+            
 
-        old_head = self.value_head
-        self.value_head = torch.nn.Linear(new_width,self.out_channels).to(old_head.weight.device)
-        self.value_head.weight.data.fill_(0)
-        self.value_head.weight.data[:,:self.hidden_channels] = old_head.weight.data
-        self.value_head.bias.data[:] = old_head.bias.data[:]
+        if self.value_head_type == "linear":
+            old_head = self.value_head
+            self.value_head = torch.nn.Linear(new_width,self.out_channels).to(old_head.weight.device)
+            self.value_head.weight.data.fill_(0)
+            self.value_head.weight.data[:,:self.hidden_channels] = old_head.weight.data
+            self.value_head.bias.data[:] = old_head.bias.data[:]
+        else:
+            self.value_head.grow_input_width(new_width)
+
 
         self.hidden_channels = new_width
 
@@ -734,7 +754,6 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu"
             ),head_kwargs=dict(
                 GNN=cachify_gnn(GraphSAGE),
-                value_head=Linear(args.hidden_channels,1),
                 num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
                 noisy_dqn=args.noisy_dqn,
                 noise_sigma=args.noisy_sigma0,
@@ -754,7 +773,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
             ),head_kwargs=dict(
                 GNN=cachify_gnn(PNA),
-                value_head = MLP(args.hidden_channels//2,1,args.hidden_channels*4,1),
+                value_head_type = "mlp",
                 value_aggr_types = ("sum","max","min","mean"),
                 num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
                 noisy_dqn=args.noisy_dqn,
