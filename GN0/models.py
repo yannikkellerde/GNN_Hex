@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type, Union, Callable, Any
 import torch.nn.functional as F
-from torch_geometric.nn.models import GraphSAGE
+from torch_geometric.nn.models import GraphSAGE,PNA
 from torch_geometric.nn import GCNConv, SAGEConv
 from torch_geometric.nn.norm import LayerNorm
 from torch_geometric.nn import MessagePassing
@@ -30,6 +30,28 @@ from torch_geometric.nn.resolver import (
 perfs = defaultdict(list)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+class MLP(torch.nn.Module):
+    def __init__(self,hidden_channels,num_hidden_layers,num_input,num_output,output_activation=None):
+        super().__init__()
+        self.layers = torch.nn.ModuleList()
+        if num_hidden_layers==0:
+            self.layers.append(torch.nn.Linear(num_input,num_output))
+        else:
+            self.layers.append(torch.nn.Linear(num_input,hidden_channels))
+            for i in range(num_hidden_layers-1):
+                self.layers.append(torch.nn.Linear(hidden_channels,hidden_channels))
+            self.layers.append(torch.nn.Linear(hidden_channels,num_output))
+        self.output_activation = output_activation
+
+    def forward(self,x):
+        for layer in self.layers:
+            x = layer(x)
+            if layer is not self.layers[-1]:
+                x = F.relu(x)
+        if self.output_activation is not None:
+            x = self.output_activation(x)
+        return x
 
 class FactorizedNoisyLinear(torch.nn.Module):
     """ The factorized Gaussian noise layer for noisy-nets dqn. """
@@ -245,13 +267,14 @@ class ActionValue(torch.nn.Module):
         return self.value_activation(res)
 
 class HeadNetwork(torch.nn.Module):
-    def __init__(self,in_channels,hidden_channels,out_channels,GNN:Type[BasicGNN],noisy_dqn=True,noise_sigma=0,**gnn_kwargs):
+    def __init__(self,in_channels,hidden_channels,out_channels,value_head,GNN:Type[BasicGNN],value_aggr_types=("mean",),noisy_dqn=True,noise_sigma=0,**gnn_kwargs):
         super().__init__()
         self.gnn = GNN(in_channels=in_channels,hidden_channels=hidden_channels,**gnn_kwargs)
         self.supports_cache = hasattr(self.gnn,"supports_cache") and self.gnn.supports_cache
-        self.value_head = Linear(hidden_channels,1)
+        self.value_head = value_head
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
+        self.value_aggr_types = value_aggr_types
         if noisy_dqn:
             self.linear = FactorizedNoisyLinear(hidden_channels,out_channels,noise_sigma)
         else:
@@ -294,7 +317,11 @@ class HeadNetwork(torch.nn.Module):
         if advantages_only:
             return advantages
 
-        graph_parts = scatter(x,graph_indices,dim=0,reduce="sum")
+        parts = []
+
+        for aggr_type in self.value_aggr_types:
+            parts.append(scatter(x,graph_indices,dim=0,reduce=aggr_type))
+        graph_parts = torch.cat(parts)
         value = self.value_head(graph_parts)
         return advantages,value
 
@@ -707,12 +734,35 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu"
             ),head_kwargs=dict(
                 GNN=cachify_gnn(GraphSAGE),
+                value_head=Linear(args.hidden_channels,1),
                 num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
                 noisy_dqn=args.noisy_dqn,
                 noise_sigma=args.noisy_sigma0,
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
+    elif name == "pna_two_headed":
+        deg_hist = torch.tensor([40,88,3444,8054,6863,3415,8412,1737,1205,300,100,4],dtype=torch.long)
+        aggregators = ['mean', 'min', 'max']
+        scalers = ['identity', 'amplification', 'attenuation']
+        model = DuellingTwoHeaded(cachify_gnn(PNA),HeadNetwork,
+            gnn_kwargs=dict(
+                in_channels=2,
+                num_layers=args.num_layers,
+                hidden_channels=args.hidden_channels,
+                norm=LayerNorm(args.hidden_channels) if args.norm else None,
+                act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
+            ),head_kwargs=dict(
+                GNN=cachify_gnn(PNA),
+                value_head = MLP(args.hidden_channels//2,1,args.hidden_channels*4,1),
+                value_aggr_types = ("sum","max","min","mean"),
+                num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,
+                noisy_dqn=args.noisy_dqn,
+                noise_sigma=args.noisy_sigma0,
+                norm=LayerNorm(args.hidden_channels) if args.norm else None,
+                act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
+            ))
+
     elif name == "policy_value":
         model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=args.hidden_channels,hidden_layers=args.num_layers,policy_layers=args.head_layers,value_layers=args.head_layers,norm=None,act="relu")
     elif name == "HexAra":
