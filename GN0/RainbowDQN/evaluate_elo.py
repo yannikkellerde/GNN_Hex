@@ -42,12 +42,12 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[]):
         assert num_players>len(must_include_players)
-        ok_players = [x for x in self.players if self.players[x]["rating"] is not None and not self.players[x]["rating_fixed"]]
+        ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
         if num_players > len(ok_players):
             num_players = len(ok_players)
         contestants = []
