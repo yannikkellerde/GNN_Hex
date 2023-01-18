@@ -17,10 +17,17 @@
 + I do still have the logs of the run, but the elo evaluation during the training process is somewhat wrong
 + I created a new elo evaluation scheme that should make more sense:
 	-  When a new agent is added, a roundrobin tournament is started including the new agent, a random agent with elo fixed a 0, my old model (from the run in the beginning of the semester) and up to 8 randomly chosen older checkpoints from the same run.
-+ I modified (hopefully improved the model): Layer Norm and multiple aggregation types before an MLP to compute the value. (Duelling scheme, one value for position and then advantages per move)
++ I modified (hopefully improved the model): Layer Norm and four aggregation types before an MLP to compute the value instead of just a linear layer after only sum aggregation. (Duelling scheme, one value for position and then advantages per move)
 + I started new experiments with the improved model on DGX
 + I also created a PNA model and started an experiment with it.
++ Current results of the experiments seem to be:
+	- Layer Norm hurts performance
+	- PNA is really expensive. Forward pass time is much higher than GraphSAGE and I don't see any real performance benefits yet.
+		* Maybe I should try reducing the amount of aggregation schemes / degree scalers. Only max aggregation and attenuation degree scaling should already fix the isomorph neighbors problem and should be a lot quicker.
+	- Using multiple aggregation schemes and an MLP before value computation works reasonably well, but I don't have enough evidence yet to say that it really helps.
 
 ## Next steps
-+ Prepare presentation
++ Prepare mid-thesis presentation
 + Write methods for RainbowDQN
++ Keep running more RainbowDQN experiments
++ I do want to come back to HexAra soon, but maybe I focus on other things for the next few weeks
