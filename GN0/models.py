@@ -403,12 +403,13 @@ class DuellingTwoHeaded(torch.nn.Module):
         self.gnn.grow_width(new_width)
         self.maker_head.grow_width(new_width,new_in_channels=new_width)
         self.breaker_head.grow_width(new_width,new_in_channels=new_width)
-        new_norm = self.after_embed_norm.__class__(new_width).to(self.after_embed_norm.weight.device)
-        new_norm.weight.data[:old_width] = self.after_embed_norm.weight.data
-        new_norm.bias.data[:old_width] = self.after_embed_norm.bias.data
-        if type(self.after_embed_norm) == CachedGraphNorm:
-            new_norm.mean_scale.data[:self.hidden_channels] = self.after_embed_norm.mean_scale.data
-        self.after_embed_norm = new_norm
+        if self.after_embed_norm is not None:
+            new_norm = self.after_embed_norm.__class__(new_width).to(self.after_embed_norm.weight.device)
+            new_norm.weight.data[:old_width] = self.after_embed_norm.weight.data
+            new_norm.bias.data[:old_width] = self.after_embed_norm.bias.data
+            if type(self.after_embed_norm) == CachedGraphNorm:
+                new_norm.mean_scale.data[:self.hidden_channels] = self.after_embed_norm.mean_scale.data
+            self.after_embed_norm = new_norm
 
     def export_norm_cache(self,*args):
         cache_list = []
