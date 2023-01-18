@@ -45,7 +45,7 @@ class Elo_handler():
     def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True):
         self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin}
 
-    def roundrobin(self,num_players,num_games_per_match,must_include_players=[]):
+    def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         assert num_players>len(must_include_players)
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
         if num_players > len(ok_players):
@@ -77,7 +77,11 @@ class Elo_handler():
                     all_stats.append(statistics)
                     bar()
 
-        self.score_some_statistics(all_stats)
+        for _ in range(score_as_n_games):
+            self.score_some_statistics(all_stats)
+        performances = self.get_performances_from_stats(all_stats)
+        return ["name","performance"], tuple(performances.items())
+
 
     def load_into_empty_model(self,empty_model,checkpoint):
         stuff = torch.load(checkpoint,map_location=self.device)
@@ -85,9 +89,23 @@ class Elo_handler():
         if "cache" in stuff and stuff["cache"] is not None:
             empty_model.import_norm_cache(*stuff["cache"])
 
-    def score_some_statistics(self,statistics):
-        print("current elos",self.get_rating_table())
-        print("scoring statistics",statistics)
+    def get_performances_from_stats(self,statistics):
+        performances = {}
+        numerator_and_games = defaultdict(lambda: dict(numerator=0,num_games=0)) # for initial rating
+        for stats in statistics:
+            keys = list(stats.keys())
+            num_games = sum([int(x) for x in stats.values()])
+            if self.get_rating(keys[1]) is not None:
+                numerator_and_games[keys[0]]["numerator"] += self.get_rating(keys[1])*num_games+400*(stats[keys[0]]*2-num_games)
+                numerator_and_games[keys[0]]["num_games"] += num_games
+            if self.get_rating(keys[0]) is not None:
+                numerator_and_games[keys[1]]["numerator"] += self.get_rating(keys[0])*num_games+400*(stats[keys[1]]*2-num_games)
+                numerator_and_games[keys[1]]["num_games"] += num_games
+        for key in numerator_and_games:
+            performances[key] = numerator_and_games[key]["numerator"]/numerator_and_games[key]["num_games"]
+        return performances
+
+    def score_some_statistics(self,statistics,game_num_independent=True):
         player_expect_vs_score = defaultdict(lambda :dict(expectation=0,score=0,num_games=0))
         numerator_and_games = defaultdict(lambda: dict(numerator=0,num_games=0)) # for initial rating
 
@@ -101,6 +119,7 @@ class Elo_handler():
             elif self.get_rating(keys[1]) is not None:
                 player_expect_vs_score[keys[0]]["expectation"] += (1/(1+10**((self.get_rating(keys[1])-self.get_rating(keys[0]))/400)))*num_games
                 player_expect_vs_score[keys[0]]["score"] += stats[keys[0]]
+                player_expect_vs_score[keys[0]]["num_games"] += num_games
             if self.get_rating(keys[1]) is None:
                 if self.get_rating(keys[0]) is not None:
                     numerator_and_games[keys[1]]["numerator"] += self.get_rating(keys[0])*num_games+400*(stats[keys[1]]*2-num_games)
@@ -108,16 +127,20 @@ class Elo_handler():
             elif self.get_rating(keys[0]) is not None:
                 player_expect_vs_score[keys[1]]["expectation"] += (1/(1+10**((self.get_rating(keys[0])-self.get_rating(keys[1]))/400)))*num_games
                 player_expect_vs_score[keys[1]]["score"] += stats[keys[1]]
+                player_expect_vs_score[keys[1]]["num_games"] += num_games
         
         for key in player_expect_vs_score:
             if not self.players[key]["rating_fixed"]:
-                self.players[key]["rating"] += self.K*(player_expect_vs_score[key]["score"]-player_expect_vs_score[key]["expectation"])
+                change = self.K*(player_expect_vs_score[key]["score"]-player_expect_vs_score[key]["expectation"])
+                if game_num_independent:
+                    change/=player_expect_vs_score[key]["num_games"]
+                self.players[key]["rating"] += change
 
         for key in numerator_and_games:
             if not self.players[key]["rating_fixed"]:
                 self.players[key]["rating"] = numerator_and_games[key]["numerator"]/numerator_and_games[key]["num_games"]
 
-        print("new elos",self.get_rating_table())
+        # print("new elos",self.get_rating_table())
 
     def get_rating_table(self):
         columns = ["name","rating"]
@@ -286,9 +309,24 @@ def test_some_statistics():
     ])
     print(e.get_rating_table())
 
+def test_some_more_statistics():
+    e = Elo_handler(5)
+    cur_elos = (['name', 'rating'], [['old_model', 399.415055222784], ['599808_5.0', 390.53673728322974], ['1199616_5.0', 290.0011099243583], ['1499520_5.0', 249.3254343783539], ['899712_5.0', 160.600029391613], ['0_5.0', 113.85791558383177], ['299904_5.0', 111.07989268610876], ['random', 0]])
+    for player,rating in cur_elos[1]:
+        e.add_player(name=player,set_rating=rating,rating_fixed=player=="random")
+    e.add_player(name='1799424_5.0',set_rating=None,rating_fixed=False)
+    statistics = [{'1799424_5.0': 12, 'random': 0}, {'1799424_5.0': 5, 'old_model': 7}, {'1799424_5.0': 7, '599808_5.0': 5}, {'1799424_5.0': 7, '299904_5.0': 5}, {'1799424_5.0': 10, '899712_5.0': 2}, {'1799424_5.0': 7, '0_5.0': 5}, {'1799424_5.0': 5, '1499520_5.0': 7}, {'1799424_5.0': 8, '1199616_5.0': 4}, {'random': 1, '1799424_5.0': 11}, {'random': 2, 'old_model': 10}, {'random': 2, '599808_5.0': 10}, {'random': 1, '299904_5.0': 11}, {'random': 0, '899712_5.0': 12}, {'random': 4, '0_5.0': 8}, {'random': 1, '1499520_5.0': 11}, {'random': 0,'1199616_5.0': 12}, {'old_model': 7, '1799424_5.0': 5}, {'old_model': 11, 'random': 1}, {'old_model': 9, '599808_5.0': 3}, {'old_model': 9, '299904_5.0': 3}, {'old_model': 8, '899712_5.0': 4}, {'old_model': 11, '0_5.0': 1}, {'old_model': 6, '1499520_5.0': 6}, {'old_model': 11, '1199616_5.0': 1}, {'599808_5.0': 7, '1799424_5.0': 5}, {'599808_5.0': 12, 'random': 0}, {'599808_5.0': 6, 'old_model': 6}, {'599808_5.0': 5, '299904_5.0': 7}, {'599808_5.0': 9, '899712_5.0': 3}, {'599808_5.0': 9, '0_5.0': 3}, {'599808_5.0': 6, '1499520_5.0': 6}, {'599808_5.0': 8, '1199616_5.0': 4}, {'299904_5.0': 6, '1799424_5.0': 6}, {'299904_5.0': 12, 'random': 0}, {'299904_5.0': 2, 'old_model': 10}, {'299904_5.0': 5, '599808_5.0': 7}, {'299904_5.0': 4, '899712_5.0': 8}, {'299904_5.0': 9, '0_5.0': 3}, {'299904_5.0': 6, '1499520_5.0': 6}, {'299904_5.0': 8, '1199616_5.0': 4}, {'899712_5.0': 6, '1799424_5.0': 6}, {'899712_5.0': 12, 'random': 0}, {'899712_5.0': 6, 'old_model': 6}, {'899712_5.0' : 8, '599808_5.0': 4}, {'899712_5.0': 7, '299904_5.0': 5}, {'899712_5.0': 10, '0_5.0': 2}, {'899712_5.0': 8, '1499520_5.0': 4}, {'899712_5.0': 8, '1199616_5.0': 4}, {'0_5.0': 8, '1799424_5.0': 4}, {'0_5.0': 5, 'random': 7}, {'0_5.0': 0, 'old_model': 12}, {'0_5.0': 4, '599808_5.0' : 8}, {'0_5.0': 7, '299904_5.0': 5}, {'0_5.0': 12, '899712_5.0': 0}, {'0_5.0': 5, '1499520_5.0': 7}, {'0_5.0': 8, '1199616_5.0': 4}, {'1499520_5.0': 8, '1799424_5.0': 4}, {'1499520_5.0': 11, 'random': 1}, {'1499520_5.0': 3, 'old_model': 9}, {'1499520_5.0': 8, '599808_5.0': 4}, {'1499520_5.0': 5, '299904_5.0': 7}, {'1499520_5.0': 10, '899712_5.0': 2}, {'1499520_5.0': 9, '0_5.0': 3}, {'1499520_5.0': 8, '1199616_5.0': 4 }, {'1199616_5.0': 7, '1799424_5.0': 5}, {'1199616_5.0': 11, 'random': 1}, {'1199616_5.0': 4, 'old_model': 8}, {'1199616_5.0': 10, '599808_5.0': 2}, {'1199616_5.0': 6, '299904_5.0': 6}, {'1199616_5.0': 10, '899712_5.0': 2}, {'1199616_5.0': 9, '0_5.0': 3}, {'1199616_5.0': 7, '1499520_5.0': 5}]
+    for _ in range(20):
+        e.score_some_statistics(statistics)
+    
+    print(e.get_rating_table())
+    got_elos =  (['name', 'rating'], [['299904_5.0', 415.77957499391493], ['old_model', 398.47043018986085], ['899712_5.0', 349.56789556034744], ['1499520_5.0', 314.6230208463188], ['1799424_5.0', 260.1853551421182], ['1199616_5.0', 168.72838640236301], ['0_5.0', 152.20584558071863], ['599808_5.0', 77.52460716417102], ['random', 0]])
+    print(got_elos)
+
 
 if __name__ == "__main__":
-    test_some_statistics()
+    # test_some_statistics()
+    test_some_more_statistics()
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
     # model = get_pre_defined("sage+norm")
