@@ -12,7 +12,10 @@
 	- This is bad, but I don't have time to spend the whole next weeks trying to figure this out.
 	- I'll switch focus to preparing the RainbowDQN results for the thesis for now
 
-## RainbowDQN results
+## RainbowDQN status
 + So I have this fairly good model I trained at the start of the thesis for 6 days and I just revived it
 + I do still have the logs of the run, but the elo evaluation during the training process is somewhat wrong
-+ I think with my new knowledge I should be able to design a stronger model than the simple one I trained at the start.
++ I created a new elo evaluation scheme that should make more sense:
+	-  When a new agent is added, a roundrobin tournament is started including the new agent, a random agent with elo fixed a 0, my old model (from the run in the beginning of the semester) and up to 8 randomly chosen older checkpoints from the same run.
++ I modified (hopefully improved the model): Layer Norm and multiple aggregation types before an MLP to compute the value. (Duelling scheme, one value for position and then advantages per move)
++ I started new

@@ -18,7 +18,7 @@ import wandb
 
 
 class Elo_handler():
-    def __init__(self,hex_size,empty_model_func=None,device="cpu",k=3):
+    def __init__(self,hex_size,empty_model_func=None,device="cpu",k=10):
         self.players = {}
         self.size = hex_size
         self.elo_league_contestants = list()
@@ -86,6 +86,8 @@ class Elo_handler():
             empty_model.import_norm_cache(*stuff["cache"])
 
     def score_some_statistics(self,statistics):
+        print("current elos",self.get_rating_table())
+        print("scoring statistics",statistics)
         player_expect_vs_score = defaultdict(lambda :dict(expectation=0,score=0,num_games=0))
         numerator_and_games = defaultdict(lambda: dict(numerator=0,num_games=0)) # for initial rating
 
@@ -115,6 +117,7 @@ class Elo_handler():
             if not self.players[key]["rating_fixed"]:
                 self.players[key]["rating"] = numerator_and_games[key]["numerator"]/numerator_and_games[key]["num_games"]
 
+        print("new elos",self.get_rating_table())
 
     def get_rating_table(self):
         columns = ["name","rating"]
@@ -271,9 +274,21 @@ def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint
     print(elo_handler.get_rating("model"))
     print(elo_handler.get_rating("random"))
 
+def test_some_statistics():
+    e = Elo_handler(5)
+    e.add_player(name="random",set_rating=0,rating_fixed=True)
+    e.add_player(name="maker",set_rating=1500,rating_fixed=False)
+    e.add_player(name="huff",set_rating=None,rating_fixed=False)
+    e.score_some_statistics([
+        {"random":6,"maker":6},
+        {"huff":2,"maker":10},
+        {"huff":4,"random":8},
+    ])
+    print(e.get_rating_table())
+
 
 if __name__ == "__main__":
-    from Rainbow.common.utils import get_highest_model_path
+    test_some_statistics()
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
     # model = get_pre_defined("sage+norm")
@@ -281,6 +296,6 @@ if __name__ == "__main__":
     # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
     # test_elo_handler()
     # battle_it_out()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # battle_it_out(device=device)
     # old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")
