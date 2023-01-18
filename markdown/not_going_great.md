@@ -18,4 +18,9 @@
 + I created a new elo evaluation scheme that should make more sense:
 	-  When a new agent is added, a roundrobin tournament is started including the new agent, a random agent with elo fixed a 0, my old model (from the run in the beginning of the semester) and up to 8 randomly chosen older checkpoints from the same run.
 + I modified (hopefully improved the model): Layer Norm and multiple aggregation types before an MLP to compute the value. (Duelling scheme, one value for position and then advantages per move)
-+ I started new
++ I started new experiments with the improved model on DGX
++ I also created a PNA model and started an experiment with it.
+
+## Next steps
++ Prepare presentation
++ Write methods for RainbowDQN

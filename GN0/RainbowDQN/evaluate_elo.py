@@ -79,8 +79,9 @@ class Elo_handler():
 
         for _ in range(score_as_n_games):
             self.score_some_statistics(all_stats)
-        performances = self.get_performances_from_stats(all_stats)
-        return ["name","performance"], tuple(performances.items())
+        performances = list(tuple(self.get_performances_from_stats(all_stats).items()))
+        performances.sort(key=lambda x:-x[1])
+        return ["name","performance"], performances
 
 
     def load_into_empty_model(self,empty_model,checkpoint):
