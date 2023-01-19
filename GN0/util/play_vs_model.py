@@ -16,7 +16,7 @@ def play_in_gui():
     version = None
     # path = get_highest_model_path("daily-totem-131")
     # path = get_highest_model_path("azure-snowball-157")
-    path = get_highest_model_path("misty-firebrand-26/11")
+    path = get_highest_model_path("misty-firebrand-26/5")
     # path = "../alpha_zero/checkpoints/181.pt"
     # path = get_highest_model_path("breezy-morning-37")
     if version is not None:
