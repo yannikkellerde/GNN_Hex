@@ -9,7 +9,8 @@ from GN0.RainbowDQN.Rainbow.common.utils import get_highest_model_path
 from GN0.alpha_zero.NN_interface import NNetWrapper
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
 
 def play_in_gui():
     # version = 11040000
