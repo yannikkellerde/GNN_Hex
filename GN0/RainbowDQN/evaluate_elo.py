@@ -315,9 +315,8 @@ def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name
     checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[1].split(".")[0])<=final_game_frame]
     checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[1].split(".")[0]))
     if num_from_folder is not None and num_from_folder<len(checkpoints):
-        jumpy = len(checkpoints)/num_from_folder
         ccs = []
-        for i in range(0,len(checkpoints),jumpy):
+        for i in np.linspace(0,len(checkpoints),num_from_folder):
             ccs.append(checkpoints[int(i)])
         checkpoints = ccs
 
