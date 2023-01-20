@@ -316,7 +316,7 @@ def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name
     checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[1].split(".")[0]))
     if num_from_folder is not None and num_from_folder<len(checkpoints):
         ccs = []
-        for i in np.linspace(0,len(checkpoints),num_from_folder):
+        for i in np.linspace(0,len(checkpoints)-1,num_from_folder):
             ccs.append(checkpoints[int(i)])
         checkpoints = ccs
 
