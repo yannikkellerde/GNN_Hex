@@ -311,7 +311,7 @@ def test_some_statistics():
     ])
     print(e.get_rating_table())
 
-def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[],starting_game_frame=0,final_game_frame=np.inf):
+def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[],starting_game_frame=0,final_game_frame=np.inf,device="cpu"):
     empty_model_func = lambda :get_pre_defined(model_name)
     e = Elo_handler(hex_size,empty_model_func,k=1)
     checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[0])<=final_game_frame]
@@ -350,7 +350,17 @@ def test_some_more_statistics():
 
 if __name__ == "__main__":
     # test_some_statistics()
-    test_some_more_statistics()
+    hex_size=7
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_20000000.pt")
+    old_model = get_pre_defined("two_headed",old_model_stuff["args"]).to(device)
+    old_model.load_state_dict(old_model_stuff["state_dict"])
+    old_player = {"model":old_model,"rating":0,"rating_fixed":False,"simple":False,"name":"old_model"}
+    random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
+    folder = "Rainbow/checkpoints/quiet_lake-2193"
+    starting_frame = 7948800
+    run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,device=device)
+    # test_some_more_statistics()
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
     # model = get_pre_defined("sage+norm")
