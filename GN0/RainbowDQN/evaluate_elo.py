@@ -311,10 +311,10 @@ def test_some_statistics():
     ])
     print(e.get_rating_table())
 
-def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[]):
+def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[],starting_game_frame=0,final_game_frame=np.inf):
     empty_model_func = lambda :get_pre_defined(model_name)
     e = Elo_handler(hex_size,empty_model_func,k=1)
-    checkpoints = [os.path.join(folder,x) for x in os.listdir(folder)]
+    checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[0])<=final_game_frame]
     checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[0]))
     if num_from_folder is not None and num_from_folder<len(checkpoints):
         jumpy = len(checkpoints)/num_from_folder
