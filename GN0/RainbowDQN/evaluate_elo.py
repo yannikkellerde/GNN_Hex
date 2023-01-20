@@ -60,7 +60,7 @@ class Elo_handler():
 
         all_stats = []
 
-        with alive_bar(len(contestants)*(len(contestants)-1),disable=True) as bar:
+        with alive_bar(len(contestants)*(len(contestants)-1),disable=False) as bar:
             for p1 in contestants:
                 for p2 in contestants:
                     if p1==p2:
