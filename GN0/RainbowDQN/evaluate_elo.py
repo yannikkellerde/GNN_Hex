@@ -312,8 +312,6 @@ def test_some_statistics():
     print(e.get_rating_table())
 
 def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[],starting_game_frame=0,final_game_frame=np.inf,device="cpu"):
-    empty_model_func = lambda :get_pre_defined(model_name)
-    e = Elo_handler(hex_size,empty_model_func,k=1)
     checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[0])<=final_game_frame]
     checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[0]))
     if num_from_folder is not None and num_from_folder<len(checkpoints):
@@ -322,6 +320,10 @@ def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name
         for i in range(0,len(checkpoints),jumpy):
             ccs.append(checkpoints[int(i)])
         checkpoints = ccs
+
+    some_stuff = torch.load(checkpoints[0])
+    empty_model_func = lambda :get_pre_defined(model_name,some_stuff["args"])
+    e = Elo_handler(hex_size,empty_model_func,k=1,device=device)
     for c in checkpoints:
         e.add_player(name=os.path.basename(c).split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(c).split("_")[0]))
     for p in additonal_players:
@@ -359,7 +361,10 @@ if __name__ == "__main__":
     random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
     folder = "Rainbow/checkpoints/quiet_lake-2193"
     starting_frame = 7948800
-    run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,device=device)
+    final_frame = np.inf
+    
+
+    run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
     # test_some_more_statistics()
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
