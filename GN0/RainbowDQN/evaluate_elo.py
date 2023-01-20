@@ -312,8 +312,8 @@ def test_some_statistics():
     print(e.get_rating_table())
 
 def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[],starting_game_frame=0,final_game_frame=np.inf,device="cpu"):
-    checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[0])<=final_game_frame]
-    checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[0]))
+    checkpoints = [os.path.join(folder,x) for x in os.listdir(folder) if starting_game_frame<=int(os.path.basename(x).split("_")[1].split(".")[0])<=final_game_frame]
+    checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[1].split(".")[0]))
     if num_from_folder is not None and num_from_folder<len(checkpoints):
         jumpy = len(checkpoints)/num_from_folder
         ccs = []
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     old_model.load_state_dict(old_model_stuff["state_dict"])
     old_player = {"model":old_model,"rating":0,"rating_fixed":False,"simple":False,"name":"old_model"}
     random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
-    folder = "Rainbow/checkpoints/quiet_lake-2193"
+    folder = "Rainbow/checkpoints/quiet-lake-2193"
     starting_frame = 7948800
     final_frame = np.inf
     
