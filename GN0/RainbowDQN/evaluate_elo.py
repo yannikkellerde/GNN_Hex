@@ -12,6 +12,7 @@ from GN0.models import get_pre_defined
 from collections import defaultdict,deque
 from collections import defaultdict
 from argparse import Namespace
+import pandas as pd
 import matplotlib.pyplot as plt
 import json
 import wandb
@@ -46,10 +47,10 @@ class Elo_handler():
         self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
-        assert num_players>len(must_include_players)
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
-        if num_players > len(ok_players):
+        if num_players is None or num_players > len(ok_players):
             num_players = len(ok_players)
+        assert num_players>len(must_include_players)
         contestants = []
         contestants.extend(must_include_players)
         while len(contestants)<num_players:
@@ -309,6 +310,28 @@ def test_some_statistics():
         {"huff":4,"random":8},
     ])
     print(e.get_rating_table())
+
+def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name="modern_two_headed",additonal_players=[]):
+    empty_model_func = lambda :get_pre_defined(model_name)
+    e = Elo_handler(hex_size,empty_model_func,k=1)
+    checkpoints = [os.path.join(folder,x) for x in os.listdir(folder)]
+    checkpoints.sort(key=lambda x:int(os.path.basename(x).split("_")[0]))
+    if num_from_folder is not None and num_from_folder<len(checkpoints):
+        jumpy = len(checkpoints)/num_from_folder
+        ccs = []
+        for i in range(0,len(checkpoints),jumpy):
+            ccs.append(checkpoints[int(i)])
+        checkpoints = ccs
+    for c in checkpoints:
+        e.add_player(name=os.path.basename(c).split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(c).split("_")[0]))
+    for p in additonal_players:
+        e.add_player(name=p["name"],model=p["model"],simple=p["simple"],set_rating=p["rating"],rating_fixed=p["rating_fixed"])
+    e.roundrobin(num_players=None,num_games_per_match=None,score_as_n_games=1000)
+    col,data = e.get_rating_table()
+    df = pd.DataFrame(data=data,columns=col)
+    print(df)
+    df.to_csv("rating_table.csv")
+
 
 def test_some_more_statistics():
     e = Elo_handler(5)
