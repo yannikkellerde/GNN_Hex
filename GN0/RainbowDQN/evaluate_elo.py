@@ -324,7 +324,7 @@ def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name
     empty_model_func = lambda :get_pre_defined(model_name,some_stuff["args"])
     e = Elo_handler(hex_size,empty_model_func,k=1,device=device)
     for c in checkpoints:
-        e.add_player(name=os.path.basename(x).split("_")[1].split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(x).split("_")[1].split(".")[0]))
+        e.add_player(name=os.path.basename(c).split("_")[1].split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(c).split("_")[1].split(".")[0]))
     for p in additonal_players:
         e.add_player(name=p["name"],model=p["model"],simple=p["simple"],set_rating=p["rating"],rating_fixed=p["rating_fixed"])
     e.roundrobin(num_players=None,num_games_per_match=None,score_as_n_games=1000)
