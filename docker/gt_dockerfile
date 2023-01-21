@@ -7,7 +7,7 @@ RUN apt-get update
 
 ENV TORCH_CUDA_ARCH_LIST=Volta;Turing
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
-RUN apt-get install -y git build-essential curl wget unzip cmake libblas-dev liblapack-dev vim
+RUN apt-get install -y git build-essential curl wget unzip cmake libblas-dev liblapack-dev vim python3-gi python3-gi-cairo gir1.2-gtk-3.0
 WORKDIR /root
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
 RUN bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
@@ -15,10 +15,12 @@ ENV PATH="${PATH}:/root/miniconda3/bin"
 RUN conda create --name HexAra -c conda-forge graph-tool python=3.9
 RUN conda install -n HexAra pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
 RUN conda install -n HexAra pyg -c pyg
-RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython rtpt alive-progress
+RUN conda run -n HexAra python -m pip install matplotlib numpy scipy tqdm wandb rich blessings plotly ipython rtpt alive-progress pandas
 COPY .ssh/ ./.ssh/
 RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN git clone git@github.com:yannikkellerde/Gabor_Graph_Networks.git
+WORKDIR /root/Gabor_Graph_Networks/GN0/RainbowDQN
+RUN git clone git@github.com:yannikkellerde/Rainbow.git
 WORKDIR /root/Gabor_Graph_Networks/
 RUN conda run -n HexAra python -m pip install -e .
 RUN mkdir data && mkdir data/RL && mkdir data/RL/model && mkdir data/RL/model/HexAra
