@@ -51,7 +51,6 @@ class Elo_handler():
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
         if num_players is None or num_players > len(ok_players):
             num_players = len(ok_players)
-        assert num_players>len(must_include_players)
         contestants = []
         contestants.extend(must_include_players)
         while len(contestants)<num_players:
@@ -384,10 +383,10 @@ if __name__ == "__main__":
     
 
     # just_run_1v1(7,"pna_two_headed","modern_two_headed","Rainbow/checkpoints/fresh-wood-2188/checkpoint_23992320.pt","Rainbow/checkpoints/sweet-plasma-2191/checkpoint_16494720.pt",model1_name="pna",model2_name="sage")
-    e = Elo_handler(7,k=1,device=device)
-    e.load_a_model_player(t_model_path("misty-firebrand-26/7"),"two_headed","misty-firebrand")
+    e = Elo_handler(11,k=1,device=device)
+    e.load_a_model_player(get_highest_model_path("misty-firebrand-26/11"),"two_headed","misty-firebrand")
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name="mohex",model=MohexPlayer(max_time=0.5),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name="mohex",model=MohexPlayer(max_time=1),set_rating=None,uses_empty_model=False,simple=True)
     res1 = e.play_some_games("misty-firebrand","mohex",None,0,progress=True)
     print(res1)
     res2 = e.play_some_games("mohex","misty-firebrand",None,0,progress=True)
