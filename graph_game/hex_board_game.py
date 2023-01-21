@@ -1,4 +1,5 @@
 from graph_game.abstract_board_game import Abstract_board_game
+import random
 import numpy as np
 from graph_tool.all import Graph,Vertex,VertexPropertyMap,GraphView
 from typing import List,Dict,Union
@@ -28,7 +29,6 @@ class Hex_board(Abstract_board_game):
         y = move//self.size
         return x*self.size+y
 
-
     def copy(self):
         new_board = Hex_board(onturn=self.onturn,redgraph=self.redgraph)
         new_board.position = self.position.copy()
@@ -36,6 +36,13 @@ class Hex_board(Abstract_board_game):
         new_board.size = self.size
         new_board.vertex_index_to_board_index = self.vertex_index_to_board_index.copy()
         return new_board
+
+    def sample_legal_move(self):
+        free_squares = []
+        for i in range(len(self.position)):
+            if self.position[i] == "f":
+                free_squares.append(i)
+        return random.choice(free_squares)
 
     def vertex_index_to_string_move(self,vi):
         board_index = self.vertex_index_to_board_index[vi]
@@ -165,62 +172,6 @@ class Hex_board(Abstract_board_game):
         known_pos[known_pos==0] = res
         self.position = [str_map[x] for x in known_pos]
 
-    def clique_graph_from_board(self, redgraph:bool): # Deprecated
-        self.redgraph = redgraph
-        sq_squares = int(math.sqrt(self.squares))
-        self.board_index_to_vertex = {}
-        self.game.graph = Graph(directed=False)
-        self.game.terminals = [self.game.graph.add_vertex(),self.game.graph.add_vertex()]
-        special_cliques = [self.game.graph.add_vertex(),self.game.graph.add_vertex()]
-        self.game.graph.add_edge(self.game.terminals[0],special_cliques[0])
-        self.game.graph.add_edge(self.game.terminals[1],special_cliques[1])
-        num_cliques = ((sq_squares-1)**2)*2
-        self.game.graph.add_vertex(num_cliques)
-        for i in range(self.squares):
-            v = self.game.graph.add_vertex()
-            self.board_index_to_vertex[i] = v
-            if i<sq_squares:
-                self.game.graph.add_edge(v,special_cliques[0])
-            elif i>=self.squares-sq_squares:
-                self.game.graph.add_edge(v,special_cliques[1])
-            if i//sq_squares!=sq_squares-1 and i%sq_squares!=sq_squares-1:
-                num = 4+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-            if i%sq_squares!=0 and i//sq_squares!=sq_squares-1:
-                num = 4-1+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-                num = 4-2+(i%sq_squares)*2+(i//sq_squares)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-            if i%sq_squares!=0 and i//sq_squares!=0:
-                num = 4+1+((i%sq_squares)-1)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-            if i%sq_squares!=sq_squares-1 and i//sq_squares!=0:
-                num = 4+(i%sq_squares)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-                num = 4+1+(i%sq_squares)*2+((i//sq_squares)-1)*(sq_squares-1)*2
-                self.game.graph.add_edge(v,num)
-
-        self.vertex_to_board_index = {value:key for key,value in self.board_index_to_vertex.items()}
-        self.game.graph.gp["m"] = self.game.graph.new_graph_property("bool")
-        self.game.graph.gp["m"] = True
-        is_square_prop = self.game.graph.new_vertex_property("bool")
-        is_square_array = np.zeros(self.game.graph.num_vertices()).astype(bool)
-        is_square_array[:2] = True
-        is_square_array[4+num_cliques:] = True
-        is_square_prop.a = is_square_array
-        self.game.graph.vp.s = is_square_prop
-        filt_prop = self.game.graph.new_vertex_property("bool")
-        self.game.graph.vp.f = filt_prop # For filtering in the GraphView
-        self.game.graph.vp.f.a = np.ones(self.game.graph.num_vertices()).astype(bool)
-        self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
-
-        for i in range(self.squares):
-            if (self.position[i] == "r" and redgraph) or (self.position[i]=="b" and not redgraph):
-                self.game.graph.gp["m"] = True
-                self.game.make_move(self.board_index_to_vertex[i],remove_dead_and_captured=True)
-            elif self.position[i]!="f":
-                self.game.graph.gp["m"] = False
-                self.game.make_move(self.board_index_to_vertex[i],remove_dead_and_captured=True)
 
     def graph_from_board(self, redgraph:bool, no_worthless_edges=True):
         self.redgraph=redgraph
@@ -271,7 +222,26 @@ class Hex_board(Abstract_board_game):
 
         return build_hex_grid(colors,labels,fig=fig)
 
+    def number_to_notation(self,number):
+        letters = "abcdefghijklmnopqrstuvwxyz"
+        return letters[number//self.size]+str(number%self.size+1)
 
+    def notation_to_number(self,notation):
+        letters = "abcdefghijklmnopqrstuvwxyz"
+        return letters.index(notation[0])*self.size+int(notation[1])-1
+
+    def to_sgf(self):
+        sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{self.size}]"
+        sgf+=";AB"
+        for i,p in enumerate(self.position):
+            if p == "b":
+                sgf+=f"[{self.number_to_notation(i)}]"
+        sgf+=";AW"
+        for i,p in enumerate(self.position):
+            if p == "r":
+                sgf+=f"[{self.number_to_notation(i)}]"
+        sgf+=")"
+        return sgf
 
     def draw_me(self,pos=None,green=False):
         out_str = ""
@@ -378,7 +348,6 @@ def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,f
     return fig
 
 if __name__=="__main__":
-    import random
     bgame = Hex_board()
     bgame.squares=11*11
     pos = list("fffffffffbf"

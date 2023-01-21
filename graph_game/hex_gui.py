@@ -123,8 +123,10 @@ def maker_breaker_evaluater(maker,breaker):
     return maker_breaker_ev
 
 
-def interactive_hex_window(size, model_player=None, model_evaluater=None):
-    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured, do_bspc
+def interactive_hex_window(size, model_player=None, model_evaluater=None,device_=None):
+    global manual_mode,game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured, do_bspc, device
+    if device_ is not None:
+        device = device_
     print(
 """
 Instructions:
@@ -169,6 +171,9 @@ c: toggle show dead and captured""", end="")
         global is_over
         game_history.append(game.copy())
         result = game.board.make_move(action,remove_dead_and_captured=remove_dead_and_captured)
+        with open("test.sgf","w") as f:
+            f.write(game.board.to_sgf())
+
         fig.axes[0].cla()
         game.board.matplotlib_me(fig=fig)
         winner = game.who_won()

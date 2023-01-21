@@ -17,7 +17,8 @@ def play_in_gui():
     version = None
     # path = get_highest_model_path("daily-totem-131")
     # path = get_highest_model_path("azure-snowball-157")
-    path = get_highest_model_path("misty-firebrand-26/5")
+    # path = get_highest_model_path("misty-firebrand-26/5")
+    path = get_highest_model_path("fresh-wood-2188")
     # path = "../alpha_zero/checkpoints/181.pt"
     # path = get_highest_model_path("breezy-morning-37")
     if version is not None:
@@ -28,20 +29,20 @@ def play_in_gui():
     if args is None:
         args = Namespace(num_layers=8,head_layers=2,hidden_channels=25)
     # model = get_pre_defined("policy_value",args).to(device)
-    model = get_pre_defined("two_headed",args).to(device)
+    model = get_pre_defined("pna_two_headed",args).to(device)
 
     model.load_state_dict(stuff["state_dict"])
     if "cache" in stuff and stuff["cache"] is not None:
         model.import_norm_cache(*stuff["cache"])
     model.eval()
 
-    wrap = NNetWrapper(model,device=device)
+    # wrap = NNetWrapper(model,device=device)
     # player = make_board_chooser(wrap.choose_move)
     # evaluater = make_responding_evaluater(wrap.be_evaluater)
 
     player = playerify_advantage_model(model)
     evaluater = advantage_model_to_evaluater(model)
-    interactive_hex_window(11,model_player=player,model_evaluater=evaluater)
+    interactive_hex_window(11,model_player=player,model_evaluater=evaluater,device_=device)
 
 
 def play_vs_old():

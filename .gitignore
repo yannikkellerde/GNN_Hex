@@ -9,6 +9,9 @@ solver.log
 *.log
 *.pkl
 *.vim
+*.sgf
+*.csv
+mohex
 GN0/data
 GN0/supervised/run
 !CMakeLists.txt

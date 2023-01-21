@@ -16,6 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 import wandb
+from GN0.RainbowDQN.mohex_communicator import MohexPlayer
 
 
 class Elo_handler():
@@ -43,8 +44,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
@@ -65,14 +66,12 @@ class Elo_handler():
                 for p2 in contestants:
                     if p1==p2:
                         continue
-                    if not "model" in self.players[p1] or self.players[p1]["model"] is None:
+                    if self.players[p1]["uses_empty_model"]:
                         self.players[p1]["model"] = self.empty_model1
-                    if "checkpoint" in self.players[p1] and self.players[p1]["checkpoint"] is not None:
                         self.load_into_empty_model(self.players[p1]["model"],self.players[p1]["checkpoint"])
 
-                    if not "model" in self.players[p2] or self.players[p2]["model"] is None:
+                    if self.players[p2]["uses_empty_model"]:
                         self.players[p2]["model"] = self.empty_model2
-                    if "checkpoint" in self.players[p2] and self.players[p2]["checkpoint"] is not None:
                         self.load_into_empty_model(self.players[p2]["model"],self.players[p2]["checkpoint"])
                     statistics = self.play_some_games(p1,p2,num_games_per_match,0,random_first_move=False,progress=False)
                     all_stats.append(statistics)
@@ -164,6 +163,14 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
+    def load_a_model_player(self,checkpoint,model_identifier,model_name=None):
+        if model_name is None:
+            model_name = os.path.basename(checkpoint)
+        stuff = torch.load(checkpoint)
+        model = get_pre_defined(model_identifier,stuff["args"]).to(device)
+        model.load_state_dict(stuff["state_dict"])
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False)
+
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False):
         print("Playing games between",maker,"and",breaker)
         wins = {maker:0,breaker:0}
@@ -202,9 +209,11 @@ class Elo_handler():
 
                         if move_num == 0 and random_first_move and starting_moves is None:
                             actions = [random.choice(g.get_actions()) for g in games]
+                            actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
                         elif move_num>0 or starting_moves is None:
                             if self.players[current_player]["simple"]:
-                                actions = self.players[current_player]["model"](batch)
+                                board_actions = self.players[current_player]["model"](games)
+                                actions = [game.board.board_index_to_vertex[action] for game,action in zip(games,board_actions)]
                             else:
                                 action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
                                 actions = []
@@ -230,7 +239,7 @@ class Elo_handler():
                                     sample = distrib.sample()
                                     action = sample+2
                                     actions.append(action.item())
-                            actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
+                                actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
                         elif move_num==0 and starting_moves is not None:
                             actions = starting_moves[:len(games)]
 
@@ -242,7 +251,24 @@ class Elo_handler():
                         #     print(games[0].board.draw_me())
                         for i,action in enumerate(actions):
                             if action!=0:
-                                games[i].make_move(action,remove_dead_and_captured=True)
+                                try:
+                                    games[i].make_move(action,remove_dead_and_captured=True)
+                                except Exception as e:
+                                    print(games[i].board.to_sgf())
+                                    with open("test.sgf","w") as f:
+                                        f.write(games[i].board.to_sgf())
+                                    print(i)
+                                    print(board_actions[i])
+                                    print(games[i].board.position[board_actions[i]])
+                                    print(games[i].board.position)
+                                    print(games[i].board.draw_me())
+                                    print(games[i].who_won())
+                                    games[i].draw_me()
+                                    print(action)
+                                    print(games[i].view.num_vertices())
+                                    print(games[i].view.vertex_index.copy().fa)
+                                    raise Exception(e)
+
                                 winner = games[i].who_won()
                                 
                                 if winner is not None:
@@ -278,11 +304,9 @@ class Elo_handler():
             return statistics
 
 
-def random_player(batch):
+def random_player(games):
     # print(batch.ptr[1:]-batch.ptr[:-1])
-
-    actions = [random.randint(2,after-before-1) for before,after in zip(batch.ptr,batch.ptr[1:])]
-    return actions
+    return [game.board.sample_legal_move() for game in games]
 
 def evaluate_checkpoint_against_random_mover(elo_handler:Elo_handler, checkpoint, model):
     stuff = torch.load(checkpoint)
@@ -324,46 +348,51 @@ def run_balanced_eval_roundrobin(hex_size,folder,num_from_folder=None,model_name
     empty_model_func = lambda :get_pre_defined(model_name,some_stuff["args"])
     e = Elo_handler(hex_size,empty_model_func,k=1,device=device)
     for c in checkpoints:
-        e.add_player(name=os.path.basename(c).split("_")[1].split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(c).split("_")[1].split(".")[0]))
+        e.add_player(name=os.path.basename(c).split("_")[1].split(".")[0],checkpoint=c,set_rating=0,episode_number=int(os.path.basename(c).split("_")[1].split(".")[0]),uses_empty_model=True)
     for p in additonal_players:
-        e.add_player(name=p["name"],model=p["model"],simple=p["simple"],set_rating=p["rating"],rating_fixed=p["rating_fixed"])
+        e.add_player(name=p["name"],model=p["model"],simple=p["simple"],set_rating=p["rating"],rating_fixed=p["rating_fixed"],uses_empty_model=False)
     e.roundrobin(num_players=None,num_games_per_match=None,score_as_n_games=1000)
     col,data = e.get_rating_table()
     df = pd.DataFrame(data=data,columns=col)
     print(df)
     df.to_csv("rating_table.csv")
 
+def just_run_1v1(hex_size,model1_identifier,model2_identifier,checkpoint1,checkpoint2,model1_name=None,model2_name=None,device="cpu"):
+    e = Elo_handler(hex_size,k=1,device=device)
+    e.load_a_model_player(checkpoint1,model1_identifier,model1_name)
+    e.load_a_model_player(checkpoint2,model2_identifier,model2_name)
+    print(e.play_some_games(model1_name,model2_name,None,0))
+    print(e.play_some_games(model2_name,model1_name,None,0))
 
-def test_some_more_statistics():
-    e = Elo_handler(5)
-    cur_elos = (['name', 'rating'], [['old_model', 399.415055222784], ['599808_5.0', 390.53673728322974], ['1199616_5.0', 290.0011099243583], ['1499520_5.0', 249.3254343783539], ['899712_5.0', 160.600029391613], ['0_5.0', 113.85791558383177], ['299904_5.0', 111.07989268610876], ['random', 0]])
-    for player,rating in cur_elos[1]:
-        e.add_player(name=player,set_rating=rating,rating_fixed=player=="random")
-    e.add_player(name='1799424_5.0',set_rating=None,rating_fixed=False)
-    statistics = [{'1799424_5.0': 12, 'random': 0}, {'1799424_5.0': 5, 'old_model': 7}, {'1799424_5.0': 7, '599808_5.0': 5}, {'1799424_5.0': 7, '299904_5.0': 5}, {'1799424_5.0': 10, '899712_5.0': 2}, {'1799424_5.0': 7, '0_5.0': 5}, {'1799424_5.0': 5, '1499520_5.0': 7}, {'1799424_5.0': 8, '1199616_5.0': 4}, {'random': 1, '1799424_5.0': 11}, {'random': 2, 'old_model': 10}, {'random': 2, '599808_5.0': 10}, {'random': 1, '299904_5.0': 11}, {'random': 0, '899712_5.0': 12}, {'random': 4, '0_5.0': 8}, {'random': 1, '1499520_5.0': 11}, {'random': 0,'1199616_5.0': 12}, {'old_model': 7, '1799424_5.0': 5}, {'old_model': 11, 'random': 1}, {'old_model': 9, '599808_5.0': 3}, {'old_model': 9, '299904_5.0': 3}, {'old_model': 8, '899712_5.0': 4}, {'old_model': 11, '0_5.0': 1}, {'old_model': 6, '1499520_5.0': 6}, {'old_model': 11, '1199616_5.0': 1}, {'599808_5.0': 7, '1799424_5.0': 5}, {'599808_5.0': 12, 'random': 0}, {'599808_5.0': 6, 'old_model': 6}, {'599808_5.0': 5, '299904_5.0': 7}, {'599808_5.0': 9, '899712_5.0': 3}, {'599808_5.0': 9, '0_5.0': 3}, {'599808_5.0': 6, '1499520_5.0': 6}, {'599808_5.0': 8, '1199616_5.0': 4}, {'299904_5.0': 6, '1799424_5.0': 6}, {'299904_5.0': 12, 'random': 0}, {'299904_5.0': 2, 'old_model': 10}, {'299904_5.0': 5, '599808_5.0': 7}, {'299904_5.0': 4, '899712_5.0': 8}, {'299904_5.0': 9, '0_5.0': 3}, {'299904_5.0': 6, '1499520_5.0': 6}, {'299904_5.0': 8, '1199616_5.0': 4}, {'899712_5.0': 6, '1799424_5.0': 6}, {'899712_5.0': 12, 'random': 0}, {'899712_5.0': 6, 'old_model': 6}, {'899712_5.0' : 8, '599808_5.0': 4}, {'899712_5.0': 7, '299904_5.0': 5}, {'899712_5.0': 10, '0_5.0': 2}, {'899712_5.0': 8, '1499520_5.0': 4}, {'899712_5.0': 8, '1199616_5.0': 4}, {'0_5.0': 8, '1799424_5.0': 4}, {'0_5.0': 5, 'random': 7}, {'0_5.0': 0, 'old_model': 12}, {'0_5.0': 4, '599808_5.0' : 8}, {'0_5.0': 7, '299904_5.0': 5}, {'0_5.0': 12, '899712_5.0': 0}, {'0_5.0': 5, '1499520_5.0': 7}, {'0_5.0': 8, '1199616_5.0': 4}, {'1499520_5.0': 8, '1799424_5.0': 4}, {'1499520_5.0': 11, 'random': 1}, {'1499520_5.0': 3, 'old_model': 9}, {'1499520_5.0': 8, '599808_5.0': 4}, {'1499520_5.0': 5, '299904_5.0': 7}, {'1499520_5.0': 10, '899712_5.0': 2}, {'1499520_5.0': 9, '0_5.0': 3}, {'1499520_5.0': 8, '1199616_5.0': 4 }, {'1199616_5.0': 7, '1799424_5.0': 5}, {'1199616_5.0': 11, 'random': 1}, {'1199616_5.0': 4, 'old_model': 8}, {'1199616_5.0': 10, '599808_5.0': 2}, {'1199616_5.0': 6, '299904_5.0': 6}, {'1199616_5.0': 10, '899712_5.0': 2}, {'1199616_5.0': 9, '0_5.0': 3}, {'1199616_5.0': 7, '1499520_5.0': 5}]
-    for _ in range(20):
-        e.score_some_statistics(statistics)
-    
-    print(e.get_rating_table())
-    got_elos =  (['name', 'rating'], [['299904_5.0', 415.77957499391493], ['old_model', 398.47043018986085], ['899712_5.0', 349.56789556034744], ['1499520_5.0', 314.6230208463188], ['1799424_5.0', 260.1853551421182], ['1199616_5.0', 168.72838640236301], ['0_5.0', 152.20584558071863], ['599808_5.0', 77.52460716417102], ['random', 0]])
-    print(got_elos)
 
 
 if __name__ == "__main__":
+    from Rainbow.common.utils import get_highest_model_path
     # test_some_statistics()
     hex_size=7
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_3200000.pt")
     old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_20000000.pt")
     old_model = get_pre_defined("two_headed",old_model_stuff["args"]).to(device)
     old_model.load_state_dict(old_model_stuff["state_dict"])
     old_player = {"model":old_model,"rating":0,"rating_fixed":False,"simple":False,"name":"old_model"}
     random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
-    folder = "Rainbow/checkpoints/quiet-lake-2193"
-    starting_frame = 7948800
-    final_frame = np.inf
+    # folder = "Rainbow/checkpoints/fresh-wood-2188"
+    folder = "Rainbow/checkpoints/sweet-plasma-2191"
+    starting_frame = 9684480
+    final_frame = 16634884
     
 
-    run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
+    # just_run_1v1(7,"pna_two_headed","modern_two_headed","Rainbow/checkpoints/fresh-wood-2188/checkpoint_23992320.pt","Rainbow/checkpoints/sweet-plasma-2191/checkpoint_16494720.pt",model1_name="pna",model2_name="sage")
+    e = Elo_handler(7,k=1,device=device)
+    e.load_a_model_player(t_model_path("misty-firebrand-26/7"),"two_headed","misty-firebrand")
+    e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name="mohex",model=MohexPlayer(max_time=0.5),set_rating=None,uses_empty_model=False,simple=True)
+    res1 = e.play_some_games("misty-firebrand","mohex",None,0,progress=True)
+    print(res1)
+    res2 = e.play_some_games("mohex","misty-firebrand",None,0,progress=True)
+    print(res1,res2)
+    # run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
     # test_some_more_statistics()
     # elo_handler = Elo_handler(9)
     # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
