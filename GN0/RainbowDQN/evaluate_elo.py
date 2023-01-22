@@ -212,7 +212,9 @@ class Elo_handler():
                         elif move_num>0 or starting_moves is None:
                             if self.players[current_player]["simple"]:
                                 board_actions = self.players[current_player]["model"](games)
+                                print("board actions",board_actions)
                                 actions = [game.board.board_index_to_vertex[action] for game,action in zip(games,board_actions)]
+                                print("Vertices chosen",actions)
                             else:
                                 action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
                                 actions = []
@@ -251,7 +253,10 @@ class Elo_handler():
                         for i,action in enumerate(actions):
                             if action!=0:
                                 try:
+                                    print("board callback",games[i].board_callback)
                                     games[i].make_move(action,remove_dead_and_captured=True)
+                                    print("Just made action",action)
+                                    print(games[i].board.draw_me())
                                 except Exception as e:
                                     print(games[i].board.to_sgf())
                                     with open("test.sgf","w") as f:
@@ -385,9 +390,10 @@ if __name__ == "__main__":
     # just_run_1v1(7,"pna_two_headed","modern_two_headed","Rainbow/checkpoints/fresh-wood-2188/checkpoint_23992320.pt","Rainbow/checkpoints/sweet-plasma-2191/checkpoint_16494720.pt",model1_name="pna",model2_name="sage")
     e = Elo_handler(11,k=1,device=device)
     e.load_a_model_player(get_highest_model_path("misty-firebrand-26/11"),"two_headed","misty-firebrand")
+    # e.load_a_model_player(get_highest_model_path("misty-firebrand-26/5"),"two_headed","misty-firebrand-5")
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
     e.add_player(name="mohex",model=MohexPlayer(max_time=1),set_rating=None,uses_empty_model=False,simple=True)
-    res1 = e.play_some_games("misty-firebrand","mohex",None,0,progress=True)
+    res1 = e.play_some_games("misty-firebrand","mohex",6,0,progress=True)
     print(res1)
     res2 = e.play_some_games("mohex","misty-firebrand",None,0,progress=True)
     print(res1,res2)

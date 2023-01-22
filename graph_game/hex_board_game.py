@@ -98,7 +98,11 @@ class Hex_board(Abstract_board_game):
     def graph_callback(self, vertex_move:int, makerturn:bool):
         color = "r" if makerturn==self.redgraph else "b"
         if self.position[self.vertex_to_board_index[vertex_move]]=="f":
+            print("Callback board move from vertex",vertex_move)
+            print("Callback board move at",self.vertex_to_board_index[vertex_move])
             self.position[self.vertex_to_board_index[vertex_move]] = color
+        else:
+            print(f"Failed callback, board move {self.vertex_index_to_board_index[vertex_move]} is occupied")
 
     def grid_to_double_triangle(self,move:int):
         """Transform a move with grid numbering to a move with double triangle numbering"""
@@ -228,7 +232,7 @@ class Hex_board(Abstract_board_game):
 
     def notation_to_number(self,notation):
         letters = "abcdefghijklmnopqrstuvwxyz"
-        return letters.index(notation[0])*self.size+int(notation[1])-1
+        return letters.index(notation[0])*self.size+int(notation[1:])-1
 
     def to_sgf(self):
         sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{self.size}]"

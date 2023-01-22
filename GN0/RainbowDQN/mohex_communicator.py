@@ -25,6 +25,8 @@ class MohexPlayer():
             self.proc.stdin.write(b"loadsgf cur_game_state.sgf\n")
             self.proc.stdin.flush()
             self._wait_for_answer("=")
+            print(f"genmove {color}")
+            print(game.board.draw_me())
             self.proc.stdin.write(f"genmove {color}\n".encode())
             self.proc.stdin.flush()
             infos,line = self._wait_for_answer("=")
@@ -40,9 +42,10 @@ class MohexPlayer():
         infos_found = {}
         while True:
             line = self.proc.stdout.readline()
-            line = line.decode("utf-8").strip()  # bytes to string
+            line = line.decode("utf-8")  # bytes to string
             if len(line)>0:
                 print(line)
+            line=line.strip()
             # else:
             #     while error:=self.proc.stderr.readline() != b'':
             #         print("Error",error)
