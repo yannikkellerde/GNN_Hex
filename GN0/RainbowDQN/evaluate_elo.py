@@ -212,9 +212,7 @@ class Elo_handler():
                         elif move_num>0 or starting_moves is None:
                             if self.players[current_player]["simple"]:
                                 board_actions = self.players[current_player]["model"](games)
-                                print("board actions",board_actions)
                                 actions = [game.board.board_index_to_vertex[action] for game,action in zip(games,board_actions)]
-                                print("Vertices chosen",actions)
                             else:
                                 action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
                                 actions = []
@@ -253,10 +251,7 @@ class Elo_handler():
                         for i,action in enumerate(actions):
                             if action!=0:
                                 try:
-                                    print("board callback",games[i].board_callback)
                                     games[i].make_move(action,remove_dead_and_captured=True)
-                                    print("Just made action",action)
-                                    print(games[i].board.draw_me())
                                 except Exception as e:
                                     print(games[i].board.to_sgf())
                                     with open("test.sgf","w") as f:
@@ -373,29 +368,31 @@ def just_run_1v1(hex_size,model1_identifier,model2_identifier,checkpoint1,checkp
 if __name__ == "__main__":
     from Rainbow.common.utils import get_highest_model_path
     # test_some_statistics()
-    hex_size=7
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_3200000.pt")
-    old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_20000000.pt")
-    old_model = get_pre_defined("two_headed",old_model_stuff["args"]).to(device)
-    old_model.load_state_dict(old_model_stuff["state_dict"])
-    old_player = {"model":old_model,"rating":0,"rating_fixed":False,"simple":False,"name":"old_model"}
-    random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
-    # folder = "Rainbow/checkpoints/fresh-wood-2188"
-    folder = "Rainbow/checkpoints/sweet-plasma-2191"
-    starting_frame = 9684480
-    final_frame = 16634884
+    # hex_size=7
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # # old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_3200000.pt")
+    # old_model_stuff = torch.load(f"Rainbow/checkpoints/misty-firebrand-26/{hex_size}/checkpoint_20000000.pt")
+    # old_model = get_pre_defined("two_headed",old_model_stuff["args"]).to(device)
+    # old_model.load_state_dict(old_model_stuff["state_dict"])
+    # old_player = {"model":old_model,"rating":0,"rating_fixed":False,"simple":False,"name":"old_model"}
+    # random_dude = {"name":"random","model":random_player,"simple":True,"rating":0,"rating_fixed":True}
+    # # folder = "Rainbow/checkpoints/fresh-wood-2188"
+    # folder = "Rainbow/checkpoints/sweet-plasma-2191"
+    # starting_frame = 9684480
+    # final_frame = 16634884
     
 
     # just_run_1v1(7,"pna_two_headed","modern_two_headed","Rainbow/checkpoints/fresh-wood-2188/checkpoint_23992320.pt","Rainbow/checkpoints/sweet-plasma-2191/checkpoint_16494720.pt",model1_name="pna",model2_name="sage")
+    device = "cpu"
     e = Elo_handler(11,k=1,device=device)
     e.load_a_model_player(get_highest_model_path("misty-firebrand-26/11"),"two_headed","misty-firebrand")
     # e.load_a_model_player(get_highest_model_path("misty-firebrand-26/5"),"two_headed","misty-firebrand-5")
+    max_time = 2
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name="mohex",model=MohexPlayer(max_time=1),set_rating=None,uses_empty_model=False,simple=True)
-    res1 = e.play_some_games("misty-firebrand","mohex",6,0,progress=True)
+    e.add_player(name=f"mohex-{max_time}s",model=MohexPlayer(max_time=max_time),set_rating=None,uses_empty_model=False,simple=True)
+    res1 = e.play_some_games("misty-firebrand",f"mohex-{max_time}s",None,0,progress=True)
     print(res1)
-    res2 = e.play_some_games("mohex","misty-firebrand",None,0,progress=True)
+    res2 = e.play_some_games(f"mohex-{max_time}s","misty-firebrand",None,0,progress=True)
     print(res1,res2)
     # run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
     # test_some_more_statistics()
