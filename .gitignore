@@ -12,6 +12,7 @@ solver.log
 *.sgf
 *.csv
 mohex
+artifacts/
 GN0/data
 GN0/supervised/run
 !CMakeLists.txt
