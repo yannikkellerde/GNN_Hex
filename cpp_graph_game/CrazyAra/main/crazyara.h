@@ -246,6 +246,7 @@ private:
      * @param state State object
      */
     void set_uci_option(istringstream &is, Node_switching_game& state);
+		void make_training_data(istringstream &is);
 };
 
 /**

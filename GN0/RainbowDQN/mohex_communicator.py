@@ -36,7 +36,7 @@ class MohexPlayer():
         print(move_notations)
         return moves
 
-    def _wait_for_answer(self,start_to_look_for="=",starts_to_log=[]):
+    def _wait_for_answer(self,start_to_look_for="=",stats_to_log=[]):
         infos_found = {}
         while True:
             line = self.proc.stdout.readline()
@@ -49,7 +49,7 @@ class MohexPlayer():
             #         print("Error",error)
             if line.startswith(start_to_look_for):
                 return infos_found,line
-            for x in start_to_look_for:
+            for x in stats_to_log:
                 if line.startswith(x):
                     infos_found[x] = line
 

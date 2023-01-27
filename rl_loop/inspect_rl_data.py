@@ -4,7 +4,7 @@ from graph_tool.all import Graph, graph_draw
 import numpy as np
 import time
 
-HEX_SIZE = 5
+HEX_SIZE = 7
 
 def get_position_from_board_index(board_index:int):
     scale = 400/HEX_SIZE

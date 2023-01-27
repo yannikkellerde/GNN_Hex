@@ -28,6 +28,7 @@
 #include "options.h"
 #include "crazyara.h"
 #include "playmode.h"
+#include "convert_moves_to_training_data.h"
 
 #include <thread>
 #include <fstream>
@@ -133,6 +134,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 			system("neato -Tpdf crazyarastate.dot -o crazyarastate.pdf");
 		}
 		else if (token == "activeuci") activeuci();
+		else if (token == "make_training_data")   make_training_data(is);
 #ifdef USE_RL
 		else if (token == "selfplay")   selfplay(is);
 		else if (token == "arena")      arena(is);
@@ -224,6 +226,15 @@ void CrazyAra::activeuci()
 	for (const auto& it : Options)
 		cout << "option name " << it.first << " value " << string(Options[it.first]) << endl;
 	cout << "readyok" << endl;
+}
+
+void CrazyAra::make_training_data(istringstream &is){
+	string filename, output_folder;
+	int hex_size;
+	is >> filename;
+	is >> hex_size;
+	is >> output_folder;
+	to_training_data(filename,hex_size,output_folder);
 }
 
 #ifdef USE_RL
