@@ -13,6 +13,7 @@ solver.log
 *.csv
 *.png
 mohex
+HexAra
 artifacts/
 GN0/data
 GN0/supervised/run
