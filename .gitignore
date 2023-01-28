@@ -15,6 +15,7 @@ solver.log
 mohex
 HexAra
 artifacts/
+torch/
 GN0/data
 GN0/supervised/run
 !CMakeLists.txt

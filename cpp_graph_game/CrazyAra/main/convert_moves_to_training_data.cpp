@@ -29,7 +29,6 @@ void to_training_data(string &filename,int hex_size,string &output_folder){
 				}
 				else{
 					cout << line << endl;
-					cout << "Okay, now do something" << endl;
 					std::stringstream sstr(line);
 					std::string segment;
 					std::vector<std::string> seglist;
@@ -55,7 +54,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder){
 					exporter->gameBestMoveQ.push_back(value);
 					exporter->gameValue.push_back(value);
 					exporter->moves.push_back(game->action_from_board_location(best_move));
-					game->make_move(game->action_from_board_location(move));
+					game->make_move(game->action_from_board_location(move),false,NOPLAYER,true);
 					ply+=1;
 					cur_idx+=1;
 				}
@@ -63,5 +62,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder){
 			f.close();
   }
 	exporter->curSampleIdx = 0;
+	cout << "Exporting ..." << endl;
 	exporter->export_game_samples();
+	cout << "Done" << endl;
 }

@@ -196,15 +196,15 @@ scalers = ['identity', 'amplification', 'attenuation']
 class PNA_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3):
         super().__init__()
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators, scalers=scalers)
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=hidden_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators, scalers=scalers)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=value_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=hidden_channels,hidden_channels=hidden_channels,num_layers=value_layers,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,out_channels=1,conv_class=ModifiedPNAConv,deg=deg_hist,aggregators=aggregators,scalers=scalers)
 
 
-        self.pre_head_layer_norm = LayerNorm(hidden_channels)
+        # self.pre_head_layer_norm = LayerNorm(hidden_channels)
 
         self.value_activation = torch.nn.Tanh()
 
@@ -214,14 +214,15 @@ class PNA_torch_script(torch.nn.Module):
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
-        embeds = self.pre_head_layer_norm(self.gnn(x,edge_index))
+        # embeds = self.pre_head_layer_norm(self.gnn(x,edge_index))
+        embeds = self.gnn(x,edge_index)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
-        graph_parts_sum = scatter(value_embeds,graph_indices,dim=0,reduce="sum") # Is mean better?
-        graph_parts_max = scatter(value_embeds,graph_indices,dim=0,reduce="max") # Is mean better?
-        graph_parts_min = scatter(value_embeds,graph_indices,dim=0,reduce="min") # Is mean better?
-        graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean") # Is mean better?
+        graph_parts_sum = scatter(value_embeds,graph_indices,dim=0,reduce="sum")
+        graph_parts_max = scatter(value_embeds,graph_indices,dim=0,reduce="max")
+        graph_parts_min = scatter(value_embeds,graph_indices,dim=0,reduce="min")
+        graph_parts_mean = scatter(value_embeds,graph_indices,dim=0,reduce="mean")
         graph_parts = torch.cat([graph_parts_sum,graph_parts_max,graph_parts_min,graph_parts_mean],dim=1)
         value = self.my_modules["value_linear"](graph_parts)
 
@@ -282,25 +283,25 @@ class MLP(torch.nn.Module):
 class SAGE_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,**gnn_kwargs):
         super().__init__()
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=hidden_channels,hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=LayerNorm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=hidden_channels,hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=hidden_channels,hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
 
         # self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels*4,1)
         # self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels*4,1)
         self.my_modules["value_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
         self.my_modules["swap_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
     
-        self.before_head_norm = LayerNorm(hidden_channels)
+        self.before_head_norm = hidden_channels
 
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
-        embeds = self.before_head_norm(self.gnn(x,edge_index))
+        embeds = self.gnn(x,edge_index)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)

@@ -138,9 +138,12 @@ void TrainDataExporter::export_game_samples() {
 	torch::TensorOptions options_int8 = torch::TensorOptions().dtype(torch::kInt8).device(device);
 	torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat).device(device);
 	torch::save(node_features,output_folder+"/node_features.pt");
+	cout << "Node Features exported ..." << endl;
 	torch::save(edge_indices,output_folder+"/edge_indices.pt");
+	cout << "Edge indices exported ..." << endl;
 	torch::save(gamePolicy,output_folder+"/policy.pt");
 	torch::save(torch::from_blob(gameValue.data(),gameValue.size(),options_int8),output_folder+"/value.pt");
+	cout << "Value and Policy exported ..." << endl;
 	torch::save(torch::from_blob(gameBestMoveQ.data(),gameValue.size(),options_float),output_folder+"/best_q.pt");
 	torch::save(torch::from_blob(gamePlysToEnd.data(),gamePlysToEnd.size(),options_int),output_folder+"/plys.pt");
 	torch::save(torch::from_blob(gameStartPtr.data(),gameStartPtr.size(),options_int),output_folder+"/game_start_ptr.pt");

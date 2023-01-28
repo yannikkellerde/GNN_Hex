@@ -29,7 +29,7 @@ class MohexSelfplay():
             game = Hex_game(hex_size)
             self.hex_games.append(game)
 
-    def play_n_games(self,num_games,random_first_n_moves=0):
+    def play_n_games(self,num_games,random_first_n_moves=0,safety_writes_every=None):
         games_left = num_games-len(self.hex_games)
         dones = [False]*len(self.hex_games)
         self.hex_games = [Hex_game(self.hex_size) for _ in self.procs]
@@ -57,6 +57,9 @@ class MohexSelfplay():
                         self.hex_games[i].board_callback = self.hex_games[i].board.graph_callback
                         move_information[i].append([])
                         games_left-=1
+                        if safety_writes_every is not None and (num_games-len(self.hex_games)-games_left)%safety_writes_every==0:
+                            self.dump_move_info_to_file(move_information)
+
                     else:
                         dones[i] = True
 
@@ -89,7 +92,7 @@ class MohexSelfplay():
                 else:
                     info_dict["played_move"] = game.board.sample_legal_move()
                     
-                game.make_move(game.board.board_index_to_vertex[info_dict["played_move"]])
+                game.make_move(game.board.board_index_to_vertex[info_dict["played_move"]],remove_dead_and_captured=True)
                 # print(game.board.draw_me())
                 info_dict["swap_prob"] = 0
                 if len(info_list)==1:
@@ -104,7 +107,8 @@ class MohexSelfplay():
             for game_data in move_info:
                 f.write("New game\n")
                 for move_data in game_data:
-                    f.write(f"{move_data['played_move']},{move_data['best_move']},{move_data['swap_prob']},{move_data['value']}\n")
+                    if 'value' in move_data:
+                        f.write(f"{move_data['played_move']},{move_data['best_move']},{move_data['swap_prob']},{move_data['value']}\n")
         return move_info
 
     def wait_for_all_answers(self,procs=None,start_to_look_for="=",check_for=None):   
@@ -159,5 +163,5 @@ class MohexSelfplay():
         # sleep for 1 sec to ensure the process exited
 
 if __name__ == "__main__":
-    gen = MohexSelfplay(binary_path="mohex",hex_size=7,max_games=1000,num_parallel_games=15)
-    gen.play_n_games(16,random_first_n_moves=2)
+    gen = MohexSelfplay(binary_path="mohex",hex_size=11,max_games=1000,num_parallel_games=15)
+    gen.play_n_games(100,random_first_n_moves=2,safety_writes_every=500)
