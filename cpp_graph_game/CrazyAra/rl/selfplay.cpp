@@ -163,7 +163,7 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 	states.reserve(num_games);
 	agents.reserve(num_games);
 	for (int i=0;i<num_games;++i){
-		states.push_back(init_starting_state_from_random_moves(pgns[i],0,i%2==0));
+		states.push_back(init_starting_state_from_random_moves(pgns[i],Options["Swap_Allowed"]?0:1,i%2==0));
 		pgns[i].starting_color = i%2==0?"Blue":"Red";
 		agents.push_back(make_unique<MCTSAgent>(net,sp->searchSettings,sp->playSettings));
 	}
@@ -244,14 +244,13 @@ void generate_parallel_games(int num_games, NN_api * net, vector<unique_ptr<Trai
 					if (game_restarts_left>0){
 						game_restarts_left-=1;
 						gameResults[i] = NOPLAYER;
-						states[i]->reset();
 						if (game_restarts_left%2==0){
-							states[i]->switch_onturn();
 							pgns[i].starting_color = "Blue";
 						}
 						else{
 							pgns[i].starting_color = "Red";
 						}
+						states[i] = init_starting_state_from_random_moves(pgns[i],Options["Swap_Allowed"]?0:1,pgns[i].starting_color=="Blue");
 					}
 				}
 			}
@@ -287,11 +286,11 @@ void generate_parallel_arena_games(int num_games, NN_api * net_player, NN_api * 
 	contender_agents.reserve(num_games);
 	for (int i=0;i<num_games;++i){
 		pgns[i].starting_color = i<total_games_to_generate/2?"Blue":"Red";
-		states.push_back(init_starting_state_from_random_moves(pgns[i],0,pgns[i].starting_color=="Blue"));
+		states.push_back(init_starting_state_from_random_moves(pgns[i],Options["Swap_Allowed"]?0:1,pgns[i].starting_color=="Blue"));
 		contender_agents.push_back(make_unique<MCTSAgent>(net_contender,sp->searchSettings,sp->playSettings));
 		player_agents.push_back(make_unique<MCTSAgent>(net_player,sp->searchSettings,sp->playSettings));
 		contender_is_active[i] = i%2==0;
-		contender_is_red[i] = (contender_is_active[i]&&pgns[i].starting_color=="Red")||(!contender_is_active[i]&&pgns[i].starting_color=="Blue");
+		contender_is_red[i] = (contender_is_active[i]&&states[i]->onturn==RED)||(!contender_is_active[i]&&states[i]->onturn==BLUE);
 		pgns[i].red = contender_is_red[i]?"Contender":"Previous";
 		pgns[i].blue = contender_is_red[i]?"Previous":"Contender";
 	}
@@ -380,14 +379,13 @@ void generate_parallel_arena_games(int num_games, NN_api * net_player, NN_api * 
 					if (game_restarts_left>0){
 						game_restarts_left-=1;
 						gameResults[i] = NOPLAYER;
-						states[i]->reset();
-						contender_is_active[i] = (total_games_to_generate-game_restarts_left)%2==0;
 						if (game_restarts_left>total_games_to_generate/2){
-							states[i]->switch_onturn();
 							pgns[i].starting_color = "Blue";
 						}
 						else pgns[i].starting_color = "Red";
-						contender_is_red[i] = (contender_is_active[i]&&pgns[i].starting_color=="Red")||(!contender_is_active[i]&&pgns[i].starting_color=="Blue");
+						states[i] = init_starting_state_from_random_moves(pgns[i],Options["Swap_Allowed"]?0:1,pgns[i].starting_color=="Blue");
+						contender_is_active[i] = (total_games_to_generate-game_restarts_left)%2==0;
+						contender_is_red[i] = (contender_is_active[i]&&states[i]->onturn==RED)||(!contender_is_active[i]&&states[i]->onturn==BLUE);
 						pgns[i].red = contender_is_red[i]?"Contender":"Previous";
 						pgns[i].blue = contender_is_red[i]?"Previous":"Contender";
 					}
