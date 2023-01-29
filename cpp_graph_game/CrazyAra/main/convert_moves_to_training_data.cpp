@@ -15,7 +15,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 	torch::Tensor policy;
   ifstream f(filename);
 	file_idx = 0;
-	unique_ptr<TrainDataExporter> exporter = std::make_unique<TrainDataExporter>(output_folder+"/mohex_data_"+to_string(file_idx));
+	unique_ptr<TrainDataExporter> exporter = std::make_unique<TrainDataExporter>(output_folder+"/mohex_data_"+to_string(file_idx)+"/torch");
 	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size,with_swap);
 	game_counter = 0;
 	cur_idx = 0;
@@ -37,7 +37,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 						exporter->export_game_samples();
 						cout << "Done" << endl;
 						++file_idx;
-						exporter.reset(new TrainDataExporter(output_folder+"/mohex_data_"+to_string(file_idx)));
+						exporter.reset(new TrainDataExporter(output_folder+"/mohex_data_"+to_string(file_idx)+"/torch"));
 					}
 				}
 				else{

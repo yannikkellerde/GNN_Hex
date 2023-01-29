@@ -70,7 +70,7 @@ void gen_swap_map(int hex_size, NN_api* net, bool net_allows_swap){
 	else{
 		value = outputs[1];
 		for (int i=0;i<value.size(0);++i){
-			swap_file << 1-value[i].item<double>() << " ";
+			swap_file << (0.5-0.5*value[i].item<double>()) << " ";
 		}
 	}
 	/* swap_file << endl << policy << endl << output_graph_indices; */
