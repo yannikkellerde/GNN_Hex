@@ -7,7 +7,7 @@
 #include <torch/csrc/api/include/torch/serialize.h>
 
 void to_training_data(string &filename,int hex_size,string &output_folder,int max_games_per_file, bool with_swap){
-	int move, best_move, ply, cur_idx, game_counter, file_idx;
+	int move, best_move, ply, cur_idx, game_counter, file_idx, vertex_move;
 	double swap_prob,value;
 	string line;
 	vector<int> policy_vec;
@@ -17,6 +17,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 	unique_ptr<TrainDataExporter> exporter = std::make_unique<TrainDataExporter>(output_folder+"/mohex_data_"+to_string(file_idx));
 	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size,with_swap);
 	game_counter = 0;
+	cur_idx = 0;
 	if (f.is_open())
 		{
 			while ( getline (f,line) )
@@ -74,7 +75,8 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					exporter->gameBestMoveQ.push_back(value);
 					exporter->gameValue.push_back(value);
 					exporter->moves.push_back(game->action_from_board_location(best_move));
-					assert(game->action_from_board_location(move)>1);
+					vertex_move = game->action_from_board_location(move);
+					assert(vertex_move>1);
 					game->make_move(game->action_from_board_location(move),false,NOPLAYER,true);
 					ply+=1;
 					cur_idx+=1;
