@@ -8,6 +8,7 @@
 
 void to_training_data(string &filename,int hex_size,string &output_folder,int max_games_per_file, bool with_swap){
 	int move, best_move, ply, cur_idx, game_counter, file_idx, vertex_move;
+	bool skip_this_game = false;
 	double swap_prob,value;
 	string line;
 	vector<int> policy_vec;
@@ -23,6 +24,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 			while ( getline (f,line) )
 			{
 				if (line == "New game"){
+					skip_this_game = false;
 					exporter->gameStartPtr.push_back(cur_idx);
 					for (int i=ply;i>0;--i){
 						exporter->gamePlysToEnd.push_back(i);
@@ -39,6 +41,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					}
 				}
 				else{
+					if (skip_this_game) continue;
 					/* cout << line << endl; */
 					std::stringstream sstr(line);
 					std::string segment;
@@ -46,7 +49,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					while(std::getline(sstr, segment, ','))
 					{
 						 seglist.push_back(segment);
-						 cout << segment << endl;
+						 /* cout << segment << endl; */
 					}
 					move = stoi(seglist[0]);
 					best_move = stoi(seglist[1]);
@@ -76,8 +79,13 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					exporter->gameValue.push_back(value);
 					exporter->moves.push_back(game->action_from_board_location(best_move));
 					vertex_move = game->action_from_board_location(move);
-					assert(vertex_move>=0);
-					game->make_move(game->action_from_board_location(move),false,NOPLAYER,true);
+					if (vertex_move==-1){
+						cout << "Having to skip a game :(" << endl;
+						skip_this_game = true;
+						continue;
+					}
+					/* assert(vertex_move>=0); */
+					game->make_move(vertex_move,false,NOPLAYER,true);
 					ply+=1;
 					cur_idx+=1;
 				}
