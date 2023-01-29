@@ -74,7 +74,7 @@ void CrazyAra::welcome()
 void CrazyAra::uci_loop(int argc, char *argv[])
 {
 	init();
-	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"],Options["Swap_Allowed"]);
 	string token, cmd;
 	EvalInfo evalInfo;
 	state->reset();
@@ -106,7 +106,7 @@ void CrazyAra::uci_loop(int argc, char *argv[])
 				<< "uciok" << endl;
 		}
 		else if (token == "swapmap"){
-			gen_swap_map(Options["Hex_Size"],netSingle.get());
+			gen_swap_map(Options["Hex_Size"],netSingle.get(),Options["Swap_Allowed"]);
 			cout << "readyok" << endl;
 		}
 
@@ -230,11 +230,12 @@ void CrazyAra::activeuci()
 
 void CrazyAra::make_training_data(istringstream &is){
 	string filename, output_folder;
-	int hex_size;
+	int hex_size, max_games_per_file;
 	is >> filename;
 	is >> hex_size;
 	is >> output_folder;
-	to_training_data(filename,hex_size,output_folder);
+	is >> max_games_per_file;
+	to_training_data(filename,hex_size,output_folder,max_games_per_file,Options["Swap_Allowed"]);
 }
 
 #ifdef USE_RL
@@ -451,8 +452,13 @@ void CrazyAra::set_uci_option(istringstream &is, Node_switching_game& state)
 	const string prevUciVariant = Options["UCI_Variant"];
 	const int prevFirstDeviceID = Options["First_Device_ID"];
 	const int prevLastDeviceID = Options["Last_Device_ID"];
+	const int prevHexSize = Options["Hex_Size"];
 
 	OptionsUCI::setoption(is, variant, state);
+
+	if (Options["Hex_Size"]!=prevHexSize){
+		state = Node_switching_game(Options["Hex_Size"],Options["Swap_Allowed"]);
+	}
 	changedUCIoption = true;
 	if (networkLoaded) {
 		if (string(Options["Model_Path"]) != prevModelDir || int(Options["Threads"]) != prevThreads || string(Options["UCI_Variant"]) != prevUciVariant ||

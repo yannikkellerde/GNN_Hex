@@ -12,6 +12,7 @@ solver.log
 *.sgf
 *.csv
 *.png
+model_save/
 mohex
 HexAra
 artifacts/

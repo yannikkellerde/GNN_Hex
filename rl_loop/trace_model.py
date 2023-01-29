@@ -6,7 +6,8 @@ import os
 if __name__ == "__main__":
     model=get_current_model()
     traced = torch.jit.script(model)
-    path = "data/RL/model/HexAra/torch_script_model.pt"
+    # path = "data/RL/model/HexAra/torch_script_model.pt"
+    path = "rl_loop/testmodel.pt"
     os.makedirs(os.path.dirname(path),exist_ok=True)
 
     traced.save(path)

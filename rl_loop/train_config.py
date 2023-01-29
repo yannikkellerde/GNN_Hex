@@ -22,6 +22,7 @@ class TrainConfig:
     # 2048 was used in the paper Mastering the game of Go without human knowledge and fits in GPU memory
     # typically if you half the batch_size you should double the lr
     batch_size: int = int(1024 / div_factor)
+    # batch_size = 10
 
     # batch_steps = 1000 means for example that every 1000 batches the validation set gets processed
     # this defines how often a new checkpoint will be saved and the metrics evaluated
@@ -62,7 +63,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.01 # lr is so high, because of low policy loss factor
+    lr: float = 0.001 # lr is so high, because of low policy loss factor
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
@@ -75,11 +76,11 @@ class TrainConfig:
     nb_parts: int = None
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 5
+    nb_training_epochs: int = 20
 
     training_keep_files: int = 40
 
-    policy_loss_factor: float = 0.001  # 0.99
+    policy_loss_factor: float = 1  # 0.99
 
     # gradient scaling for the plys to end output
     plys_to_end_loss_factor: float = 0.1

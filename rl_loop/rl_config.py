@@ -43,7 +43,7 @@ class UCIConfig:
     Dataclass which contains the UCI Options that are used during Reinforcement Learning.
     The options will be passed to the binary before game generation starts.
     """
-    Hex_Size: int = 5
+    Hex_Size: int = 11
     Allow_Early_Stopping: bool = False
     Batch_Size: int = 8
     Centi_Dirichlet_Alpha: int = 30  # default: 20

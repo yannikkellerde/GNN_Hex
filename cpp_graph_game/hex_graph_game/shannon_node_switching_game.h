@@ -47,7 +47,7 @@ class Node_switching_game {
 		int board_size;
 		Hex_board board;
 		int move_num;
-		bool swap_allowed=true;
+		bool swap_allowed=false;
 #ifndef NO_PLAY
 		map<int,int> response_set_red;
 		map<int,int> response_set_blue;
@@ -55,7 +55,7 @@ class Node_switching_game {
 		vector<int> board_moves_blue;
 #endif
 
-		Node_switching_game (int board_size=11);
+		Node_switching_game (int board_size=11, bool swap_allowed=false);
 
 		Node_switching_game (std::vector<torch::Tensor> &data);
 

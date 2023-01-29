@@ -472,7 +472,7 @@ void SelfPlay::go_arena(vector<unique_ptr<NN_api>> & net_player_batches,vector<u
 
 unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent &rawAgent, size_t plys, GamePGN &gamePGN, float rawPolicyProbTemp)
 {
-	unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"]);
+	unique_ptr<Node_switching_game> state= make_unique<Node_switching_game>(Options["Hex_Size"],Options["Swap_Allowed"]);
 
 	for (size_t ply = 0; ply < plys; ++ply) {
 		EvalInfo eval;
@@ -492,7 +492,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_raw_policy(RawNetAgent 
 
 unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &gamePGN, int num_actions, bool blue_starts)
 {
-	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"],Options["Swap_Allowed"]);
 	if (blue_starts){
 		state->switch_onturn();
 	}
@@ -508,7 +508,7 @@ unique_ptr<Node_switching_game> init_starting_state_from_random_moves(GamePGN &g
 
 unique_ptr<Node_switching_game> init_starting_state_from_fixed_moves(GamePGN &gamePGN, vector<int> actions, bool blue_starts)
 {
-	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"]);
+	unique_ptr<Node_switching_game> state = make_unique<Node_switching_game>(Options["Hex_Size"],Options["Swap_Allowed"]);
 	if (blue_starts){
 		state->switch_onturn();
 	}

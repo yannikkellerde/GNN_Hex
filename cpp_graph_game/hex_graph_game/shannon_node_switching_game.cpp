@@ -52,7 +52,7 @@ bool is_fully_connected(Graph& g,int vert, int ignore){
 	return true;
 }
 
-Node_switching_game::Node_switching_game (int board_size):board_size(board_size),board(board_size){
+Node_switching_game::Node_switching_game (int board_size,bool swap_allowed):board_size(board_size),board(board_size),swap_allowed(swap_allowed){
 	reset();
 };
 

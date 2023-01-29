@@ -24,7 +24,7 @@ from torch_geometric.loader import DataLoader
 import os
 
 
-def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name):
+def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name, in_memory_dataset=False):
     """
     Creates a new NN checkpoint in the model contender directory after training using the game files stored in the
      training directory
@@ -58,7 +58,7 @@ def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_c
     train_objects.metrics = get_metrics(train_config)
 
     train_config.export_weights = True  # save intermediate results to handle spikes
-    train_agent = TrainerAgentPytorch(net, val_data, train_config, train_objects, use_rtpt=False)
+    train_agent = TrainerAgentPytorch(net, val_data, train_config, train_objects, use_rtpt=False, in_memory_dataset=in_memory_dataset)
 
     (val_value_loss_final, val_policy_loss_final, val_value_acc_sign_final,
      val_policy_acc_final), _ = train_agent.train()

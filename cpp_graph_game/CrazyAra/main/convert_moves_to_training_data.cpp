@@ -6,15 +6,17 @@
 #include <torch/csrc/autograd/function.h>
 #include <torch/csrc/api/include/torch/serialize.h>
 
-void to_training_data(string &filename,int hex_size,string &output_folder){
-	int move, best_move, ply, cur_idx;
+void to_training_data(string &filename,int hex_size,string &output_folder,int max_games_per_file, bool with_swap){
+	int move, best_move, ply, cur_idx, game_counter, file_idx;
 	double swap_prob,value;
 	string line;
 	vector<int> policy_vec;
 	torch::Tensor policy;
   ifstream f(filename);
-	unique_ptr<TrainDataExporter> exporter = std::make_unique<TrainDataExporter>(output_folder);
-	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size);
+	file_idx = 0;
+	unique_ptr<TrainDataExporter> exporter = std::make_unique<TrainDataExporter>(output_folder+"/mohex_data_"+to_string(file_idx));
+	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size,with_swap);
+	game_counter = 0;
 	if (f.is_open())
 		{
 			while ( getline (f,line) )
@@ -26,6 +28,14 @@ void to_training_data(string &filename,int hex_size,string &output_folder){
 					}
 					game->reset();
 					ply = 0;
+					++game_counter;
+					if (game_counter%max_games_per_file==0){
+						cout << "Exporting ..." << endl;
+						exporter->export_game_samples();
+						cout << "Done" << endl;
+						++file_idx;
+						exporter.reset(new TrainDataExporter(output_folder+"/mohex_data_"+to_string(file_idx)));
+					}
 				}
 				else{
 					cout << line << endl;
@@ -43,9 +53,19 @@ void to_training_data(string &filename,int hex_size,string &output_folder){
 					value = stod(seglist[3]);
 					exporter->save_planes(game.get());
 					policy = torch::zeros(game->get_actions().size());
-					if (ply==1){
-						policy[game->action_from_board_location(best_move)] = 1-swap_prob;
-						policy[policy.size(0)-1] = swap_prob;
+					if (ply==1 && with_swap){
+						if (swap_prob>0.5){
+							policy[game->action_from_board_location(best_move)] = 0;
+							policy[policy.size(0)-1] = 1;
+						}
+						else if (swap_prob==0.5){
+							policy[game->action_from_board_location(best_move)] = 0.5;
+							policy[policy.size(0)-1] = 0.5;
+						}
+						else{
+							policy[game->action_from_board_location(best_move)] = 1;
+							policy[policy.size(0)-1] = 0;
+						}
 					}
 					else{
 						policy[game->action_from_board_location(best_move)] = 1;

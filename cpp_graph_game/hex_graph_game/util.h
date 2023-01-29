@@ -14,7 +14,7 @@
 
 int repeatable_random_choice(std::vector<int>& vec);
 
-void gen_swap_map(int hex_size, NN_api* net);
+void gen_swap_map(int hex_size, NN_api* net, bool net_allows_swap);
 
 void gen_starting_eval_file(int hex_size, NN_api* net);
 

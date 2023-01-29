@@ -32,24 +32,49 @@ vector<torch::jit::IValue> collate_batch(std::vector<torch::Tensor> & node_featu
 	return vector<c10::IValue>({big_features,big_ei,graph_indices,batch_ptr});
 }
 
-void gen_swap_map(int hex_size, NN_api* net){
+void gen_swap_map(int hex_size, NN_api* net, bool net_allows_swap){
 	std::vector<torch::Tensor> converted, outputs, node_features, edge_indices;
 	std::vector<torch::jit::IValue> inputs;
+	torch::Tensor output_graph_indices, policy, value;
 	ofstream swap_file;
 	swap_file.open("swap_map.txt",std::ofstream::out | std::ofstream::trunc);
 	Node_switching_game game(hex_size);
+	/* for (int i:game.get_actions()){ */
+	/* 	game.make_move(i,false,NOPLAYER,true,false); */
+	/* 	converted = game.convert_graph(net->device); */
+	/* 	node_features.clear(); */
+	/* 	edge_indices.clear(); */
+	/* 	node_features.push_back(converted[0]); */
+	/* 	edge_indices.push_back(converted[1]); */
+	/* 	inputs = collate_batch(node_features,edge_indices); */
+	/* 	outputs = net->predict(inputs); */
+	/* 	swap_file << torch::exp(outputs[0])[game.graph.num_vertices-2].item<double>() << " "; */
+	/* 	game.reset(); */
+	/* } */
 	for (int i:game.get_actions()){
 		game.make_move(i,false,NOPLAYER,true,false);
 		converted = game.convert_graph(net->device);
-		node_features.clear();
-		edge_indices.clear();
 		node_features.push_back(converted[0]);
 		edge_indices.push_back(converted[1]);
-		inputs = collate_batch(node_features,edge_indices);
-		outputs = net->predict(inputs);
-		swap_file << torch::exp(outputs[0])[game.graph.num_vertices-2].item<double>() << " ";
 		game.reset();
 	}
+	inputs = collate_batch(node_features,edge_indices);
+	outputs = net->predict(inputs);
+	if (net_allows_swap){
+		policy = torch::exp(outputs[0]);
+		output_graph_indices = outputs[3];
+		for (int i=1;i<output_graph_indices.size(0);++i){
+			swap_file << policy[output_graph_indices[i]-1].item<double>() << " ";
+		}
+	}
+	else{
+		value = outputs[1];
+		for (int i=0;i<value.size(0);++i){
+			swap_file << 1-value[i].item<double>() << " ";
+		}
+	}
+	/* swap_file << endl << policy << endl << output_graph_indices; */
+	/* swap_file << endl << policy.sizes() << endl << output_graph_indices.sizes(); */
 	swap_file.close();
 }
 

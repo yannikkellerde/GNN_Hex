@@ -164,4 +164,4 @@ class MohexSelfplay():
 
 if __name__ == "__main__":
     gen = MohexSelfplay(binary_path="mohex",hex_size=11,max_games=1000,num_parallel_games=15)
-    gen.play_n_games(100,random_first_n_moves=2,safety_writes_every=500)
+    gen.play_n_games(3000,random_first_n_moves=3,safety_writes_every=500)

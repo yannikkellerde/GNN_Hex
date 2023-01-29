@@ -17,7 +17,7 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 	bool use_mcts = false;
 	std::vector<torch::Tensor> inputs, outputs;
 	hex_size = Options["Hex_Size"];
-	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size);
+	unique_ptr<Node_switching_game> game = std::make_unique<Node_switching_game>(hex_size,Options["Swap_Allowed"]);
 	while (true){
 		if (game->who_won()==NOPLAYER){
 			if (use_mcts){

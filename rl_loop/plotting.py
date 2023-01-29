@@ -29,7 +29,7 @@ def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,f
             coords = [xstart+0.5*j+i,ystart+np.sqrt(3/4)*j]
             hexagon = RegularPolygon((coords[0], coords[1]), numVertices=6, radius=np.sqrt(1/3), alpha=1, edgecolor='k', facecolor=color,linewidth=2)
             if labels is not None:
-                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=14)
+                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=fontsize)
             ax.add_patch(hexagon)
     plt.autoscale(enable=True)
     plt.axis("off")

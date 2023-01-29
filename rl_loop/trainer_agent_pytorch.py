@@ -9,6 +9,7 @@ Partially based on:
 https://gitlab.com/jweil/PommerLearn/-/blob/master/pommerlearn/training/train_cnn.py
 """
 
+from torchviz import make_dot
 import random
 import logging
 from pathlib import Path
@@ -22,6 +23,7 @@ from tqdm import tqdm
 from torch.optim.optimizer import Optimizer
 from torch.nn.modules.loss import _Loss
 from torch import Tensor
+import torch.nn.functional as F
 import wandb
 
 from rl_loop.main_config import main_config
@@ -40,6 +42,7 @@ class TrainerAgentPytorch:
         train_config: TrainConfig,
         train_objects: TrainObjects,
         use_rtpt: bool,
+        in_memory_dataset: bool = False
     ):
         """
         Class for training the neural network.
@@ -78,6 +81,7 @@ class TrainerAgentPytorch:
         self.val_metric_values_best = None
 
         self.use_rtpt = use_rtpt
+        self.in_memory_dataset = in_memory_dataset
 
 
     def train(self):
@@ -89,6 +93,8 @@ class TrainerAgentPytorch:
 
         self._setup_variables()
         self._model.train()  # set training mode
+        if self.in_memory_dataset:
+            train_loaders = [_get_loader(self.tc,part_id=part_id,dataset_type="train") for part_id in self.ordering]
 
         for i in range(self.tc.nb_training_epochs):
             # reshuffle the ordering of the training game batches (shuffle works in place)
@@ -104,19 +110,25 @@ class TrainerAgentPytorch:
             logging.info("=========================")
             self.t_s_steps = time()
 
-            for part_id in tqdm(self.ordering):
-                train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+            for part_id in self.ordering:
+                if self.in_memory_dataset:
+                    train_loader = train_loaders[part_id]
+                else:
+                    train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
                 if self.use_rtpt:
                     # update process title according to loss
                     self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
 
-                for _, batch in enumerate(train_loader):
-                    data = self.train_update(batch)
+                losses = []
+                for _, batch in tqdm(enumerate(train_loader),total=len(train_loader)):
+                    combined_loss = self.train_update(batch)
+                    losses.append(combined_loss.detach().item())
 
                     # add the graph representation of the network to the tensorboard log file
                     # if not self.graph_exported and self.tc.log_metrics_to_tensorboard:
                     #     self.sum_writer.add_graph(self._model, data)
                     #     self.graph_exported = True
+                print("combo_loss",np.mean(losses))
 
             train_metric_values, val_metric_values = self.evaluate(train_loader)
             # update the val_loss_value to compare with using spike recovery
@@ -204,25 +216,21 @@ class TrainerAgentPytorch:
         assert not torch.isnan(value_out).any()
         assert not torch.isnan(batch.y).any()
         assert not torch.isnan(batch.policy).any()
-        # swaps = []
+
         for start,fin in zip(bp[:-1],bp[1:]):
-            # swaps.append(batch.policy[fin-1])
-            # print(batch.policy[fin-1],torch.exp(policy_out[fin-1]))
             assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
             assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
 
-        # print(torch.min(torch.tensor(swaps)),torch.mean(torch.tensor(swaps)),torch.max(torch.tensor(swaps)))
-
         value_loss = self.value_loss(torch.flatten(value_out), batch.y)
         policy_loss = self.policy_loss(policy_out, batch.policy)
-        # print(torch.std_mean(batch.policy))
-        # print(torch.std_mean(torch.exp(policy_out)))
         # weight the components of the combined loss
         combined_loss = (
                 self.tc.val_loss_factor * value_loss + self.tc.policy_loss_factor * policy_loss
         )
         
+        # value_loss.backward()
         combined_loss.backward()
+
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = TrainConfig.lr  # update the learning rate
             # if 'momentum' in param_group:
@@ -230,7 +238,7 @@ class TrainerAgentPytorch:
 
         self.optimizer.step()
         self.batch_proc_tmp += 1
-        return batch
+        return combined_loss
 
     def _log_metrics(self, metric_values, log_dict, prefix="train_"):
         """
@@ -416,6 +424,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
         for i, batch in enumerate(data_iterator):
             batch.to(ctx)
 
+            # policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
             policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
             assert not torch.isnan(policy_out).any()
             assert not torch.isnan(batch.y).any()

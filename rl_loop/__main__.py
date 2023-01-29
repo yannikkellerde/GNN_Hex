@@ -69,7 +69,7 @@ class RLLoop:
         self.tc.cwd = self.file_io.binary_dir
         logpath = os.path.join(self.tc.export_dir,"wandb_logs",str(self.args.device_id))
         os.makedirs(logpath,exist_ok=True)
-        id_map = {0:"7egsvcgg",1:"wor8lzon",2:"1eiifq5r"}
+        id_map = {0:"xrulteiz",1:"wor8lzon",2:"1eiifq5r"}
         name_map = {0:"trainer",1:"evaluater",2:"generator"}
         wandb.init(resume='allow',id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
         wandb.run.name = name_map[int(self.args.device_id)]
@@ -150,7 +150,7 @@ class RLLoop:
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
-                update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name)
+                update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name, in_memory_dataset=self.args.in_memory_dataset)
 
                 self.file_io.move_training_logs(self.nn_update_index)
 
@@ -183,9 +183,9 @@ class RLLoop:
                 self.initialize()
                 plt.cla()
                 self.binary_io.generate_starting_eval_img()
-                fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=7)
+                fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=6)
                 logs["starting_policy"] = wandb.Image(fig)
-                fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=7)
+                fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=6)
                 logs["swapmap"] = wandb.Image(fig)
                 self.binary_io.stop_process()
             wandb.log(logs)
@@ -222,7 +222,7 @@ def parse_args(cmd_args: list):
     parser.add_argument('--no-trace-torch', default=False, action="store_true",
                         help="By default the networks will be converted to ONNX to allow TensorRT inference."
                              " If this parameter is enabled no conversion will be done")
-
+    parser.add_argument('--in-memory-dataset',default=False, action="store_true",help="Keep single dataset in memory")
     parser.add_argument('--use_wandb', type=parse_bool, default=True, help='whether use "weights & biases" for tracking metrics, video recordings and model checkpoints')
 
     args = parser.parse_args(cmd_args)
