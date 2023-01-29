@@ -1,13 +1,14 @@
 import torch
 from GN0.torch_script_models import PNA_torch_script,SAGE_torch_script, get_current_model
+from rl_loop.train_config import TrainConfig
 import time
 import os
 
 if __name__ == "__main__":
-    model=get_current_model()
+    model=get_current_model(net_type=TrainConfig.net_type,hidden_channels=TrainConfig.hidden_channels,hidden_layers=TrainConfig.hidden_layers,policy_layers=TrainConfig.policy_layers,value_layers=TrainConfig.value_layers,in_channels=TrainConfig.in_channels,swap_allowed=TrainConfig.swap_allowed)
     traced = torch.jit.script(model)
-    # path = "data/RL/model/HexAra/torch_script_model.pt"
-    path = "rl_loop/testmodel.pt"
+    path = "data/RL/model/HexAra/torch_script_model.pt"
+    # path = "rl_loop/testmodel.pt"
     os.makedirs(os.path.dirname(path),exist_ok=True)
 
     traced.save(path)

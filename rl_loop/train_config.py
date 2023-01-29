@@ -119,6 +119,13 @@ class TrainConfig:
     # weight decay
     wd: float = 1e-4
 
+    net_type = "SAGE"
+    hidden_channels = 80
+    hidden_layers = 25
+    policy_layers = 2
+    value_layers = 2
+    in_channels = 3
+    swap_allowed = False
 
 @dataclass
 class TrainObjects:

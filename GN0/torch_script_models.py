@@ -367,10 +367,14 @@ class SAGE_torch_script(torch.nn.Module):
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
-def get_current_model():
+def get_current_model(net_type="SAGE",hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3,swap_allowed=False):
     # return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
     # return PNA_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
 
-    # return PV_torch_script(hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3)
-    return SAGE_torch_script(hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3,swap_allowed=False)
+    if net_type=="SAGE":
+        return SAGE_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels,swap_allowed=swap_allowed)
+    elif net_type=="PNA":
+        return PNA_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels)
+    else:
+        raise ValueError("Invalid net type")
 

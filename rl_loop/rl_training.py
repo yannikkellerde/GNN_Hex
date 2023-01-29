@@ -84,7 +84,7 @@ def _get_net(ctx, train_config, pt_filename):
     """
     Loads the network object and weights.
     """
-    net = get_current_model()
+    net=get_current_model(net_type=train_config.net_type,hidden_channels=train_config.hidden_channels,hidden_layers=train_config.hidden_layers,policy_layers=train_config.policy_layers,value_layers=train_config.value_layers,in_channels=train_config.in_channels,swap_allowed=train_config.swap_allowed)
     net.to(ctx)
     if pt_filename!="":
         load_torch_state(net, torch.optim.SGD(net.parameters(), lr=train_config.lr), pt_filename, train_config.device_id)
