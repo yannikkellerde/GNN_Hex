@@ -38,7 +38,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					}
 				}
 				else{
-					cout << line << endl;
+					/* cout << line << endl; */
 					std::stringstream sstr(line);
 					std::string segment;
 					std::vector<std::string> seglist;
@@ -74,6 +74,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					exporter->gameBestMoveQ.push_back(value);
 					exporter->gameValue.push_back(value);
 					exporter->moves.push_back(game->action_from_board_location(best_move));
+					assert(game->action_from_board_location(move)>1);
 					game->make_move(game->action_from_board_location(move),false,NOPLAYER,true);
 					ply+=1;
 					cur_idx+=1;
