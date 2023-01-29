@@ -76,7 +76,7 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					exporter->gameValue.push_back(value);
 					exporter->moves.push_back(game->action_from_board_location(best_move));
 					vertex_move = game->action_from_board_location(move);
-					assert(vertex_move>1);
+					assert(vertex_move>=0);
 					game->make_move(game->action_from_board_location(move),false,NOPLAYER,true);
 					ply+=1;
 					cur_idx+=1;
