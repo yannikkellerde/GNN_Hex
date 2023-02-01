@@ -25,7 +25,6 @@ enum Onturn {RED,BLUE,NOPLAYER};
 enum Fprops {IS_TERMINAL};
 enum Lprops {REMOVED,BOARD_LOCATION};
 
-
 bool check_if_same(Graph& graph, int v1, int v2);
 
 bool is_fully_connected(Graph& g,int vert, int ignore);
@@ -73,9 +72,14 @@ class Node_switching_game {
 
 		int vertex_from_board_location(int bl) const;
 
+		void load_sgf(string &sgf);
+
 		int action_from_board_location(int bl) const;
 
 		int get_response(int bloc,bool for_red); // Not const, deletes response
+
+		std::string number_to_notation(int number);
+		int notation_to_number(std::string &notation);
 
 		set<int> fix_terminal_connections(int terminal);
 

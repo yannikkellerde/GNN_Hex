@@ -282,15 +282,15 @@ class MLP(torch.nn.Module):
         
 
 class SAGE_torch_script(torch.nn.Module):
-    def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,swap_allowed=False,**gnn_kwargs):
+    def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,swap_allowed=False,norm=None,**gnn_kwargs):
         super().__init__()
         self.swap_allowed = swap_allowed
-        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=None,hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
+        self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=None if norm is None else norm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
 
         self.my_modules = torch.nn.ModuleDict()
 
-        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=None,hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
-        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=None,hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
+        self.my_modules["value_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=None if norm is None else norm(hidden_channels),hidden_channels=hidden_channels,conv_class=ModifiedSAGEConv,num_layers=value_layers)
+        self.my_modules["policy_head"] = ModifiedBaseNet(in_channels=hidden_channels,norm=None if norm is None else norm(hidden_channels),hidden_channels=hidden_channels,num_layers=policy_layers,conv_class=ModifiedSAGEConv,out_channels=1)
 
         # self.my_modules["value_linear"] = torch.nn.Linear(hidden_channels*4,1)
         # self.my_modules["swap_linear"] = torch.nn.Linear(hidden_channels*4,1)
@@ -298,13 +298,15 @@ class SAGE_torch_script(torch.nn.Module):
         # if self.swap_allowed:
         self.my_modules["swap_linear"] = MLP(hidden_channels//2,1,hidden_channels*4,1)
     
-        self.before_head_norm = hidden_channels
+        self.before_head_norm = None if norm is None else norm(hidden_channels)
 
         self.value_activation = torch.nn.Tanh()
 
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
         embeds = self.gnn(x,edge_index)
+        if self.before_head_norm is not None:
+            embeds = self.before_head_norm(embeds)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)
@@ -367,12 +369,12 @@ class SAGE_torch_script(torch.nn.Module):
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
-def get_current_model(net_type="SAGE",hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3,swap_allowed=False):
+def get_current_model(net_type="SAGE",hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3,swap_allowed=False,norm=None):
     # return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
     # return PNA_torch_script(hidden_channels=20,hidden_layers=7,policy_layers=2,value_layers=2,in_channels=3)
 
     if net_type=="SAGE":
-        return SAGE_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels,swap_allowed=swap_allowed)
+        return SAGE_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels,swap_allowed=swap_allowed,norm=norm)
     elif net_type=="PNA":
         return PNA_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels)
     else:

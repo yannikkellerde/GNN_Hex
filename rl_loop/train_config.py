@@ -7,6 +7,7 @@ Created on 01.11.19
 Training configuration file
 """
 from dataclasses import dataclass
+from torch_geometric.nn.norm import LayerNorm
 
 
 @dataclass
@@ -120,12 +121,16 @@ class TrainConfig:
     wd: float = 1e-4
 
     net_type = "SAGE"
-    hidden_channels = 80
-    hidden_layers = 25
+    hidden_channels = 60
+    hidden_layers = 15
     policy_layers = 2
     value_layers = 2
     in_channels = 3
     swap_allowed = False
+    @staticmethod
+    def norm(hc):
+        LayerNorm(hc,mode="node")
+    # norm = LayerNorm
 
 @dataclass
 class TrainObjects:

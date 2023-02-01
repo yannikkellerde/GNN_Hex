@@ -232,6 +232,7 @@ class Hex_board(Abstract_board_game):
 
     def to_sgf(self):
         sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{self.size}]"
+        sgf += "EV[W]" if self.onturn=="r" else "EV[B]"
         sgf+=";AB"
         for i,p in enumerate(self.position):
             if p == "b":

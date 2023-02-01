@@ -12,6 +12,7 @@ from GN0.models import get_pre_defined
 from collections import defaultdict,deque
 from collections import defaultdict
 from argparse import Namespace
+from rl_loop.model_binary_player import BinaryPlayer
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
@@ -386,15 +387,21 @@ if __name__ == "__main__":
     device = "cpu"
     e = Elo_handler(11,k=1,device=device)
     e.load_a_model_player(get_highest_model_path("misty-firebrand-26/11"),"two_headed","misty-firebrand")
+    e.load_a_model_player(get_highest_model_path("beaming-firecracker-2201/11"),"modern_two_headed","beaming-firecracker")
     # e.load_a_model_player(get_highest_model_path("misty-firebrand-26/5"),"two_headed","misty-firebrand-5")
     max_time = 2
     max_games = 1000
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
-    res1 = e.play_some_games("misty-firebrand",f"mohex-{max_time}s-{max_games}g",None,0,progress=True)
+    # e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name=f"binary-raw",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
+    # res1 = e.play_some_games("beaming-firecracker",f"mohex-{max_time}s-{max_games}g",None,0,progress=True)
+    res1 = e.play_some_games("binary-raw",f"random",2,0,progress=True)
+    # res1 = e.play_some_games("misty-firebrand",f"beaming-firecracker",None,0,progress=True)
     print(res1)
-    res2 = e.play_some_games(f"mohex-{max_time}s-{max_games}g","misty-firebrand",None,0,progress=True)
-    print(res1,res2)
+    # res2 = e.play_some_games(f"mohex-{max_time}s-{max_games}g","beaming-firecracker",None,0,progress=True)
+    # res2 = e.play_some_games(f"beaming-firecracker","misty-firebrand",None,0,progress=True)
+    # res2 = e.play_some_games("random",f"binary-raw",None,0,progress=True)
+    # print(res1,res2)
     # run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
     # test_some_more_statistics()
     # elo_handler = Elo_handler(9)

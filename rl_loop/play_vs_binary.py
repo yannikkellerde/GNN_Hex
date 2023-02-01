@@ -7,6 +7,24 @@ import numpy as np
 import sys
 
 
+def number_to_notation(number,hex_size):
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    return letters[number//hex_size]+str(number%hex_size+1)
+
+def to_sgf(position,onturn,hex_size):
+    sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{hex_size}]"
+    sgf += "EV[W]" if onturn=="r" else "EV[B]"
+    sgf+=";AB"
+    for i,p in enumerate(position):
+        if p == "b":
+            sgf+=f"[{number_to_notation(i,hex_size)}]"
+    sgf+=";AW"
+    for i,p in enumerate(position):
+        if p == "r":
+            sgf+=f"[{number_to_notation(i,hex_size)}]"
+    sgf+=")"
+    return sgf
+
 def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,fontsize=14):
     if labels is not None:
         labels = [[str(x)[:6] for x in y] for y in labels]
@@ -50,7 +68,7 @@ def set_uci_param(proc, name: str, value):
     proc.stdin.flush()
 
 def read_output(proc, last_line=b"readyok\n", check_error=True):
-    look_for = ["board_moves_blue:","board_moves_red:","Evaluation:","Value:","Engine_move:","Dead_move","Engine_move:","Response:","Winner:"]
+    look_for = ["board_moves_blue:","board_moves_red:","Evaluation:","Value:","Engine_move:","Dead_move","Engine_move:","Response:","Winner:","onturn:"]
     info = dict()
     print_all = False
     while True:
@@ -99,9 +117,20 @@ def play_vs_binary(binary_path, model_path):
             proc.stdin.write(b"reset\n")
             proc.stdin.flush()
             read_and_draw()
+
+        elif event.key == "l":
+            print("sgf being loaded")
+            proc.stdin.write(f"sgf cur_game_state.sgf\n".encode())
+            proc.stdin.flush()
+            read_and_draw()
+
+        elif event.key == "p":
+            with open("cur_game_state.sgf","w") as f:
+                f.write(to_sgf(position,onturn,hex_size))
+            print("Wrote game state to sgf")
+                
         elif event.key == "s":
             proc.stdin.write(b"switch\n")
-            print("sending switch")
             proc.stdin.flush()
             read_and_draw()
         elif event.key == "+":
@@ -146,8 +175,9 @@ def play_vs_binary(binary_path, model_path):
 
 
     def read_and_draw():
-        global prev_red_squares,prev_blue_squares,border_swap
+        global prev_red_squares,prev_blue_squares,border_swap,position,onturn
         info = read_output(proc,b"readyok\n", check_error=True)
+        onturn = info["onturn:"]
 
         size = hex_size
         position = ["f"]*(hex_size*hex_size)

@@ -173,6 +173,66 @@ void Node_switching_game::reset_graph(){
 #endif
 }
 
+void Node_switching_game::load_sgf(string &sgf) {
+	/* cout << "Loading sgf" << endl; */
+	/* cout << sgf << endl; */
+	Onturn cur_color = NOPLAYER;	
+	int j,board_move,vertex;
+	string inbracket;
+	bool onturn_read = false;
+	bool sizeread = false;
+	for (int i = 1; i < sgf.size(); i++) {
+		if (sgf[i-1]=='S'&&sgf[i]=='Z'){
+			sizeread=true;
+			/* cout << "setting sizeread to true" << endl; */
+		}
+		if (sgf[i-1]=='A'&&sgf[i]=='B'){
+			cur_color = BLUE;
+		}
+		if (sgf[i-1]=='A'&&sgf[i]=='W'){
+			cur_color = RED;
+		}
+		if (sgf[i]==']'){
+			for (j=i-1;j>0;--j){
+				if (sgf[j]=='['){
+					break;
+				}
+			}
+			inbracket = sgf.substr(j+1,i-j-1);
+			if (sizeread){
+				board_size = stoi(inbracket);
+				board = Hex_board(board_size);
+				/* cout << "setting board size to " << board_size << endl; */
+				reset();
+				sizeread=false;
+			}
+			if (onturn_read){
+				if (inbracket=="W"){
+					onturn = RED;
+				}
+				else{
+					onturn = BLUE;
+				}
+			}
+			else if (cur_color!=NOPLAYER){
+				board_move = notation_to_number(inbracket);
+				vertex = action_from_board_location(board_move);
+				make_move(vertex,true,cur_color,false,false);
+				/* cout << "Made move " << vertex << ". Num vertices:" << graph.num_vertices << endl; */
+			}
+		}
+	}
+}
+string Node_switching_game::number_to_notation(int number){
+		string letters = "abcdefghijklmnopqrstuvwxyz";
+		return letters[int(number/board_size)]+to_string(number%board_size+1);
+}
+
+int Node_switching_game::notation_to_number(string &notation){
+		string letters = "abcdefghijklmnopqrstuvwxyz";
+		return letters.find(notation[0])*board_size+stoi(notation.substr(1,notation.size()-1))-1;
+}
+
 uint32_t Node_switching_game::hash_key() const { // https://stackoverflow.com/a/27216842
 	std::size_t seed = graph.sources.size();
 #ifdef SINGLE_GRAPH
