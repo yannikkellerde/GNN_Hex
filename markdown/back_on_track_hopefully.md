@@ -20,3 +20,4 @@
 	- Success with imitation learning from mohex 0.5s. [https://wandb.ai/yannikkellerde/HexAra/runs/ddaja3q0?workspace=user-yannikkellerde](https://wandb.ai/yannikkellerde/HexAra/runs/ddaja3q0?workspace=user-yannikkellerde).
 		* Removed explicit swap learning. This seemed to make some problems. Can still get nice swap maps based on position value at second move.
 		* ~0.5 policy acc and ~0.7 value acc sign seem to be performance limit. Not sure how much of this is due to mohex randomness and how much due to failure to imitate.
+		* Now checking how this model performs against it's teacher and if it can outperform it's teacher if I add MCTS myself. Currently working on this.
