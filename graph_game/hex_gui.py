@@ -332,5 +332,3 @@ if __name__ == "__main__":
     player_model = random_mover_model
     evaluater = random_evaluater
     interactive_hex_window(8,player_model,evaluater)
-
-

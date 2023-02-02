@@ -32,8 +32,8 @@ class MohexPlayer():
             move = game.board.notation_to_number(move_notation)
             moves.append(move)
             move_notations.append(move_notation)
-        print(moves)
-        print(move_notations)
+        # print(moves)
+        # print(move_notations)
         return moves
 
     def _wait_for_answer(self,start_to_look_for="=",stats_to_log=[]):
@@ -41,8 +41,8 @@ class MohexPlayer():
         while True:
             line = self.proc.stdout.readline()
             line = line.decode("utf-8")  # bytes to string
-            if len(line)>0:
-                print(line)
+            # if len(line)>0:
+                # print(line)
             line=line.strip()
             # else:
             #     while error:=self.proc.stderr.readline() != b'':

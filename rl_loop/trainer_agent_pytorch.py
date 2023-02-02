@@ -221,7 +221,7 @@ class TrainerAgentPytorch:
             assert torch.isclose(torch.sum(policy_out[start:fin].exp()),torch.tensor([1],dtype=torch.float,device=policy_out.device))
             assert torch.isclose(torch.sum(batch.policy[start:fin]),torch.tensor([1],dtype=torch.float,device=batch.policy.device))
 
-        value_loss = self.value_loss(torch.flatten(value_out), batch.y)
+        value_loss = self.value_loss(torch.flatten(value_out), batch.y)*(len(batch.ptr)-1) # The MSE is computed over all graphs, and then multiplied by the number of graphs.
         policy_loss = self.policy_loss(policy_out, batch.policy)
         # weight the components of the combined loss
         combined_loss = (
@@ -287,6 +287,7 @@ class CE_plus_mse_loss(_Loss):
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         # The input is already log softmax
         return torch.sum(-target * input) + torch.sum((torch.exp(input)-target)**2)
+
 
 class SoftCrossEntropyLoss(_Loss):
     """
@@ -433,7 +434,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             # update the metrics
             metrics["value_loss"].update(preds=torch.flatten(value_out), labels=batch.y)
             metrics["policy_loss"].update(preds=policy_out, #.softmax(dim=1),
-                                          labels=batch.policy)
+                                          labels=batch.policy,nb_graphs=len(batch.ptr)-1)
             metrics["value_acc_sign"].update(preds=torch.flatten(value_out), labels=batch.y)
             metrics["policy_acc"].update(preds=policy_out,
                                          labels=batch.policy,
@@ -443,7 +444,7 @@ def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_poli
             if nb_batches and i+1 == nb_batches:
                 break
 
-    metric_values = {"loss": 0.99 * metrics["value_loss"].compute() + 0.01 * metrics["policy_loss"].compute()}
+    metric_values = {"loss": metrics["value_loss"].compute() + metrics["policy_loss"].compute()}
 
     for metric_name in metrics:
         metric_values[metric_name] = metrics[metric_name].compute()

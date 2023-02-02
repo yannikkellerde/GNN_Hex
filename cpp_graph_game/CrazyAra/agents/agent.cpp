@@ -37,12 +37,12 @@ using namespace crazyara;
 void Agent::set_best_move(size_t moveCounter)
 {
     if (moveCounter < playSettings->temperatureMoves && playSettings->initTemperature > 0.01) {
-        DynamicVector<double> policyProbSmall = evalInfo->policyProbSmall;
-        apply_temperature(policyProbSmall, get_current_temperature(*playSettings, moveCounter));
+        /* DynamicVector<double> policyProbSmall = evalInfo->policyProbSmall; */
+        apply_temperature(evalInfo->policyProbSmall, get_current_temperature(*playSettings, moveCounter));
         if (playSettings->quantileClipping != 0) {
-            apply_quantile_clipping(playSettings->quantileClipping, policyProbSmall);
+            apply_quantile_clipping(playSettings->quantileClipping, evalInfo->policyProbSmall);
         }
-        size_t moveIdx = random_choice(policyProbSmall);
+        size_t moveIdx = random_choice(evalInfo->policyProbSmall);
         evalInfo->bestMove = evalInfo->legalMoves[moveIdx];
     }
     else {

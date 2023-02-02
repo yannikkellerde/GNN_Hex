@@ -192,6 +192,9 @@ void Node_switching_game::load_sgf(string &sgf) {
 		if (sgf[i-1]=='A'&&sgf[i]=='W'){
 			cur_color = RED;
 		}
+		if (sgf[i-1]=='P'&&sgf[i]=='L'){
+			onturn_read = true;
+		}
 		if (sgf[i]==']'){
 			for (j=i-1;j>0;--j){
 				if (sgf[j]=='['){
@@ -208,11 +211,14 @@ void Node_switching_game::load_sgf(string &sgf) {
 			}
 			if (onturn_read){
 				if (inbracket=="W"){
+					cout << "loading color RED" << endl;
 					onturn = RED;
 				}
 				else{
+					cout << "loading color BLUE" << endl;
 					onturn = BLUE;
 				}
+				onturn_read = false;
 			}
 			else if (cur_color!=NOPLAYER){
 				board_move = notation_to_number(inbracket);

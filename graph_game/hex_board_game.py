@@ -1,4 +1,5 @@
 from graph_game.abstract_board_game import Abstract_board_game
+
 import random
 import numpy as np
 from graph_tool.all import Graph,Vertex,VertexPropertyMap,GraphView
@@ -17,6 +18,7 @@ class Hex_board(Abstract_board_game):
     board_index_to_vertex:Dict[int,Vertex]
     vertex_to_board_index:Dict[Vertex,int]
     vertex_index_to_board_index:Dict[int,int]
+    board_index_to_vertex_index:Dict[int,int]
     redgraph:bool
     size:int
 
@@ -35,6 +37,7 @@ class Hex_board(Abstract_board_game):
         new_board.squares = self.size**2
         new_board.size = self.size
         new_board.vertex_index_to_board_index = self.vertex_index_to_board_index.copy()
+        new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
 
     def sample_legal_move(self):
@@ -202,6 +205,7 @@ class Hex_board(Abstract_board_game):
         self.game.view = GraphView(self.game.graph,self.game.graph.vp.f)
 
         self.vertex_index_to_board_index = {int(key):value for key,value in self.vertex_to_board_index.items()}
+        self.board_index_to_vertex_index = {value:key for key,value in self.vertex_index_to_board_index.items()}
 
         for i in range(self.squares):
             if (self.position[i] == "r" and redgraph) or (self.position[i]=="b" and not redgraph):
@@ -230,9 +234,28 @@ class Hex_board(Abstract_board_game):
         letters = "abcdefghijklmnopqrstuvwxyz"
         return letters.index(notation[0])*self.size+int(notation[1:])-1
 
+    def sgf_from_move_history(self,move_history,starting_player,red=None,blue=None):
+        if starting_player=="r":
+            onturn = "W"
+        else:
+            onturn = "B"
+        sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{self.size}]PL[{onturn}]"
+        if red is not None:
+            sgf += f"PW[{red}]"
+        if blue is not None:
+            sgf += f"PB[{blue}]"
+        for move in move_history:
+            sgf+=f"\n;{onturn}[{self.number_to_notation(move)}]"
+            if onturn=="W":
+                onturn = "B"
+            else:
+                onturn = "W"
+        sgf+=")"
+        return sgf
+
     def to_sgf(self):
         sgf = f"(;AP[RainbowHex]FF[4]GM[11]SZ[{self.size}]"
-        sgf += "EV[W]" if self.onturn=="r" else "EV[B]"
+        sgf += "PL[W]" if self.game.view.gp["m"] else "PL[B]"
         sgf+=";AB"
         for i,p in enumerate(self.position):
             if p == "b":

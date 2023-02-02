@@ -219,15 +219,14 @@ def play_vs_binary(binary_path, model_path):
     just_prints =  ["Value:","Dead_move","Engine_move:","Response:","Winner:"]
     plt.rcParams["keymap.yscale"].remove('l')
     plt.rcParams['keymap.save'].remove('s')
-    hex_size = 5
+    hex_size = 11
     set_coords()
     fig = plt.gcf()
     proc = Popen(["gdb","-batch","-ex",'run',"-ex",'bt',binary_path], stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
     set_uci_param(proc,f'Model_Path', model_path)
-    proc.stdin.write(b"setoption name Nodes value 200\n")
-    proc.stdin.flush()
-    proc.stdin.write(b"setoption name Hex_Size value 5\n")
-    proc.stdin.flush()
+    set_uci_param(proc,f'Nodes', 200)
+    set_uci_param(proc,f'Hex_Size', hex_size)
+    set_uci_param(proc,f'Centi_Temperature', 170)
     proc.stdin.write(b"isready\n")
     proc.stdin.flush()
     read_output(proc,b"readyok\n", check_error=True)

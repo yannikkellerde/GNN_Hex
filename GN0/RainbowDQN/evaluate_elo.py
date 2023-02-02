@@ -171,7 +171,9 @@ class Elo_handler():
         model.load_state_dict(stuff["state_dict"])
         self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False)
 
-    def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False):
+    def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
+        if log_sgfs:
+            os.makedirs("sgfs",exist_ok=True)
         print("Playing games between",maker,"and",breaker)
         wins = {maker:0,breaker:0}
         game_lengths = []
@@ -186,8 +188,8 @@ class Elo_handler():
 
         with alive_bar(num_games,disable=not progress) as bar:
             with torch.no_grad():
-                for i in range(2):
-                    if i==0:
+                for k in range(2):
+                    if k==0:
                         p1 = maker
                         p2 = breaker
                     else:
@@ -195,6 +197,7 @@ class Elo_handler():
                         p2 = maker
 
                     games = [Hex_game(self.size) for _ in range(num_games//2)]
+                    move_logs = [[] for _ in games]
                     if p1 == breaker:
                         for game in games:
                             game.view.gp["m"] = False
@@ -213,11 +216,11 @@ class Elo_handler():
                         elif move_num>0 or starting_moves is None:
                             if self.players[current_player]["simple"]:
                                 board_actions = self.players[current_player]["model"](games)
-                                actions = [game.board.board_index_to_vertex[action] for game,action in zip(games,board_actions)]
+                                actions = [game.board.board_index_to_vertex_index[action] for game,action in zip(games,board_actions)]
                             else:
                                 action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
                                 actions = []
-                                for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):  # This isn't great, but I didn't find any method for sampling in pytorch_scatter. Maybe need to implement myself at some point.
+                                for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):
                                     action_part = action_values[start+2:fin]
                                     if len(action_part)==1:
                                         actions.append(2)
@@ -243,7 +246,6 @@ class Elo_handler():
                         elif move_num==0 and starting_moves is not None:
                             actions = starting_moves[:len(games)]
 
-
                         to_del = []
                         # if actions[0]!=0:
                         #     print(games[0].board.vertex_to_board_index[games[0].view.vertex(actions[0])])
@@ -251,6 +253,8 @@ class Elo_handler():
                         #     print(games[0].board.draw_me())
                         for i,action in enumerate(actions):
                             if action!=0:
+                                move_logs[i].append(games[i].board.vertex_index_to_board_index[action] if type(action)==int else games[i].board.vertex_to_board_index[action])
+                                
                                 try:
                                     games[i].make_move(action,remove_dead_and_captured=True)
                                 except Exception as e:
@@ -272,6 +276,10 @@ class Elo_handler():
                                 winner = games[i].who_won()
                                 
                                 if winner is not None:
+                                    if log_sgfs:
+                                        sgf = games[i].board.sgf_from_move_history(move_logs[i],"r" if p1==maker else "b",red=maker if p1==maker else breaker,blue=breaker if p2==breaker else maker)
+                                        with open(f"sgfs/elo_sgf_{k}_{i}.sgf","w") as f:
+                                            f.write(sgf)
                                     bar()
                                     game_lengths.append(games[i].total_num_moves)
                                     if winner == games[i].not_onturn:
@@ -392,16 +400,21 @@ if __name__ == "__main__":
     max_time = 2
     max_games = 1000
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
     e.add_player(name=f"binary-raw",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
-    # res1 = e.play_some_games("beaming-firecracker",f"mohex-{max_time}s-{max_games}g",None,0,progress=True)
-    res1 = e.play_some_games("binary-raw",f"random",2,0,progress=True)
-    # res1 = e.play_some_games("misty-firebrand",f"beaming-firecracker",None,0,progress=True)
-    print(res1)
-    # res2 = e.play_some_games(f"mohex-{max_time}s-{max_games}g","beaming-firecracker",None,0,progress=True)
-    # res2 = e.play_some_games(f"beaming-firecracker","misty-firebrand",None,0,progress=True)
-    # res2 = e.play_some_games("random",f"binary-raw",None,0,progress=True)
-    # print(res1,res2)
+    res = e.play_some_games(f"beaming-firecracker",f"binary-raw",None,0,progress=True)
+    
+    e.add_player(name=f"binary-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
+
+    res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"binary-mcts",None,0,progress=True)
+    print(res)
+
+
+    res = e.play_some_games(f"binary-raw",f"binary-mcts",None,0,progress=True)
+    print(res)
+    res = e.play_some_games(f"mohex-{max_time}s-{max_games}g","binary-raw",None,0,progress=True)
+    print(res)
+
     # run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
     # test_some_more_statistics()
     # elo_handler = Elo_handler(9)

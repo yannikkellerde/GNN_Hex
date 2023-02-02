@@ -55,19 +55,20 @@ class UCIConfig:
     Centi_Resign_Probability: int = 90
     Centi_Q_Value_Weight: int = 0
     Centi_Quick_Probability: int = 0
-    Centi_Temperature: int = 80
+    Centi_Temperature: int = 170    # Originally 80
     EPD_File_Path: str = "<empty>"
     MaxInitPly: int = 0  # default: 30
     MCTS_Solver: bool = True
     MeanInitPly: int = 0  # default: 15
     Milli_Policy_Clip_Thresh: int = 10
-    Nodes: int = 200
+    Nodes: int = 800
     Reuse_Tree: str = False
     Search_Type: str = f'mcts'
     Selfplay_Chunk_Size: int = 128  # default: 128
     Selfplay_Number_Chunks: int = 640  # default: 640
     Simulations: int = 3200
-    Temperature_Moves: int = 10  # CZ: 500
+    Temperature_Moves: int = 500  # CZ: 500
+    Centi_Temperature_Decay: int = 99  # CZ: 500
     Timeout_MS: int = 0
     UCI_Chess960: bool = False
 
@@ -79,5 +80,6 @@ class UCIConfigArena:
     All other options will be taken from the UCIConfig class.
     """
     Centi_Temperature: int = 60
+    Temperature_Moves: int = 10
 
 

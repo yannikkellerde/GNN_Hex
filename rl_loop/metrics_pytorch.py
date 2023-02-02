@@ -84,11 +84,11 @@ class CrossEntropy(Metric):
         self.loss_sum = 0
         self.nb_batches = 0
 
-    def update(self, preds: torch.Tensor, labels: torch.Tensor) -> None:
+    def update(self, preds: torch.Tensor, labels: torch.Tensor, nb_graphs=1) -> None:
         if self.sparse_policy_label:
-            self.loss_sum += self.loss(preds, labels.long())
+            self.loss_sum += self.loss(preds, labels.long())/nb_graphs
         else:
-            self.loss_sum += self.loss(preds, labels)
+            self.loss_sum += self.loss(preds, labels)/nb_graphs
         self.nb_batches += 1
 
     def compute(self) -> float:

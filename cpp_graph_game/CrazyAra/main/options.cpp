@@ -71,7 +71,7 @@ void OptionsUCI::init(OptionsMap &o)
 #else
     o["Centi_Temperature"]             << Option(170, 0, 99999);
 #endif
-    o["Centi_Temperature_Decay"]       << Option(92, 0, 100);
+    o["Centi_Temperature_Decay"]       << Option(99, 0, 100);
     o["Centi_U_Init_Divisor"]          << Option(100, 1, 99999);
     o["Centi_Virtual_Loss"]            << Option(100, 0, 99999);
 #ifdef WITH_CUDA
@@ -97,7 +97,7 @@ void OptionsUCI::init(OptionsMap &o)
     o["Reuse_Tree"]                    << Option(true);
 #endif
 #ifdef USE_RL
-    o["Temperature_Moves"]             << Option(10, 0, 99999); // originally 15
+    o["Temperature_Moves"]             << Option(1000, 0, 99999); // originally 15
 #else
     o["Temperature_Moves"]             << Option(0, 0, 99999);
 #endif

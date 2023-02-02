@@ -127,9 +127,10 @@ class TrainConfig:
     value_layers = 2
     in_channels = 3
     swap_allowed = False
-    @staticmethod
-    def norm(hc):
-        LayerNorm(hc,mode="node")
+    norm = None
+    # @staticmethod
+    # def norm(hc):
+    #     LayerNorm(hc,mode="node")
     # norm = LayerNorm
 
 @dataclass

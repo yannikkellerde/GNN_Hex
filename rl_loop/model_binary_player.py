@@ -33,8 +33,8 @@ class BinaryPlayer():
         moves = []
         move_notations = []
         for i,game in enumerate(games):
-            print("loading sgf")
-            print("Did a player win?",game.who_won())
+            # print("loading sgf")
+            # print("Did a player win?",game.who_won())
             color = "w" if game.view.gp["m"] else "b"
             curpath = os.path.abspath(os.getcwd())
             with open(os.path.join(curpath,f"cur_game_state.sgf"),"w") as f:
@@ -47,10 +47,10 @@ class BinaryPlayer():
             self._wait_for_answer("readyok")
             self.proc.stdin.write(b"engine_move\n")
             self.proc.stdin.flush()
-            info,line = self._wait_for_answer("readyok",stats_to_log=["Engine_move:"])
-            move = int(info["Engine_move:"].split(" ")[1].replace("\\n",""))
+            info,line = self._wait_for_answer("readyok",stats_to_log=["Engine_board_move:"])
+            move = int(info["Engine_board_move:"].split(" ")[1].replace("\\n",""))
             moves.append(move)
-        print(moves)
+        # print(moves)
         return moves
 
     def _wait_for_answer(self,start_to_look_for="readyok",stats_to_log=[]):
@@ -58,8 +58,8 @@ class BinaryPlayer():
         while True:
             line = self.proc.stdout.readline()
             line = line.decode("utf-8")  # bytes to string
-            if len(line)>0:
-                print(line)
+            # if len(line)>0:
+            #     print(line)
             line=line.strip()
             # else:
             #     while error:=self.proc.stderr.readline() != b'':

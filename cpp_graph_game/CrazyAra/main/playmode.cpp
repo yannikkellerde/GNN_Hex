@@ -125,6 +125,7 @@ void playmode(MCTSAgent * mctsAgent, RawNetAgent * rawAgent, SearchLimits * sear
 			if (game->who_won()==NOPLAYER){
 				move = policy.argmax().item<int>();
 				cout << "Engine_move: " << move << endl;
+				cout << "Engine_board_move: " << game->graph.lprops[BOARD_LOCATION][move+2] << endl;
 			}
 		}
 		else if (action == "swap"){
