@@ -27,11 +27,11 @@ class RLConfig:
     # How many new generated training files are needed to apply an update to the NN
     nb_selfplay_games_per_thread: int = 50
     selfplay_threads = 10
-    nn_update_files: int = 1
+    nn_update_files: int = 30
     precision: str = f'float16'
     # Replay Memory
     rm_nb_files: int = 7  # how many data packages/files shall be randomly taken from memory
-    rm_fraction_for_selection: float = 0.2  # which percentage of the most recent memory shall be taken into account
+    rm_fraction_for_selection: float = 0.3  # which percentage of the most recent memory shall be taken into account
     # The UCI_Variant. Must be in ["3check", "atomic", "chess", "crazyhouse",
     # "giveaway" (= antichess), "horde", "kingofthehill", "racingkings"]
     uci_variant: str = 'hex'

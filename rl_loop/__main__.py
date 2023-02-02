@@ -7,6 +7,7 @@ Created on 12.10.19
 Main reinforcement learning for generating games and train the neural network.
 """
 
+import json
 import distutils
 import os
 import sys
@@ -69,9 +70,16 @@ class RLLoop:
         self.tc.cwd = self.file_io.binary_dir
         logpath = os.path.join(self.tc.export_dir,"wandb_logs",str(self.args.device_id))
         os.makedirs(logpath,exist_ok=True)
-        id_map = {0:"2z8g2v68",1:"wor8lzon",2:"1eiifq5r"}
+        if self.args.continue_runs and os.path.exists("stored_ids.json"):
+            with open("stored_ids.json","r") as f:
+                id_map = json.load(f)
+        else:
+            id_map = {"0":wandb.util.generate_id(),"1":wandb.util.generate_id(),"2":wandb.util.generate_id()}
+            with open("stored_ids.json","w") as f:
+                json.dump(id_map,f)
         name_map = {0:"trainer",1:"evaluater",2:"generator"}
-        wandb.init(resume='allow',id=id_map[int(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath)
+        group = "mohex+alpha0"
+        wandb.init(resume='allow',id=id_map[str(self.args.device_id)],project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=logpath, job_type=name_map[int(self.args.device_id)],group=group)
         wandb.run.name = name_map[int(self.args.device_id)]
         # wandb.init(resume="must",id="19wl47yk",project='HexAra', save_code=True, config=dict(**rl_config.__dict__, **self.tc.__dict__, log_version=100),entity="yannikkellerde", mode=('online' if args.use_wandb else 'offline'), anonymous='allow', tags=[], dir=os.path.join(self.tc.export_dir,"logs"))
 
@@ -224,6 +232,7 @@ def parse_args(cmd_args: list):
                              " If this parameter is enabled no conversion will be done")
     parser.add_argument('--in-memory-dataset',default=False, action="store_true",help="Keep single dataset in memory")
     parser.add_argument('--use_wandb', type=parse_bool, default=True, help='whether use "weights & biases" for tracking metrics, video recordings and model checkpoints')
+    parser.add_argument('--continue-runs', type=parse_bool, default=True, help='continue last run?')
 
     args = parser.parse_args(cmd_args)
 
