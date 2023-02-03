@@ -27,7 +27,7 @@ from rl_loop.binaryio import BinaryIO
 from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig
 from rl_loop.rl_config import RLConfig, UCIConfigArena
-from rl_loop.rl_training import update_network
+from rl_loop.rl_training import update_network, _get_net
 from rl_loop.plotting import show_eval_from_file
 import torch, wandb
 import time
@@ -52,6 +52,9 @@ class RLLoop:
         self.tc = TrainConfig()
 
         self.rl_config = rl_config
+        if args.trainer:
+            ctx = torch.device("cuda") if self.tc.context == "gpu" else torch.device("cpu")
+            self.starting_net = _get_net(ctx, self.tc, self.file_io.get_current_model_pt_file())
 
         self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name,device_id=args.device_id)
         self.binary_io = None
@@ -154,6 +157,10 @@ class RLLoop:
         """
         print("new generated:",self.file_io.get_number_generated_files(),"\ntotal available:",self.file_io.get_total_available_training_files(),"\nrequired:",number_files_to_update)
         if self.file_io.get_total_available_training_files() >= number_files_to_update or self.arena_start:
+            try:
+                del self.starting_net
+            except:
+                print("starting net already gone")
             if not self.arena_start:
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
