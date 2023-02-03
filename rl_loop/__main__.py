@@ -52,11 +52,11 @@ class RLLoop:
         self.tc = TrainConfig()
 
         self.rl_config = rl_config
+
+        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name,device_id=args.device_id)
         if args.trainer:
             ctx = torch.device("cuda") if self.tc.context == "gpu" else torch.device("cpu")
             self.starting_net = _get_net(ctx, self.tc, self.file_io.get_current_model_pt_file())
-
-        self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name,device_id=args.device_id)
         self.binary_io = None
 
         if nb_arena_games % 2 == 1:
