@@ -9,6 +9,8 @@ from graph_game.utils import fully_connect_lists,take_step,greedy_search
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+import torch.nn.functional as F
 from matplotlib.patches import RegularPolygon
 from graph_game.shannon_node_switching_game import Node_switching_game
 
@@ -39,6 +41,22 @@ class Hex_board(Abstract_board_game):
         new_board.vertex_index_to_board_index = self.vertex_index_to_board_index.copy()
         new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
+
+    def to_input_planes(self,hex_size=None):
+        if hex_size is None:
+            hex_size = self.size
+        assert hex_size>=self.size
+        red_plane = torch.tensor([1 if p=="r" else 0 for p in self.position]).reshape((self.size,self.size))
+        blue_plane = torch.tensor([1 if p=="b" else 0 for p in self.position]).reshape((self.size,self.size))
+        if hex_size > self.size:
+            diff = hex_size - self.size
+            red_plane = F.pad(red_plane,((diff+1)//2,diff//2,(diff+1)//2,diff//2), value=0)
+            blue_plane = F.pad(blue_plane,((diff+1)//2,diff//2,(diff+1)//2,diff//2), value=0)
+        if self.onturn == "r":
+            onturn_plane = torch.ones_like(red_plane)
+        else:
+            onturn_plane = torch.zeros_like(red_plane)
+        return torch.stack((red_plane,blue_plane,onturn_plane))
 
     def sample_legal_move(self):
         free_squares = []

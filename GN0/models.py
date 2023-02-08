@@ -380,6 +380,48 @@ class HeadNetwork(torch.nn.Module):
         value = self.value_head(graph_parts)
         return advantages,value
 
+class CNNTwoHeaded(torch.nn.Module):
+    def __init__(self,in_channels,input_width,num_body_filters,num_body_layers,num_head_layers,num_head_filters,output_size):
+        self.body_layers = torch.nn.ModuleList()
+        for i in range(num_body_layers):
+            self.body_layers.append(torch.nn.Conv2d(in_channels=in_channels,out_channels=num_body_filters,kernel_size=3,stride=1,padding="same"))
+            self.body_layers.append(torch.nn.ReLU())
+
+        self.advantage_layers = torch.nn.ModuleList()
+        self.value_layers = torch.nn.ModuleList()
+        for i in range(num_head_layers):
+            self.advantage_layers.append(torch.nn.Conv2d(in_channels=num_body_filters,out_channels=num_head_filters,kernel_size=1,stride=1,padding="same"))
+            self.advantage_layers.append(torch.nn.ReLU())
+            self.value_layers.append(torch.nn.Conv2d(in_channels=num_body_filters,out_channels=num_head_filters,kernel_size=1,stride=1,padding="same"))
+            self.value_layers.append(torch.nn.ReLU())
+        self.advantage_linear = torch.nn.Linear(input_width*num_head_filters,output_size)
+        self.value_linear = torch.nn.Linear(input_width*num_head_filters,1)
+        self.value_activation = Tanh()
+        self.advantage_activation = Tanh()
+
+    def forward(self,x, advantages_only=False, seperate=False):
+        for bl in self.body_layers:
+            x = bl(x)
+        a = x
+        v = x
+        for al in self.advantage_layers:
+            a = al(a)
+        a = self.advantage_activation(self.advantage_linear(a))*2
+
+        if advantages_only:
+            return a
+
+        for vl in self.value_layers:
+            v = vl(v)
+        v = self.value_activation(self.value_linear(v))
+        if seperate:
+            return v, a-torch.mean(a,dim=1)
+        else:
+            return a - torch.mean(a,dim=1) + v
+
+
+
+
 class DuellingTwoHeaded(torch.nn.Module):
     def __init__(self,GNN:Type[BasicGNN],advantage_head,gnn_kwargs,head_kwargs):
         super().__init__()
