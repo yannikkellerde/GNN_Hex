@@ -19,6 +19,7 @@ artifacts/
 torch/
 GN0/data
 GN0/supervised/run
+!images/*.png
 !CMakeLists.txt
 !5x5_graph.pdf
 !GN0/model/GCN_model.pt 
