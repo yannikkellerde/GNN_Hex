@@ -1,5 +1,5 @@
 # Proof of concept for HexAra
-[rr_table](/images/roundrobin_table.png)
+![rr_table](/images/roundrobin_table.png)
 + Model trained to reproduce Mohex-1k beats Mohex-1k itself if plugged it into HexAra.
 + I can continue training this model with AlphaGo method by generating training data from HexAra.
 	- This results in a significantly stronger model that, when used with HexAra, beats Mohex-1k convincingly.
