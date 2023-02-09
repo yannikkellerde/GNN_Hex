@@ -15,12 +15,13 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Env_manager():
     last_obs:List[Data]
 
-    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True):
+    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False):
         self.num_envs = num_envs
         self.gamma = gamma
         self.global_onturn = "m"
         self.n_steps = n_steps
         self.prune_exploratories = prune_exploratories
+        self.cnn_rep = cnn_rep
         self.change_hex_size(hex_size)
 
     def change_hex_size(self,new_size):
@@ -28,20 +29,33 @@ class Env_manager():
         self.global_onturn = "m"
         self.envs = [Hex_game(self.hex_size) for _ in range(self.num_envs)]
         self.base_game = Hex_game(self.hex_size)
+        if self.cnn_rep:
+            self.base_game.board_callback = self.base_game.board.graph_callback
+            for env in self.envs:
+                env.board_callback = env.board.graph_callback
 
     @property
     def starting_obs(self):
-        return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
+        if self.cnn_rep:
+            return self.base_game.board.to_input_planes()
+        else:
+            return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
         
 
     def observe(self) -> List[Data]:
-        f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
-        # assert torch.all(Batch.from_data_list(f).x[:,2] == Batch.from_data_list(f).x[0,2])
-        return f
+        if self.cnn_rep:
+            return [env.board.to_input_planes() for env in self.envs]
+        else:
+            f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
+            return f
 
     @staticmethod
     def validate_actions(states:List[Data],actions:List[int]):
         return [state.backmap[action].item() for state,action in zip(states,actions)]
+
+    def cnn_validate_actions(self,actions:List[int]):
+        assert self.cnn_rep
+        return [self.envs[i].board.board_index_to_vertex_index[action] for i,action in enumerate(actions)]
 
     def get_valid_actions(self) -> List[np.ndarray]:
         return [x.get_actions() for x in self.envs]
@@ -69,6 +83,8 @@ class Env_manager():
                 else: # This can happen, because of "remove dead and captured"
                     rewards[i] = -1
                 self.envs[i] = Hex_game(self.hex_size)
+                if self.cnn_rep:
+                    self.envs[i].board_callback = self.envs[i].board.graph_callback
                 self.envs[i].view.gp["m"] = self.global_onturn=="b" # We swap global onturn afterwards
 
         self.global_onturn = "m" if self.global_onturn=="b" else "b"
@@ -79,6 +95,9 @@ class Env_manager():
     def reset(self):
         self.global_onturn = "m"
         self.envs = [Hex_game(self.hex_size) for _ in range(self.num_envs)]
+        if self.cnn_rep:
+            for env in self.envs:
+                env.board_callback = env.board.graph_callback
         return self.observe()
 
     def get_transitions(self,starting_states:list,state_history:list,action_history:list,reward_history:list,done_history:list,exploratories_history:list):
@@ -108,22 +127,27 @@ class Env_manager():
             for n_step in self.n_steps:
                 if len(sh)>i+2*n_step:
                     for k in range(len(start_state)):
-                        start_state[k].__delattr__("backmap")
-                        assert action[k]<len(start_state[k].x)
+                        if not self.cnn_rep:
+                            start_state[k].__delattr__("backmap")
+                            assert action[k]<len(start_state[k].x)
                         reward = 0
                         for j in range(i,i+2*n_step):
                             reward+=reward_history[j][k]*((-((j-i)%2))*2+1)*(self.gamma**((j-i)//2))
                             if done_history[j][k]:
                                 sobs = self.starting_obs
-                                sobs.__delattr__("backmap")
-                                sobs.x[:,2] = start_state[k].x[0,2]
+                                if self.cnn_rep:
+                                    sobs[:,2] = start_state[k][0,2]
+                                else:
+                                    sobs.__delattr__("backmap")
+                                    sobs.x[:,2] = start_state[k].x[0,2]
                                 # print("done",len(start_state[k].x),action[k],reward)
                                 transits.append((start_state[k],action[k],reward,sobs,True))
                                 break
                             if self.prune_exploratories and j>i and exploratories_history[j][k]: # Prune transitions where exploratory actions have been taken after the original action.
                                 break
                         else:
-                            sh[i+2*n_step][k].__delattr__("backmap")
+                            if not self.cnn_rep:
+                                sh[i+2*n_step][k].__delattr__("backmap")
                             # print(len(start_state[k].x),len(sh[i+2*n_step][k].x),reward,start_state[k].x[0,2],sh[i+2*n_step][k].x[0,2])
                             transits.append((start_state[k],action[k],reward,sh[i+2*n_step][k],False))
         return maker_transitions,breaker_transitions

@@ -178,3 +178,7 @@ def visualize_graph(G, color): # SOURCE https://pytorch-geometric.readthedocs.io
                      node_color=color, cmap="Set2")
     plt.show()
 
+def count_model_parameters(model:torch.nn.Module):
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    return params

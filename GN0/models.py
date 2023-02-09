@@ -382,9 +382,10 @@ class HeadNetwork(torch.nn.Module):
 
 class CNNTwoHeaded(torch.nn.Module):
     def __init__(self,in_channels,input_width,num_body_filters,num_body_layers,num_head_layers,num_head_filters,output_size):
+        super().__init__()
         self.body_layers = torch.nn.ModuleList()
         for i in range(num_body_layers):
-            self.body_layers.append(torch.nn.Conv2d(in_channels=in_channels,out_channels=num_body_filters,kernel_size=3,stride=1,padding="same"))
+            self.body_layers.append(torch.nn.Conv2d(in_channels=in_channels if i==0 else num_body_filters,out_channels=num_body_filters,kernel_size=3,stride=1,padding="same"))
             self.body_layers.append(torch.nn.ReLU())
 
         self.advantage_layers = torch.nn.ModuleList()
@@ -394,8 +395,10 @@ class CNNTwoHeaded(torch.nn.Module):
             self.advantage_layers.append(torch.nn.ReLU())
             self.value_layers.append(torch.nn.Conv2d(in_channels=num_body_filters,out_channels=num_head_filters,kernel_size=1,stride=1,padding="same"))
             self.value_layers.append(torch.nn.ReLU())
-        self.advantage_linear = torch.nn.Linear(input_width*num_head_filters,output_size)
-        self.value_linear = torch.nn.Linear(input_width*num_head_filters,1)
+        self.advantage_layers.append(torch.nn.Flatten())
+        self.value_layers.append(torch.nn.Flatten())
+        self.advantage_linear = torch.nn.Linear(input_width**2*num_head_filters,output_size)
+        self.value_linear = torch.nn.Linear(input_width**2*num_head_filters,1)
         self.value_activation = Tanh()
         self.advantage_activation = Tanh()
 
@@ -407,7 +410,6 @@ class CNNTwoHeaded(torch.nn.Module):
         for al in self.advantage_layers:
             a = al(a)
         a = self.advantage_activation(self.advantage_linear(a))*2
-
         if advantages_only:
             return a
 
@@ -855,6 +857,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 norm=CachedGraphNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
+    elif name == "cnn_two_headed":
+        model = CNNTwoHeaded(in_channels=3,input_width=6,num_body_filters=12,num_body_layers=7,num_head_layers=1,num_head_filters=2,output_size=36)
     elif name == "modern_two_headed":
         model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,
             gnn_kwargs=dict(
@@ -865,7 +869,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 norm=LayerNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ),head_kwargs=dict(
-                GNN=cachify_gnn(GraphSAGE),
+            GNN=cachify_gnn(GraphSAGE),
                 value_head_type = "mlp",
                 value_aggr_types = ("sum","max","min","mean"),
                 num_layers=args.num_head_layers if hasattr(args,"num_head_layers") else 2,

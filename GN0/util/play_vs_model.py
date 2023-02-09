@@ -17,8 +17,8 @@ def play_in_gui():
     version = None
     # path = get_highest_model_path("daily-totem-131")
     # path = get_highest_model_path("azure-snowball-157")
-    # path = get_highest_model_path("misty-firebrand-26/5")
-    path = get_highest_model_path("beaming-firecracker-2201/11")
+    path = get_highest_model_path("misty-firebrand-26/5")
+    # path = get_highest_model_path("beaming-firecracker-2201/11")
     # path = "../alpha_zero/checkpoints/181.pt"
     # path = get_highest_model_path("breezy-morning-37")
     if version is not None:
@@ -29,7 +29,8 @@ def play_in_gui():
     if args is None:
         args = Namespace(num_layers=8,head_layers=2,hidden_channels=25)
     # model = get_pre_defined("policy_value",args).to(device)
-    model = get_pre_defined("modern_two_headed",args).to(device)
+    # model = get_pre_defined("modern_two_headed",args).to(device)
+    model = get_pre_defined("two_headed",args).to(device)
 
     model.load_state_dict(stuff["state_dict"])
     if "cache" in stuff and stuff["cache"] is not None:

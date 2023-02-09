@@ -49,10 +49,15 @@ class Hex_board(Abstract_board_game):
         red_plane = torch.tensor([1 if p=="r" else 0 for p in self.position]).reshape((self.size,self.size))
         blue_plane = torch.tensor([1 if p=="b" else 0 for p in self.position]).reshape((self.size,self.size))
         if hex_size > self.size:
-            diff = hex_size - self.size
-            red_plane = F.pad(red_plane,((diff+1)//2,diff//2,(diff+1)//2,diff//2), value=0)
-            blue_plane = F.pad(blue_plane,((diff+1)//2,diff//2,(diff+1)//2,diff//2), value=0)
-        if self.onturn == "r":
+            new_red_plane = torch.zeros((hex_size,hex_size))
+            new_blue_plane = torch.zeros((hex_size,hex_size))
+            new_red_plane[:self.size,:self.size] = red_plane
+            new_blue_plane[:self.size,:self.size] = blue_plane
+            new_red_plane[:self.size,self.size:] = 1
+            new_blue_plane[self.size:,:self.size] = 1
+            red_plane = new_red_plane
+            blue_plane = new_blue_plane
+        if self.game.view.vp["m"]:
             onturn_plane = torch.ones_like(red_plane)
         else:
             onturn_plane = torch.zeros_like(red_plane)
