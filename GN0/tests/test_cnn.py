@@ -17,10 +17,18 @@ def env_test():
     print(model(g.board.to_input_planes(6).unsqueeze(0)))
 
 def param_counting():
-    cnn_model = get_pre_defined("cnn_two_headed")
     args = Namespace(**{
         "num_layers":7,
-        "hidden_channels":20,
+        "cnn_hex_size":6,
+        "cnn_head_filters":2,
+        "cnn_body_filters":12,
+        "num_head_layers":1,
+        }
+    )
+    cnn_model = get_pre_defined("cnn_two_headed",args=args)
+    args = Namespace(**{
+        "num_layers":7,
+        "hidden_channels":21,
         "num_head_layers":2,
         "noisy_dqn":False,
         "noisy_sigma0":False,

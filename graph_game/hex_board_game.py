@@ -46,18 +46,18 @@ class Hex_board(Abstract_board_game):
         if hex_size is None:
             hex_size = self.size
         assert hex_size>=self.size
-        red_plane = torch.tensor([1 if p=="r" else 0 for p in self.position]).reshape((self.size,self.size))
-        blue_plane = torch.tensor([1 if p=="b" else 0 for p in self.position]).reshape((self.size,self.size))
+        red_plane = torch.tensor([1 if p=="r" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
+        blue_plane = torch.tensor([1 if p=="b" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
         if hex_size > self.size:
-            new_red_plane = torch.zeros((hex_size,hex_size))
-            new_blue_plane = torch.zeros((hex_size,hex_size))
+            new_red_plane = torch.zeros((hex_size,hex_size),dtype=torch.float)
+            new_blue_plane = torch.zeros((hex_size,hex_size),dtype=torch.float)
             new_red_plane[:self.size,:self.size] = red_plane
             new_blue_plane[:self.size,:self.size] = blue_plane
             new_red_plane[:self.size,self.size:] = 1
             new_blue_plane[self.size:,:self.size] = 1
             red_plane = new_red_plane
             blue_plane = new_blue_plane
-        if self.game.view.vp["m"]:
+        if self.game.view.gp["m"]:
             onturn_plane = torch.ones_like(red_plane)
         else:
             onturn_plane = torch.zeros_like(red_plane)
@@ -247,7 +247,7 @@ class Hex_board(Abstract_board_game):
             if color_based_on_vprop:
                 colors = [["g" if type(x)==str else ("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
 
-        return build_hex_grid(colors,labels,fig=fig)
+        return build_hex_grid(colors,labels,fig=fig,do_pause=False)
 
     def number_to_notation(self,number):
         letters = "abcdefghijklmnopqrstuvwxyz"

@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import json
 import wandb
 from GN0.RainbowDQN.mohex_communicator import MohexPlayer
+from GN0.util.util import downsample_cnn_outputs
 
 
 class Elo_handler():
@@ -45,8 +46,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
@@ -207,8 +208,12 @@ class Elo_handler():
                     current_player = p1
 
                     while len(games)>0:
-                        datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
-                        batch = Batch.from_data_list(datas)
+                        if self.players[current_player]["cnn"]:
+                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"]) for game in games]
+                            batch = torch.stack(datas)
+                        else:
+                            datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
+                            batch = Batch.from_data_list(datas)
 
                         if move_num == 0 and random_first_move and starting_moves is None:
                             actions = [random.choice(g.get_actions()) for g in games]
@@ -218,31 +223,42 @@ class Elo_handler():
                                 board_actions = self.players[current_player]["model"](games)
                                 actions = [game.board.board_index_to_vertex_index[action] for game,action in zip(games,board_actions)]
                             else:
-                                action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
-                                actions = []
-                                for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):
-                                    action_part = action_values[start+2:fin]
-                                    if len(action_part)==1:
-                                        actions.append(2)
-                                        continue
-                                    if temperature==0:
+                                if self.players[current_player]["cnn"]:
+                                    action_values = downsample_cnn_outputs(self.players[current_player]["model"].forward(batch.to(self.device)),self.size).to(self.device)
+                                    if temperature == 0:
+                                        mask = downsample_cnn_outputs(torch.logical_or(batch[:,0].reshape(batch.shape[0],-1).bool(),batch[:,1].reshape(batch.shape[0],-1).bool()),self.size)
+                                        action_values[mask] = -5 # Exclude occupied squares
+                                        actions = torch.argmax(action_values,dim=1)
+                                    else:
+                                        raise NotImplementedError()
+                                    actions = [game.board.board_index_to_vertex_index[a.item()] for game,a in zip(games,actions)]
+
+                                else:
+                                    action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
+                                    actions = []
+                                    for i,(start,fin) in enumerate(zip(batch.ptr,batch.ptr[1:])):
+                                        action_part = action_values[start+2:fin]
+                                        if len(action_part)==1:
+                                            actions.append(2)
+                                            continue
+                                        if temperature==0:
+                                            try:
+                                                action = torch.argmax(action_part)+2
+                                            except Exception as e:
+                                                print(action_part,type(action_part))
+                                                print(action_part.size())
+                                                raise ValueError(str(e))
+                                            actions.append(action)
+                                            continue
+                                        prob_part = F.softmax(action_part/temperature, dim=0)
                                         try:
-                                            action = torch.argmax(action_part)+2
-                                        except Exception as e:
-                                            print(action_part,type(action_part))
-                                            print(action_part.size())
-                                            raise ValueError(str(e))
-                                        actions.append(action)
-                                        continue
-                                    prob_part = F.softmax(action_part/temperature, dim=0)
-                                    try:
-                                        distrib = Categorical(prob_part.squeeze())
-                                    except ValueError:
-                                        raise ValueError
-                                    sample = distrib.sample()
-                                    action = sample+2
-                                    actions.append(action.item())
-                                actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
+                                            distrib = Categorical(prob_part.squeeze())
+                                        except ValueError:
+                                            raise ValueError
+                                        sample = distrib.sample()
+                                        action = sample+2
+                                        actions.append(action.item())
+                                    actions = [datas[i].backmap[actions[i]].item() for i in range(len(actions))]
                         elif move_num==0 and starting_moves is not None:
                             actions = starting_moves[:len(games)]
 

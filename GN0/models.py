@@ -415,11 +415,11 @@ class CNNTwoHeaded(torch.nn.Module):
 
         for vl in self.value_layers:
             v = vl(v)
-        v = self.value_activation(self.value_linear(v))
+        v = self.value_activation(self.value_linear(v)).squeeze()
         if seperate:
-            return v, a-torch.mean(a,dim=1)
+            return v, a-torch.mean(a,dim=1).reshape(-1,1)
         else:
-            return a - torch.mean(a,dim=1) + v
+            return a - torch.mean(a,dim=1).reshape(-1,1) + v.reshape(-1,1)
 
 
 
@@ -858,7 +858,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu"
             ))
     elif name == "cnn_two_headed":
-        model = CNNTwoHeaded(in_channels=3,input_width=6,num_body_filters=12,num_body_layers=7,num_head_layers=1,num_head_filters=2,output_size=36)
+        model = CNNTwoHeaded(in_channels=3,input_width=args.cnn_hex_size,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers,num_head_layers=args.num_head_layers,num_head_filters=args.cnn_head_filters,output_size=args.cnn_hex_size**2)
+
     elif name == "modern_two_headed":
         model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,
             gnn_kwargs=dict(

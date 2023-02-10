@@ -9,19 +9,21 @@ from numpy.typing import NDArray
 from torch import LongTensor, Tensor
 import torch
 import time
+from collections import Counter
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Env_manager():
     last_obs:List[Data]
 
-    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False):
+    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False,cnn_hex_size=5):
         self.num_envs = num_envs
         self.gamma = gamma
         self.global_onturn = "m"
         self.n_steps = n_steps
         self.prune_exploratories = prune_exploratories
         self.cnn_rep = cnn_rep
+        self.cnn_hex_size = cnn_hex_size
         self.change_hex_size(hex_size)
 
     def change_hex_size(self,new_size):
@@ -37,14 +39,14 @@ class Env_manager():
     @property
     def starting_obs(self):
         if self.cnn_rep:
-            return self.base_game.board.to_input_planes()
+            return self.base_game.board.to_input_planes(self.cnn_hex_size)
         else:
             return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
         
 
     def observe(self) -> List[Data]:
         if self.cnn_rep:
-            return [env.board.to_input_planes() for env in self.envs]
+            return [env.board.to_input_planes(self.cnn_hex_size) for env in self.envs]
         else:
             f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
             return f
@@ -55,7 +57,7 @@ class Env_manager():
 
     def cnn_validate_actions(self,actions:List[int]):
         assert self.cnn_rep
-        return [self.envs[i].board.board_index_to_vertex_index[action] for i,action in enumerate(actions)]
+        return [self.envs[i].board.board_index_to_vertex_index[action if type(action)==int else int(action.item())] for i,action in enumerate(actions)]
 
     def get_valid_actions(self) -> List[np.ndarray]:
         return [x.get_actions() for x in self.envs]
@@ -123,7 +125,11 @@ class Env_manager():
         for i in range(len(action_history)):
             start_state = sh[i]
             action = action_history[i]
-            transits = maker_transitions if start_state[0].x[0,2] == 1 else breaker_transitions
+            if self.cnn_rep:
+                transits = maker_transitions if start_state[0][2,0,0] == 1 else breaker_transitions
+            else:
+                transits = maker_transitions if start_state[0].x[0,2] == 1 else breaker_transitions
+
             for n_step in self.n_steps:
                 if len(sh)>i+2*n_step:
                     for k in range(len(start_state)):
@@ -136,7 +142,7 @@ class Env_manager():
                             if done_history[j][k]:
                                 sobs = self.starting_obs
                                 if self.cnn_rep:
-                                    sobs[:,2] = start_state[k][0,2]
+                                    sobs[2] = start_state[k][2,0,0]
                                 else:
                                     sobs.__delattr__("backmap")
                                     sobs.x[:,2] = start_state[k].x[0,2]

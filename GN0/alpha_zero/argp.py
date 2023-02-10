@@ -5,7 +5,6 @@ import os
 def read_args():
     parse_bool = lambda b: bool(distutils.util.strtobool(b))
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--cnn_mode",type=parse_bool,default=False)
     parser.add_argument("--hex_size",type=int,default=5)
     parser.add_argument("--capacity",type=int,default=2**16)
     parser.add_argument("--online_wandb",type=parse_bool,default=True)
