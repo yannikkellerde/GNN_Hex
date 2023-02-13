@@ -16,13 +16,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Env_manager():
     last_obs:List[Data]
 
-    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False,cnn_hex_size=5):
+    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False,cnn_hex_size=5, cnn_zero_fill=False):
         self.num_envs = num_envs
         self.gamma = gamma
         self.global_onturn = "m"
         self.n_steps = n_steps
         self.prune_exploratories = prune_exploratories
         self.cnn_rep = cnn_rep
+        self.cnn_zero_fill = cnn_zero_fill
         self.cnn_hex_size = cnn_hex_size
         self.change_hex_size(hex_size)
 
@@ -39,14 +40,14 @@ class Env_manager():
     @property
     def starting_obs(self):
         if self.cnn_rep:
-            return self.base_game.board.to_input_planes(self.cnn_hex_size)
+            return self.base_game.board.to_input_planes(self.cnn_hex_size,zero_fill=self.cnn_zero_fill)
         else:
             return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
         
 
     def observe(self) -> List[Data]:
         if self.cnn_rep:
-            return [env.board.to_input_planes(self.cnn_hex_size) for env in self.envs]
+            return [env.board.to_input_planes(self.cnn_hex_size,zero_fill=self.cnn_zero_fill) for env in self.envs]
         else:
             f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
             return f
