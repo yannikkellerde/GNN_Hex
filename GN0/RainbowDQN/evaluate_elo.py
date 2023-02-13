@@ -209,7 +209,7 @@ class Elo_handler():
 
                     while len(games)>0:
                         if self.players[current_player]["cnn"]:
-                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],self.players[current_player]["cnn_zero_fill"]]) for game in games]
+                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],self.players[current_player]["cnn_zero_fill"]) for game in games]
                             batch = torch.stack(datas)
                         else:
                             datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
