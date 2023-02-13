@@ -46,8 +46,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None, cnn_zero_fill=False):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size, "cnn_zero_fill":cnn_zero_fill}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
@@ -209,7 +209,7 @@ class Elo_handler():
 
                     while len(games)>0:
                         if self.players[current_player]["cnn"]:
-                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"]) for game in games]
+                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],self.players[current_player]["cnn_zero_fill"]]) for game in games]
                             batch = torch.stack(datas)
                         else:
                             datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]

@@ -42,7 +42,7 @@ class Hex_board(Abstract_board_game):
         new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
 
-    def to_input_planes(self,hex_size=None):
+    def to_input_planes(self,hex_size=None,zero_fill=False):
         if hex_size is None:
             hex_size = self.size
         assert hex_size>=self.size
@@ -53,8 +53,9 @@ class Hex_board(Abstract_board_game):
             new_blue_plane = torch.zeros((hex_size,hex_size),dtype=torch.float)
             new_red_plane[:self.size,:self.size] = red_plane
             new_blue_plane[:self.size,:self.size] = blue_plane
-            new_red_plane[:self.size,self.size:] = 1
-            new_blue_plane[self.size:,:self.size] = 1
+            if not zero_fill:
+                new_red_plane[:self.size,self.size:] = 1
+                new_blue_plane[self.size:,:self.size] = 1
             red_plane = new_red_plane
             blue_plane = new_blue_plane
         if self.game.view.gp["m"]:

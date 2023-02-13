@@ -18,17 +18,17 @@ def env_test():
 
 def param_counting():
     args = Namespace(**{
-        "num_layers":7,
-        "cnn_hex_size":6,
+        "num_layers":10,
+        "cnn_hex_size":8,
         "cnn_head_filters":2,
-        "cnn_body_filters":12,
+        "cnn_body_filters":19,
         "num_head_layers":1,
         }
     )
     cnn_model = get_pre_defined("cnn_two_headed",args=args)
     args = Namespace(**{
-        "num_layers":7,
-        "hidden_channels":21,
+        "num_layers":10,
+        "hidden_channels":35,
         "num_head_layers":2,
         "noisy_dqn":False,
         "noisy_sigma0":False,
