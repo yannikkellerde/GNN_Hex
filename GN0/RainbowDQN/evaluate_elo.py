@@ -164,13 +164,13 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
-    def load_a_model_player(self,checkpoint,model_identifier,model_name=None):
+    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None):
         if model_name is None:
             model_name = os.path.basename(checkpoint)
         stuff = torch.load(checkpoint)
         model = get_pre_defined(model_identifier,stuff["args"]).to(device)
         model.load_state_dict(stuff["state_dict"])
-        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False)
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size)
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
         if log_sgfs:
@@ -394,42 +394,69 @@ if __name__ == "__main__":
     from Rainbow.common.utils import get_highest_model_path
 
     device = "cpu"
-    e = Elo_handler(11,k=1,device=device)
+    e = Elo_handler(6,k=1,device=device)
     # e.load_a_model_player(get_highest_model_path("misty-firebrand-26/11"),"two_headed","misty-firebrand")
-    e.load_a_model_player(get_highest_model_path("beaming-firecracker-2201/11"),"modern_two_headed","beaming-firecracker")
+    #e.load_a_model_player(get_highest_model_path("beaming-firecracker-2201/11"),"modern_two_headed","beaming-firecracker")
 
-    max_time = 2
-    max_games = 1000
+    e.load_a_model_player(get_highest_model_path("gnn_5x5/5"),"modern_two_headed","gnn")
+    e.load_a_model_player(get_highest_model_path("cnn_5x5/5"),"cnn_two_headed","cnn_5x5_final",cnn_mode=True,cnn_hex_size=5)
+    e.load_a_model_player(get_highest_model_path("cnn_5x5_6x6/5"),"cnn_two_headed","cnn_5x5_transfer",cnn_mode=True,cnn_hex_size=6)
+    e.load_a_model_player("Rainbow/checkpoints/cnn_5x5/5/checkpoint_26091648.pt","cnn_two_headed","cnn_5x5",cnn_mode=True,cnn_hex_size=5)
+    e.load_a_model_player("Rainbow/checkpoints/cnn_5x5/5/checkpoint_11996160.pt","cnn_two_headed","cnn_5x5_early",cnn_mode=True,cnn_hex_size=5)
+    
+
+    #max_time = 2
+    #max_games = 1000
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
     # e.add_player(name=f"mohex-rep-raw",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
     # e.add_player(name=f"train-raw",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name=f"mohex-rep-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    e.add_player(name=f"train-mcts",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
+    #e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
+    #e.add_player(name=f"mohex-rep-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
+    #e.add_player(name=f"train-mcts",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
 
-    all_results = []
+    #all_results = []
 
-    res = e.play_some_games(f"mohex-rep-mcts",f"beaming-firecracker",None,0,progress=True)
-    all_results.append(res)
+    #res = e.play_some_games(f"cnn_5x5_early",f"gnn",None,0,progress=True)
+    #print(res)
+    #res = e.play_some_games(f"cnn_5x5",f"gnn",None,0,progress=True)
+    #print(res)
+    #res = e.play_some_games(f"cnn_5x5_early",f"cnn_5x5",None,0,progress=True)
+    #print(res)
+    res = e.play_some_games(f"gnn",f"cnn_5x5_transfer",None,0,progress=True)
     print(res)
-    res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"beaming-firecracker",None,0,progress=True)
+    #res = e.play_some_games(f"cnn_5x5_early",f"cnn_5x5_transfer",None,0,progress=True)
+    #print(res)
+    #res = e.play_some_games(f"cnn_5x5_early",f"random",None,0,progress=True)
+    #print(res)
+    #res = e.play_some_games(f"cnn_5x5",f"cnn_5x5_transfer",None,0,progress=True)
+    #print(res)
+    res = e.play_some_games(f"cnn_5x5_transfer",f"random",None,0,progress=True)
     print(res)
-    all_results.append(res)
-    res = e.play_some_games(f"train-mcts",f"beaming-firecracker",None,0,progress=True)
+    #res = e.play_some_games(f"cnn_5x5",f"random",None,0,progress=True)
+    #print(res)
+    res = e.play_some_games(f"gnn",f"random",None,0,progress=True)
     print(res)
-    all_results.append(res)
-    res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"train-mcts",None,0,progress=True)
-    print(res)
-    all_results.append(res)
-    res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"mohex-rep-mcts",None,0,progress=True)
-    print(res)
-    all_results.append(res)
-    res = e.play_some_games(f"train-mcts",f"mohex-rep-mcts",None,0,progress=True)
-    print(res)
-    all_results.append(res)
+    #res = e.play_some_games(f"mohex-rep-mcts",f"beaming-firecracker",None,0,progress=True)
+    #all_results.append(res)
+    #print(res)
+    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"beaming-firecracker",None,0,progress=True)
+    #print(res)
+    #all_results.append(res)
+    #res = e.play_some_games(f"train-mcts",f"beaming-firecracker",None,0,progress=True)
+    #print(res)
+    #all_results.append(res)
+    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"train-mcts",None,0,progress=True)
+    #print(res)
+    #all_results.append(res)
+    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"mohex-rep-mcts",None,0,progress=True)
+    #print(res)
+    #all_results.append(res)
+    #res = e.play_some_games(f"train-mcts",f"mohex-rep-mcts",None,0,progress=True)
+    #print(res)
+    #all_results.append(res)
 
-    with open("elo_results","w") as f:
-        json.dump(all_results,f)
+    #with open("elo_results","w") as f:
+    #    json.dump(all_results,f)
     
     
     # e.add_player(name=f"binary-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
