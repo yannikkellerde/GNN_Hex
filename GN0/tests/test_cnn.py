@@ -5,27 +5,28 @@ from GN0.util.util import count_model_parameters
 from collections import namedtuple
 from argparse import Namespace
 
-def env_test():
-    g = Hex_game(5)
+def env_test(model,hex_size=7):
+    g = Hex_game(hex_size)
     g.board_callback = g.board.graph_callback
     print(g.board.to_input_planes())
-    print(g.board.to_input_planes(6))
-    g.make_move(5)
+    print(g.board.to_input_planes(hex_size))
+    g.make_move(hex_size)
     print(g.board.to_input_planes())
-    print(g.board.to_input_planes(6))
-    model = get_pre_defined("cnn_two_headed")
-    print(model(g.board.to_input_planes(6).unsqueeze(0)))
+    print(g.board.to_input_planes(hex_size))
+    print(model(g.board.to_input_planes(hex_size).unsqueeze(0)))
 
 def param_counting():
     args = Namespace(**{
         "num_layers":10,
         "cnn_hex_size":8,
         "cnn_head_filters":2,
-        "cnn_body_filters":19,
+        "cnn_body_filters":21,
         "num_head_layers":1,
         }
     )
-    cnn_model = get_pre_defined("cnn_two_headed",args=args)
+    cnn_model = get_pre_defined("fully_conv",args=args)
+    env_test(cnn_model)
+    env_test(cnn_model, hex_size=9)
     args = Namespace(**{
         "num_layers":10,
         "hidden_channels":35,
@@ -43,5 +44,4 @@ def param_counting():
     
 
 if __name__ == "__main__":
-    # env_test()
     param_counting()
