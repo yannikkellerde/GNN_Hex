@@ -8,6 +8,7 @@
 	- If we go fully convolutional, scaling is actually easy.
 		* I should have known this from computer vision, but first general consensus if you google is: CNN require fixed input size.
 	- So I use fully convolutial architecture with single Q-head (no duelling DQN) that only has 3x3 conv layers with padding='same' + relu and finishes with 1x1 conv layer with one filter output. Then flatten.
+		* Inputs: 2 layers red, blue, 1 layer onturn, 2 layers red/blue mirrored.
 	- Just fixed a bug yesterday (forgot to filter out illegal moves in q-target computation).
 		* Bug-free (hopefully) experiments on 5x5 and 7x7 running since yesterday.
 		* Results fresh from the oven
