@@ -23,6 +23,7 @@ def downsample_cnn_outputs(q_values,target_hex_size):
         q_size = int(sqrt(len(q_values)))
         return q_values.reshape(q_size,q_size)[:target_hex_size,:target_hex_size].flatten()
     else:
+        print(q_values.shape)
         raise ValueError()
 
 class AverageMeter(object):
