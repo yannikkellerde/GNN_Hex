@@ -62,7 +62,7 @@ class Hex_board(Abstract_board_game):
             onturn_plane = torch.ones_like(red_plane)
         else:
             onturn_plane = torch.zeros_like(red_plane)
-        return torch.stack((red_plane,blue_plane,onturn_plane))
+        return torch.stack((red_plane,blue_plane,onturn_plane,torch.flip(red_plane,dims=[0]),torch.flip(blue_plane,dims=[0])))
 
     def sample_legal_move(self):
         free_squares = []

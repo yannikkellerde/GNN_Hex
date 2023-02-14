@@ -878,10 +878,10 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu"
             ))
     elif name == "cnn_two_headed":
-        model = CNNTwoHeaded(in_channels=3,input_width=args.cnn_hex_size,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers,num_head_layers=args.num_head_layers,num_head_filters=args.cnn_head_filters,output_size=args.cnn_hex_size**2)
+        model = CNNTwoHeaded(in_channels=5,input_width=args.cnn_hex_size,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers,num_head_layers=args.num_head_layers,num_head_filters=args.cnn_head_filters,output_size=args.cnn_hex_size**2)
 
     elif name == "fully_conv":
-        model = FullyConv(in_channels=3,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers)
+        model = FullyConv(in_channels=5,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers)
 
     elif name == "modern_two_headed":
         model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,
