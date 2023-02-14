@@ -417,8 +417,8 @@ class CNNTwoHeaded(torch.nn.Module):
             self.value_layers.append(torch.nn.ReLU())
         self.advantage_layers.append(torch.nn.Flatten())
         self.value_layers.append(torch.nn.Flatten())
-        self.advantage_linear = torch.nn.Linear(num_body_filters if pool else input_width**2*num_head_filters,output_size)
-        self.value_linear = torch.nn.Linear(num_body_filters if pool else input_width**2*num_head_filters,1)
+        self.advantage_linear = torch.nn.Linear(input_width**2*num_head_filters,output_size)
+        self.value_linear = torch.nn.Linear(input_width**2*num_head_filters,1)
         self.value_activation = Tanh()
         self.advantage_activation = Tanh()
 
@@ -878,7 +878,7 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu"
             ))
     elif name == "cnn_two_headed":
-        model = CNNTwoHeaded(in_channels=3,input_width=args.cnn_hex_size,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers,num_head_layers=args.num_head_layers,num_head_filters=args.cnn_head_filters,output_size=args.cnn_hex_size**2, pool=args.pool)
+        model = CNNTwoHeaded(in_channels=3,input_width=args.cnn_hex_size,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers,num_head_layers=args.num_head_layers,num_head_filters=args.cnn_head_filters,output_size=args.cnn_hex_size**2)
 
     elif name == "fully_conv":
         model = FullyConv(in_channels=3,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers)
