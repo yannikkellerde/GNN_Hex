@@ -164,13 +164,13 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
-    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None):
+    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,cnn_zero_fill=False):
         if model_name is None:
             model_name = os.path.basename(checkpoint)
         stuff = torch.load(checkpoint)
         model = get_pre_defined(model_identifier,stuff["args"]).to(device)
         model.load_state_dict(stuff["state_dict"])
-        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size)
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,cnn_zero_fill=cnn_zero_fill)
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
         if log_sgfs:
