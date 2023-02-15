@@ -29,3 +29,5 @@
 	- Do comparisons earlier.
 	- Focus on one experiment first (Spending that time on HexAra was nice to learn C++ and stuff, but kind of wasted).
 	- Be more sceptical of random arxiv papers.
++ I guess as this is a masters thesis and not a phd, the fact that you fail to show the thing you wanted to show does not immediately mean the thesis is a fail (if I understood it correctly)
+	- Then I guess the question becomes how to write it in the thesis...
