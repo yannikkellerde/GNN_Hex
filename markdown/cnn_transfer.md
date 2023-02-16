@@ -36,3 +36,14 @@
 	- Tested with cnn trained on 7x7 and gnn trained on 7x7 with same kind of position on hex sizes 5-13.
 	- CNN starts making first mistake on 7x7 and in total gets 20/32 correct.
 	- GNN only starts making mistakes on 12x12 onwards and gets 29/32 correct.
+
+## So the answers to my research questions are:
++ Can GNNs capture the relational structure of Hex better than GNNs?
+	- There are concepts in hex that are captured better with GNNs in the graph structure.
+		* E.g. long range dependencies such as in section above.
+	- However, the advantages of CNNs in more common positions outweigh this advantage of GNNs.
+	- I did not find GNNs to be more effective at learning the game Hex as a whole.
++ Can GNNs aid knowledge transfer between board sizes in Hex?
+	- Knowledge transfer with GNNs does not work as well as with fully convolutional neural networks.
++ Which self-play reinforcement learning approaches work the best with GNNs?
+	- Unclear, but I had more difficulties with AlphaZero MCTS method.
