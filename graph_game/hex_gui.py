@@ -61,18 +61,26 @@ def make_responding_evaluater(eval_func):
         return vprop
     return evaluater
 
-def playerify_advantage_model(model):
+def playerify_advantage_model(model,cnn_mode=False):
     def model_player(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
         if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
             if respond_to is not None:
                 plt.title("Last move was dead")
-            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
-            res = model(data.x,data.edge_index).squeeze()
-            raw_move = torch.argmax(res[2:]).item()+2
-            move = data.backmap[raw_move].item()
-            board_move = game.board.vertex_index_to_board_index[move]
+            if cnn_mode:
+                model_input = game.board.to_input_planes().unsqueeze(0)
+                board_outputs = model(model_input)
+                mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
+                board_outputs[mask] = -5
+                board_outputs = board_outputs.squeeze()
+                board_move = torch.argmax(board_outputs).item()
+            else:
+                data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
+                res = model(data.x,data.edge_index).squeeze()
+                raw_move = torch.argmax(res[2:]).item()+2
+                move = data.backmap[raw_move].item()
+                board_move = game.board.vertex_index_to_board_index[move]
         else:
             response = game.get_response(respond_to,game.view.gp["m"])
             plt.title("Last move was captured")
@@ -90,19 +98,29 @@ def playerify_maker_breaker(maker,breaker):
             return player_breaker(game)
     return maker_breaker_player
 
-def advantage_model_to_evaluater(model):
+def advantage_model_to_evaluater(model,cnn_mode=False):
     def evaluater(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
         if respond_to is None or game.get_response(respond_to,game.view.gp["m"]) is None:
             if respond_to is not None:
                 plt.title("Last move was dead")
-            data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
-            res = model(data.x,data.edge_index).squeeze()
-            vinds = {data.backmap[int(i)]:value for i,value in enumerate(res) if int(i)>1}
-            vprop = game.view.new_vertex_property("float")
-            for key,value in vinds.items():
-                vprop[game.view.vertex(key)] = value
+            if cnn_mode:
+                model_input = game.board.to_input_planes().unsqueeze(0)
+                board_outputs = model(model_input)
+                mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
+                board_outputs[mask] = -5
+                board_outputs = board_outputs.squeeze()
+                vprop = game.view.new_vertex_property("float")
+                for i in range(len(board_outputs)):
+                    vprop[game.board.board_index_to_vertex_index[i]] = board_outputs[i]
+            else:
+                data = convert_node_switching_game(game.view,global_input_properties=[int(game.view.gp["m"])],need_backmap=True,old_style=True).to(device)
+                res = model(data.x,data.edge_index).squeeze()
+                vinds = {data.backmap[int(i)]:value for i,value in enumerate(res) if int(i)>1}
+                vprop = game.view.new_vertex_property("float")
+                for key,value in vinds.items():
+                    vprop[game.view.vertex(key)] = value
         else:
             response = game.get_response(respond_to,game.view.gp["m"])
             vprop = game.view.new_vertex_property("float")
@@ -233,6 +251,10 @@ c: toggle show dead and captured""", end="")
         global manual_mode, game,show_dead_and_captured,action_history,show_graph,is_over,glob_size,layout,remove_dead_and_captured,do_bspc
         if event.key == "m":
             manual_mode = not manual_mode
+
+        elif event.key == "d":
+            print(game.board.draw_me())
+            print(model_evaluater(game).a)
 
         elif event.key == "b":
             do_bspc = not do_bspc
