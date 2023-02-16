@@ -31,7 +31,7 @@
 
 ## The one case where GNNs do have an advantage
 + The long range dependency example from the introduction
-[](/images/long_range_compare_positive.svg) [](/images/long_range_compare_negative.svg)
+![lr_neg](/images/long_range_compare_positive.svg) ![lr_neg](/images/long_range_compare_negative.svg)
 + Depending on the position, one should or should not play top right as blue.
 	- Tested with cnn trained on 7x7 and gnn trained on 7x7 with same kind of position on hex sizes 5-13.
 	- CNN starts making first mistake on 7x7 and in total gets 20/32 correct.
