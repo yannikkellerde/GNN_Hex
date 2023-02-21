@@ -11,39 +11,31 @@
 		* I should have known this from computer vision, but I was stupid enough to just believe https://arxiv.org/pdf/2107.08387.pdf and the first google results.
 	- So I use fully convolutial architecture with single Q-head (no duelling DQN) that only has 3x3 conv layers with padding='same' + relu and finishes with 1x1 conv layer with one filter output. Then flatten.
 		* Inputs: 2 layers red, blue, 1 layer onturn.
-	- Fresh results with similar training time for gnn and cnn
-		* On 5x5: {'gnn': 15, 'cnn_5x5': 15}
-		* Transfer to 6x6: {'cnn_5x5': 22, 'gnn': 20}
-		* On 7x7: {'gnn_7x7': 24, 'cnn_7x7': 32}
-		* Transfer to 8x8: {'gnn_7x7': 23, 'cnn_7x7': 49}
-		
-+ **I should not have believed this random arxiv paper [https://arxiv.org/pdf/2107.08387.pdf](https://arxiv.org/pdf/2107.08387.pdf). There is no benefit of GNNs for transfer and frankly I'm not sure if it is anywhere.**
-+ .
-+ .
-+ .
-+ Well, at this is the point in research where you question everything you did.
-+ Lessons:
-	- Do comparisons earlier.
-	- Focus on one experiment first (Spending that time on HexAra was nice to learn C++ and stuff, but kind of wasted).
-	- Be more sceptical of random arxiv papers.
-+ I guess as this is a masters thesis and not a phd, the fact that you fail to show the thing you wanted to show does not immediately mean the thesis is a fail (if I understood it correctly)
-	- Then I guess the question becomes how to write it in the thesis...
+		* Results: CNN beats GNN close to similar board size after training on 7x7, but GNN wins by a lot for transfer to very different board sizes (see results section)
 
-## The one case where GNNs do have an advantage
-+ The long range dependency example from the introduction
-![lr_neg](/images/long_range_compare_positive.svg) ![lr_neg](/images/long_range_compare_negative.svg)
-+ Depending on the position, one should or should not play top right as blue.
-	- Tested with cnn trained on 7x7 and gnn trained on 7x7 with same kind of position on hex sizes 5-13.
-	- CNN starts making first mistake on 7x7 and in total gets 20/32 correct.
-	- GNN only starts making mistakes on 12x12 onwards and gets 29/32 correct.
++ Additional experiment: long range dependencies for CNN and GNN.
+	- Use GNN and CNN trained on 7x7 to try and solve long range dependency problems on various board sizes
+		* Result: GNN does a lot better, even on board sizes where CNN wins more games. (see results section)
 
-## So the answers to my research questions are:
++ What to make of this?
+	- Even with this simple fully convolutional architecture (No pooling, no norm, no skip connections), CNN beats GNN on 7x7 Hex.
+		* Not that surprising, main claim for GNN advantage was long range dependencies. 7x7 is somewhat to small for long range dependencies.
+		* Maybe run another experiment training on 11x11 or 13x13? Need another CNN arch for that, current approach does not really scale.
+	- Transfer advantge of GNN shown, but only to very different board sizes. On 8x8 and 9x9, CNN still has advantage.
+	- Long range dependency problem does indeed show GNN advantage. For a high winrate, local patters do have also a significant impact however.
+
+## Motivation in Methods?
++ I spend some paragraphs trying to motivate RainbowDQN and HexAra (AlphaZero) as approaches to use with GNNs.
++ Currently, I put them into Methods. Is that the place it belongs? Or should methods just be: *What did I do?*
+
+
+## So the answers to my research questions are currently:
 + Can GNNs capture the relational structure of Hex better than GNNs?
 	- There are concepts in hex that are captured better with GNNs in the graph structure.
 		* E.g. long range dependencies such as in section above.
-	- However, the advantages of CNNs in more common positions outweigh this advantage of GNNs.
-	- I did not find GNNs to be more effective at learning the game Hex as a whole.
+	- However, on 7x7, local patterns seem to be more important than long-range dependencies and CNN perform better.
 + Can GNNs aid knowledge transfer between board sizes in Hex?
-	- Knowledge transfer with GNNs does not work as well as with fully convolutional neural networks.
+	- In agreement with https://arxiv.org/pdf/2107.08387.pdf, I found that GNNs even retain knowledge, transfering to much larger board sizes. Fully conv CNN work better for transfer to slightly different board sizes, but catastrophically fail for transfer to much larger board sizes.
 + Which self-play reinforcement learning approaches work the best with GNNs?
 	- Unclear, but I had more difficulties with AlphaZero MCTS method.
+	- To get some reasonable results for the thesis paper, I should probably spend the time to implement CNN for HexAra too.
