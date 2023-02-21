@@ -167,8 +167,8 @@ class Elo_handler():
     def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,cnn_zero_fill=False):
         if model_name is None:
             model_name = os.path.basename(checkpoint)
-        stuff = torch.load(checkpoint)
-        model = get_pre_defined(model_identifier,stuff["args"]).to(device)
+        stuff = torch.load(checkpoint,map_location=self.device)
+        model = get_pre_defined(model_identifier,stuff["args"]).to(self.device)
         model.load_state_dict(stuff["state_dict"])
         self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,cnn_zero_fill=cnn_zero_fill)
 

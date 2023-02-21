@@ -3,6 +3,7 @@ from graph_game.graph_tools_games import Hex_game
 from GN0.models import get_pre_defined
 from GN0.util.convert_graph import convert_node_switching_game
 from graph_game.hex_gui import advantage_model_to_evaluater
+import matplotlib.pyplot as plt
 import os
 
 basepath = os.path.abspath(os.path.dirname(__file__))
@@ -50,11 +51,17 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
         fill_game_with_long_range_position(hex_size,"m")
+        plt.cla()
+        game.board.matplotlib_me()
+        plt.savefig(f"../../images/long_range_patterns/red_negative_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() == 0:
             fails.append(f"{hex_size}_m_false_positive")
         game.make_move(game.board.board_index_to_vertex[hex_size-1],force_color="b",remove_dead_and_captured=False)
         game.make_move(game.board.board_index_to_vertex[hex_size*2+hex_size//2+((hex_size-2)//2)*hex_size],force_color="m",remove_dead_and_captured=False)
+        plt.cla()
+        game.board.matplotlib_me()
+        plt.savefig(f"../../images/long_range_patterns/red_positive_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() != 0:
             fails.append(f"{hex_size}_m_false_negative")
@@ -62,6 +69,9 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
         fill_game_with_long_range_position(hex_size,"b")
+        plt.cla()
+        game.board.matplotlib_me()
+        plt.savefig(f"../../images/long_range_patterns/blue_negative_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() == 0:
             fails.append(f"{hex_size}_b_false_positive")
@@ -69,10 +79,13 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
             # print(game.board.draw_me())
             # exit()
         game.make_move(game.board.board_index_to_vertex[(hex_size-1)*hex_size],force_color="m",remove_dead_and_captured=False)
+        game.make_move(game.board.board_index_to_vertex[2+hex_size*(hex_size//2)+((hex_size-2)//2)],force_color="b",remove_dead_and_captured=False)
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() != 0:
             fails.append(f"{hex_size}_b_false_negative")
-        game.make_move(game.board.board_index_to_vertex[2+hex_size*(hex_size//2)+((hex_size-2)//2)],force_color="b",remove_dead_and_captured=False)
+        plt.cla()
+        game.board.matplotlib_me()
+        plt.savefig(f"../../images/long_range_patterns/blue_positive_{hex_size}.svg")
     return fails
 
 

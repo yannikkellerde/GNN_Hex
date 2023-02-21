@@ -12,6 +12,7 @@ solver.log
 *.sgf
 *.csv
 *.png
+long_range_patterns/
 model_save/
 mohex
 HexAra
