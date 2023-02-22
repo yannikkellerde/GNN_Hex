@@ -8,7 +8,7 @@
 + Second try: fully convolutional
 	- Well, turns out most cnn architectures only require fixed input size, because they use a fully connected layer in the end.
 	- If we go fully convolutional, scaling is actually easy.
-		* I should have known this from computer vision, but I was stupid enough to just believe https://arxiv.org/pdf/2107.08387.pdf and the first google results.
+		* I should have known this from computer vision, but I got confused by https://arxiv.org/pdf/2107.08387.pdf and the first google results.
 	- So I use fully convolutial architecture with single Q-head (no duelling DQN) that only has 3x3 conv layers with padding='same' + relu and finishes with 1x1 conv layer with one filter output. Then flatten.
 		* Inputs: 2 layers red, blue, 1 layer onturn.
 		* Results: CNN beats GNN close to similar board size after training on 7x7, but GNN wins by a lot for transfer to very different board sizes (see results section)
