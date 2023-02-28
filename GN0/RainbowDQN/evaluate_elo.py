@@ -405,25 +405,15 @@ if __name__ == "__main__":
     e.load_a_model_player("Rainbow/checkpoints/cnn_5x5/5/checkpoint_11996160.pt","cnn_two_headed","cnn_5x5_early",cnn_mode=True,cnn_hex_size=5)
     
 
-    #max_time = 2
-    #max_games = 1000
+    max_time = 2
+    max_games = 1000
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
     # e.add_player(name=f"mohex-rep-raw",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
     # e.add_player(name=f"train-raw",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
-    #e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
-    #e.add_player(name=f"mohex-rep-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    #e.add_player(name=f"train-mcts",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-
-    #all_results = []
-
-    #res = e.play_some_games(f"cnn_5x5_early",f"gnn",None,0,progress=True)
-    #print(res)
-    #res = e.play_some_games(f"cnn_5x5",f"gnn",None,0,progress=True)
-    #print(res)
-    #res = e.play_some_games(f"cnn_5x5_early",f"cnn_5x5",None,0,progress=True)
-    #print(res)
-    res = e.play_some_games(f"gnn",f"cnn_5x5_transfer",None,0,progress=True)
-    print(res)
+    e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name=f"mohex-rep-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name=f"train-mcts",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
+    e.add_player(name=f"MAZ-final-mcts",model=BinaryPlayer(model_path="../../model_save/MAZ_final/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
     #res = e.play_some_games(f"cnn_5x5_early",f"cnn_5x5_transfer",None,0,progress=True)
     #print(res)
     #res = e.play_some_games(f"cnn_5x5_early",f"random",None,0,progress=True)
@@ -436,50 +426,3 @@ if __name__ == "__main__":
     #print(res)
     res = e.play_some_games(f"gnn",f"random",None,0,progress=True)
     print(res)
-    #res = e.play_some_games(f"mohex-rep-mcts",f"beaming-firecracker",None,0,progress=True)
-    #all_results.append(res)
-    #print(res)
-    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"beaming-firecracker",None,0,progress=True)
-    #print(res)
-    #all_results.append(res)
-    #res = e.play_some_games(f"train-mcts",f"beaming-firecracker",None,0,progress=True)
-    #print(res)
-    #all_results.append(res)
-    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"train-mcts",None,0,progress=True)
-    #print(res)
-    #all_results.append(res)
-    #res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"mohex-rep-mcts",None,0,progress=True)
-    #print(res)
-    #all_results.append(res)
-    #res = e.play_some_games(f"train-mcts",f"mohex-rep-mcts",None,0,progress=True)
-    #print(res)
-    #all_results.append(res)
-
-    #with open("elo_results","w") as f:
-    #    json.dump(all_results,f)
-    
-    
-    # e.add_player(name=f"binary-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
-
-    # res = e.play_some_games(f"mohex-{max_time}s-{max_games}g",f"binary-mcts",None,0,progress=True)
-    # print(res)
-
-
-    # res = e.play_some_games(f"binary-raw",f"binary-mcts",None,0,progress=True)
-    # print(res)
-    # res = e.play_some_games(f"mohex-{max_time}s-{max_games}g","binary-raw",None,0,progress=True)
-    # print(res)
-
-    # run_balanced_eval_roundrobin(hex_size=hex_size,folder=folder,num_from_folder=10,model_name="modern_two_headed",additonal_players=[old_player,random_dude],starting_game_frame=starting_frame,final_game_frame=final_frame,device=device)
-    # test_some_more_statistics()
-    # elo_handler = Elo_handler(9)
-    # checkpoint = "Rainbow/checkpoints/worldly-fire-19/checkpoint_4499712.pt"
-    # model = get_pre_defined("sage+norm")
-    # evaluate_checkpoint_against_random_mover(elo_handler,checkpoint,model)
-    # run_league("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/ethereal-glitter-22")
-    # test_elo_handler()
-    # battle_it_out()
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # battle_it_out(device=device)
-    # old_vs_new(old_breaker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_breaker_32800000.pt",old_maker_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/breezy-morning-37/checkpoint_maker_32800000.pt",old_model_name="sage+norm",new_model_path="/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/Rainbow/checkpoints/azure-snowball-157/checkpoint_59200000.pt",new_model_name="two_headed")
