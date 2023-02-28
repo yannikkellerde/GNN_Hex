@@ -247,8 +247,9 @@ class Hex_board(Abstract_board_game):
             labels = [["" if x == 0 else x for x in labelist[x:x+self.size]] for x in range(0,self.size**2,self.size)]
             if color_based_on_vprop:
                 colors = [["g" if type(x)==str else ("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
+            labels = [[str(a)[:4] for a in x] for x in labels]
 
-        return build_hex_grid(colors,labels,fig=fig,do_pause=False)
+        return build_hex_grid(colors,labels,fig=fig,do_pause=False,fontsize=12)
 
     def number_to_notation(self,number):
         letters = "abcdefghijklmnopqrstuvwxyz"
