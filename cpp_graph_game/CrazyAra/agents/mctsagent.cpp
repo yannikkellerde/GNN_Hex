@@ -25,6 +25,7 @@
 
 #include <thread>
 #include <fstream>
+#include "main/customuci.h"
 #include "mctsagent.h"
 #include "evalinfo.h"
 #include "constants.h"
@@ -162,15 +163,21 @@ void MCTSAgent::create_new_root_node(Node_switching_game* state)
 #else
 	rootNode = make_shared<Node>(state, searchSettings);
 #endif
+	vector<torch::Tensor> tens;
 	speedcheck.track_next("convert_graph");
-	vector<torch::Tensor> tens = state->convert_graph(net->device);
+	if (Options["CNN_Mode"]){
+		tens = state->convert_planes(net->device);
+	}
+	else{
+		tens = state->convert_graph(net->device);
+		net->edge_indices.push_back(tens[1]);
+	}
+	net->node_features.push_back(tens[0]);
 	speedcheck.stop_track("convert_graph");
 	/* node_features.clear(); */
 	/* edge_indices.clear(); */
 	root_node_to_fill = true;
 	root_node_batch_idx = net->edge_indices.size(); 
-	net->node_features.push_back(tens[0]);
-	net->edge_indices.push_back(tens[1]);
 
 	/* std::vector<torch::jit::IValue> inputs; */
 	/* torch::Tensor batch_ptr; */

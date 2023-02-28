@@ -24,6 +24,7 @@
  */
 
 #include <blaze/Math.h>
+#include "main/customuci.h"
 #include "rawnetagent.h"
 #include "util/blazeutil.h"
 #include "util.h"
@@ -36,6 +37,7 @@ RawNetAgent::RawNetAgent(NN_api * net, PlaySettings* playSettings, bool verbose)
 
 void RawNetAgent::evaluate_board_state()
 {
+		vector<torch::Tensor> tens;
     evalInfo->legalMoves = state->get_actions();
     evalInfo->init_vectors_for_multi_pv(1UL);
 
@@ -51,13 +53,18 @@ void RawNetAgent::evaluate_board_state()
         evalInfo->pv[0] = {evalInfo->legalMoves[0]};
         return;
     }
-		speedcheck.track_next("convert_graph");
-		vector<torch::Tensor> tens = state->convert_graph(net->device);
-		speedcheck.stop_track("convert_graph");
 		node_features.clear();
 		edge_indices.clear();
+		speedcheck.track_next("convert_graph");
+		if (Options["CNN_Mode"]){
+			tens = state->convert_planes(net->device);
+		}
+		else{
+			tens = state->convert_graph(net->device);
+			edge_indices.push_back(tens[1]);
+		}
 		node_features.push_back(tens[0]);
-		edge_indices.push_back(tens[1]);
+		speedcheck.stop_track("convert_graph");
 
 		std::vector<torch::jit::IValue> inputs;
 		torch::Tensor batch_ptr;

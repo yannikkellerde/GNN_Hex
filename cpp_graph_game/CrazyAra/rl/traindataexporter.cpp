@@ -23,6 +23,7 @@
  * @author: queensgambit
  */
 
+#include "main/customuci.h"
 #include "util.h"
 #include "traindataexporter.h"
 #include <filesystem>
@@ -171,11 +172,17 @@ void TrainDataExporter::new_game(Onturn last_result)
 
 void TrainDataExporter::save_planes(const Node_switching_game *pos)
 {
+	vector<torch::Tensor> tens;
 	speedcheck.track_next("convert_graph");
-	vector<torch::Tensor> tens = pos->convert_graph(device);
-	speedcheck.stop_track("convert_graph");
+	if (Options["CNN_Mode"]){
+		tens = pos->convert_planes(device);
+	}
+	else{
+		tens = pos->convert_graph(device);
+		edge_indices.push_back(tens[1]);
+	}
 	node_features.push_back(tens[0]);
-	edge_indices.push_back(tens[1]);
+	speedcheck.stop_track("convert_graph");
 #ifdef DO_DEBUG
 	board_indices.push_back(torch::tensor(pos->graph.lprops[BOARD_LOCATION]));
 #endif

@@ -25,6 +25,7 @@
 
 #include "searchthread.h"
 #include <unistd.h>
+#include "main/customuci.h"
 #include "util.h"
 
 #include <stdlib.h>
@@ -160,6 +161,7 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
 	description.depth = 0;
 	Node* currentNode = rootNode;
 	Node* nextNode;
+	vector<torch::Tensor> tens;
 
 	ChildIdx childIdx = uint16_t(-1);
 	if (searchSettings->epsilonGreedyCounter && rootNode->is_playout_node() && rand() % searchSettings->epsilonGreedyCounter == 0) {
@@ -200,11 +202,16 @@ Node* SearchThread::get_new_child_to_evaluate(NodeDescription& description)
 				nextNode->enable_has_nn_results();
 #else
 				speedcheck.track_next("convert_graph");
-				vector<torch::Tensor> tens = newState->convert_graph(net->device);
+				if (Options["CNN_Mode"]){
+					tens = newState->convert_planes(net->device);
+				}
+				else{
+					tens = newState->convert_graph(net->device);
+					net->edge_indices.push_back(tens[1]);
+				}
+				net->node_features.push_back(tens[0]);
 				speedcheck.stop_track("convert_graph");
 				batchIdx->add_element(net->node_features.size());
-				net->node_features.push_back(tens[0]);
-				net->edge_indices.push_back(tens[1]);
 				/* cout << "Created new node with key: " << nextNode->hash_key() << endl; */
 				/* cout << "Num legal actions: " << nextNode->get_legal_actions().size() << endl; */
 				/* cout << "Node_features size: " << tens[0].sizes() << endl; */

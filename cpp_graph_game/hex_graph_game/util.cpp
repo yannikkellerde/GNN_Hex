@@ -1,4 +1,5 @@
 #include "util.h"
+#include "main/customuci.h"
 #include "shannon_node_switching_game.h"
 #include "nn_api.h"
 
@@ -53,9 +54,14 @@ void gen_swap_map(int hex_size, NN_api* net, bool net_allows_swap){
 	/* } */
 	for (int i:game.get_actions()){
 		game.make_move(i,false,NOPLAYER,true,false);
-		converted = game.convert_graph(net->device);
+		if (Options["CNN_Mode"]){
+			converted = game.convert_planes(net->device);
+		}
+		else{
+			converted = game.convert_graph(net->device);
+			edge_indices.push_back(converted[1]);
+		}
 		node_features.push_back(converted[0]);
-		edge_indices.push_back(converted[1]);
 		game.reset();
 	}
 	inputs = collate_batch(node_features,edge_indices);

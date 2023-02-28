@@ -118,5 +118,6 @@ class Node_switching_game {
 		std::vector<torch::Tensor> convert_graph(torch::Device &device) const;
 
 		std::vector<torch::Tensor> convert_graph(torch::Device &device, const Graph& graph) const;
+		std::vector<torch::Tensor> convert_planes(torch::Device &device) const;
 };
 #endif

@@ -724,3 +724,17 @@ std::vector<torch::Tensor> Node_switching_game::convert_graph(torch::Device &dev
 	return onturn==BLUE?convert_graph(device,graph2):convert_graph(device,graph);
 #endif
 };
+
+std::vector<torch::Tensor> Node_switching_game::convert_planes(torch::Device &device) const{
+	torch::TensorOptions options_float = torch::TensorOptions().dtype(torch::kFloat32).device(device);
+	torch::Tensor planes = torch::zeros({3,board_size*board_size},options_float);
+	planes.index_put_({0,torch::tensor(board_moves_blue)},1);
+	planes.index_put_({1,torch::tensor(board_moves_red)},1);
+	if (onturn==RED){
+		planes[2] = 1;
+	}
+	torch::reshape(planes,{3,board_size,board_size});
+	std::vector<torch::Tensor> out;
+	out.push_back(planes);
+	return out;
+}
