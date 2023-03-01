@@ -401,8 +401,8 @@ class Unet(torch.nn.Module):
         x = self.up1(x4, x3)
         x = self.up2(x, x2)
         x = self.up3(x, x1)
-        q = F.tanh(self.out(x))
-        q = q.reshape((q.shape[0],q.shape[1],q.shape[2]*q.shape[3]))
+        q = torch.tanh(self.out(x))
+        q = q.reshape((q.shape[0],q.shape[2]*q.shape[3]))
         if seperate and not advantages_only:
             return 0,q
         return q
