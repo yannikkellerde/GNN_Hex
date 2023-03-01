@@ -90,9 +90,14 @@ void gen_starting_eval_file(int hex_size, NN_api* net){
 	std::vector<torch::jit::IValue> inputs;
 	Node_switching_game game(hex_size);
 	torch::TensorOptions options_long = torch::TensorOptions().dtype(torch::kLong).device(net->device);
-	converted = game.convert_graph(net->device);
+	if (Options["CNN_Mode"]){
+		converted = game.convert_planes(net->device);
+	}
+	else{
+		converted = game.convert_graph(net->device);
+		edge_indices.push_back(converted[1]);
+	}
 	node_features.push_back(converted[0]);
-	edge_indices.push_back(converted[1]);
 	inputs = collate_batch(node_features,edge_indices);
 	outputs = net->predict(inputs);
 	ofstream ev_file;

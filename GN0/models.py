@@ -1,4 +1,5 @@
 import torch
+import GN0.unet_parts as unet
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type, Union, Callable, Any
 import torch.nn.functional as F
@@ -379,6 +380,33 @@ class HeadNetwork(torch.nn.Module):
         graph_parts = torch.cat(parts,dim=1)
         value = self.value_head(graph_parts)
         return advantages,value
+
+class Unet(torch.nn.Module):
+    def __init__(self,in_channels,starting_channels=9):
+        super().__init__()
+        self.inc = (unet.DoubleConv(in_channels, starting_channels))
+        self.down1 = (unet.Down(starting_channels, starting_channels*2))
+        self.down2 = (unet.Down(starting_channels*2, starting_channels*4))
+        self.down3 = (unet.Down(starting_channels*4, starting_channels*8))
+        self.up1 = (unet.Up(starting_channels*8, starting_channels*4))
+        self.up2 = (unet.Up(starting_channels*4, starting_channels*2))
+        self.up3 = (unet.Up(starting_channels*2, starting_channels))
+        self.out= (unet.OutConv(starting_channels, 1))
+
+    def forward(self, x,advantages_only=False,seperate=False):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x = self.up1(x4, x3)
+        x = self.up2(x, x2)
+        x = self.up3(x, x1)
+        q = F.tanh(self.out(x))
+        q = q.reshape((q.shape[0],q.shape[1],q.shape[2]*q.shape[3]))
+        if seperate and not advantages_only:
+            return 0,q
+        return q
+
 
 class FullyConv(torch.nn.Module):
     def __init__(self,in_channels,num_body_filters,num_body_layers):
@@ -927,10 +955,9 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 act="relu",deg=deg_hist,aggregators=aggregators, scalers=scalers
             ))
 
-    elif name == "policy_value":
-        model = PolicyValue(cachify_gnn(GraphSAGE),hidden_channels=args.hidden_channels,hidden_layers=args.num_layers,policy_layers=args.head_layers,value_layers=args.head_layers,norm=None,act="relu")
-    elif name == "HexAra":
-        model = PV_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)
+    elif name == "Unet":
+        model = Unet(3)
+
     else:
         print(name)
         raise NotImplementedError

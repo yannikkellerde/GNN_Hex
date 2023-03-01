@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type, Union, Callable, Any
+import GN0.unet_parts as unet
 
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.norm import LayerNorm
@@ -368,6 +369,35 @@ class SAGE_torch_script(torch.nn.Module):
 
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
+
+class Unet(torch.nn.Module):
+    def __init__(self,in_channels,starting_channels=9):
+        super().__init__()
+        self.inc = (unet.DoubleConv(in_channels, starting_channels))
+        self.down1 = (unet.Down(starting_channels, starting_channels*2))
+        self.down2 = (unet.Down(starting_channels*2, starting_channels*4))
+        self.down3 = (unet.Down(starting_channels*4, starting_channels*8))
+        self.up1 = (unet.Up(starting_channels*8, starting_channels*4))
+        self.up2 = (unet.Up(starting_channels*4, starting_channels*2))
+        self.up3 = (unet.Up(starting_channels*2, starting_channels))
+        self.out_policy = (unet.OutConv(starting_channels, 1))
+        self.out_value = (unet.OutConv(starting_channels, 1))
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x = self.up1(x4, x3)
+        x = self.up2(x, x2)
+        x = self.up3(x, x1)
+        policy = self.out_policy(x)
+        policy = policy.reshape((policy.shape[0],policy.shape[1],policy.shape[2]*policy.shape[3]))
+        policy = F.log_softmax(policy,dim=2)
+        value = self.out_value(x)
+        value = torch.mean(value,(2,3))
+        return policy.reshape(policy.shape[0],policy.shape[-1]),value
+
 
 def get_current_model(net_type="SAGE",hidden_channels=60,hidden_layers=15,policy_layers=2,value_layers=2,in_channels=3,swap_allowed=False,norm=None):
     # return PNA_torch_script(hidden_channels=30,hidden_layers=11,policy_layers=2,value_layers=2,in_channels=3)

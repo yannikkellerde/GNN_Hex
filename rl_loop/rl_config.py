@@ -27,7 +27,7 @@ class RLConfig:
     # How many new generated training files are needed to apply an update to the NN
     nb_selfplay_games_per_thread: int = 300
     selfplay_threads = 20
-    nn_update_files: int = 40
+    nn_update_files: int = 1
     precision: str = f'float16'
     # Replay Memory
     rm_nb_files: int = 7  # how many data packages/files shall be randomly taken from memory

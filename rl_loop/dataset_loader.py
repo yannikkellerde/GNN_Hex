@@ -6,15 +6,17 @@ Created on 22.10.18
 
 Please describe what the content of this file is about
 """
+from torch.utils.data import TensorDataset, DataLoader
 import os
 import logging
 from rl_loop.main_config import main_config
 import torch
+import math
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
+import torch_geometric.loader
 
 def load_pgn_dataset(
-    dataset_type="train", part_id=0, verbose=True, q_value_ratio=0,
+    dataset_type="train", part_id=0, verbose=True, q_value_ratio=0, cnn_mode=False
 ):
     """
     Loads one part of the pgn dataset in form of planes / multidimensional numpy array.
@@ -70,15 +72,35 @@ def load_pgn_dataset(
     if q_value_ratio != 0:
         out["value"] = (1-q_value_ratio) * out["value"] + q_value_ratio * out["best_q"]
 
-    data_list = []
-    for i in range(len(out["node_features"])):
-        # if out["node_features"][i][0,2] == 1:   # Test, remove later
-        data_list.append(Data(x=out["node_features"][i], edge_index=out["edge_indices"][i], y=out["value"][i], policy=out["policy"][i]))
+    if cnn_mode:
+        instack = torch.stack(out["node_features"])
+        print(out["value"].shape)
+        instack = instack.reshape((instack.shape[0],instack.shape[1],int(math.sqrt(instack.shape[2])),int(math.sqrt(instack.shape[2]))))
+        dataset = TensorDataset(instack,out["value"],torch.stack(out["policy"]))
+        return dataset
+    else:
+        data_list = []
+        for i in range(len(out["node_features"])):
+            # if out["node_features"][i][0,2] == 1:   # Test, remove later
+            data_list.append(Data(x=out["node_features"][i], edge_index=out["edge_indices"][i], y=out["value"][i], policy=out["policy"][i]))
 
-    return data_list
+        return data_list
 
+def _get_loader_cnn(train_config,part_id=0,dataset_type:str="val"):
+    """
+    Returns the validation loader.
+    """
+    print("getting cnn loader....")
+    dataset = load_pgn_dataset(dataset_type=dataset_type,
+                               part_id=part_id,
+                               verbose=False,
+                               q_value_ratio=train_config.q_value_ratio,
+                               cnn_mode=True)
+    data = DataLoader(dataset, shuffle=True, batch_size=train_config.batch_size,
+                          num_workers=train_config.cpu_count)
+    return data
 
-def _get_loader(train_config,part_id=0,dataset_type:str="val"):
+def _get_loader_gnn(train_config,part_id=0,dataset_type:str="val"):
     """
     Returns the validation loader.
     """
@@ -86,6 +108,12 @@ def _get_loader(train_config,part_id=0,dataset_type:str="val"):
                                    part_id=part_id,
                                    verbose=False,
                                    q_value_ratio=train_config.q_value_ratio)
-    data = DataLoader(data_list, shuffle=True, batch_size=train_config.batch_size,
+    data = torch_geometric.loader.DataLoader(data_list, shuffle=True, batch_size=train_config.batch_size,
                           num_workers=train_config.cpu_count)
     return data
+
+def get_loader(*args,cnn_mode=False,**kwargs):
+    if cnn_mode:
+        return _get_loader_cnn(*args,**kwargs)
+    else:
+        return _get_loader_gnn(*args,**kwargs)

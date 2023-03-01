@@ -77,7 +77,7 @@ class TrainConfig:
     nb_parts: int = None
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 3
+    nb_training_epochs: int = 30
 
     training_keep_files: int = 40
 
@@ -120,7 +120,7 @@ class TrainConfig:
     # weight decay
     wd: float = 1e-4
 
-    net_type = "SAGE"
+    net_type = "unet"
     hidden_channels = 60
     hidden_layers = 15
     policy_layers = 2

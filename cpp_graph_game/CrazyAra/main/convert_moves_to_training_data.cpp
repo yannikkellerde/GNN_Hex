@@ -1,4 +1,5 @@
 #include "convert_moves_to_training_data.h"
+#include "main/customuci.h"
 #include "shannon_node_switching_game.h"
 #include "rl/traindataexporter.h"
 #include <torch/script.h>
@@ -56,28 +57,39 @@ void to_training_data(string &filename,int hex_size,string &output_folder,int ma
 					swap_prob = stod(seglist[2]);
 					value = stod(seglist[3]);
 					exporter->save_planes(game.get());
-					policy = torch::zeros(game->get_actions().size());
-					if (ply==1 && with_swap){
-						if (swap_prob>0.5){
-							policy[game->action_from_board_location(best_move)] = 0;
-							policy[policy.size(0)-1] = 1;
-						}
-						else if (swap_prob==0.5){
-							policy[game->action_from_board_location(best_move)] = 0.5;
-							policy[policy.size(0)-1] = 0.5;
+					if (Options["CNN_Mode"]){
+						policy = torch::zeros(game->board_size*game->board_size);
+						policy[best_move] = 1;
+					}
+					else{
+						policy = torch::zeros(game->get_actions().size());
+						if (ply==1 && with_swap){
+							if (swap_prob>0.5){
+								policy[game->action_from_board_location(best_move)] = 0;
+								policy[policy.size(0)-1] = 1;
+							}
+							else if (swap_prob==0.5){
+								policy[game->action_from_board_location(best_move)] = 0.5;
+								policy[policy.size(0)-1] = 0.5;
+							}
+							else{
+								policy[game->action_from_board_location(best_move)] = 1;
+								policy[policy.size(0)-1] = 0;
+							}
 						}
 						else{
 							policy[game->action_from_board_location(best_move)] = 1;
-							policy[policy.size(0)-1] = 0;
 						}
-					}
-					else{
-						policy[game->action_from_board_location(best_move)] = 1;
 					}
 					exporter->gamePolicy.push_back(policy);
 					exporter->gameBestMoveQ.push_back(value);
 					exporter->gameValue.push_back(value);
-					exporter->moves.push_back(game->action_from_board_location(best_move));
+					if (Options["CNN_Mode"]){
+						exporter->moves.push_back(best_move);
+					}
+					else{
+						exporter->moves.push_back(game->action_from_board_location(best_move));
+					}
 					vertex_move = game->action_from_board_location(move);
 					if (vertex_move==-1){
 						cout << "Having to skip a game :(" << endl;

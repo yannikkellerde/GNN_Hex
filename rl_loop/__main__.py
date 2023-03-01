@@ -28,7 +28,8 @@ from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig
 from rl_loop.rl_config import RLConfig, UCIConfigArena
 from rl_loop.rl_training import update_network, _get_net
-from rl_loop.plotting import show_eval_from_file
+from rl_loop.plotting import show_eval_from_file,compute_and_plot_starting_eval,compute_and_plot_swapmap
+from rl_loop.trainer_agent_pytorch import get_context
 import torch, wandb
 import time
 
@@ -47,6 +48,7 @@ class RLLoop:
         if the updated NN weights are stronger than the old one and by how much.
         be written to the new model filenames to track how many iterations the model has trained in total)
         """
+        self.net = None
         self.arena_start = False # Set to true to continue a run that failed at arena stage
         self.args = args
         self.tc = TrainConfig()
@@ -113,7 +115,7 @@ class RLLoop:
             self.binary_io.stop_process(True)
         self.model_name = self.file_io.get_current_model_pt_file()
         self.binary_io = BinaryIO(binary_path=self.file_io.binary_dir+self.current_binary_name)
-        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir if self.rl_config.do_arena_eval else self.file_io.eval_checkpoint_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena)
+        self.binary_io.set_uci_options(self.rl_config.uci_variant, self.args.context, self.args.device_id, self.rl_config.precision, self.file_io.model_dir, self.file_io.model_contender_dir if self.rl_config.do_arena_eval else self.file_io.eval_checkpoint_dir, self.rl_config.selfplay_threads, self.rl_config.model_name, is_arena, cnn_mode=self.args.cnn_mode, hex_size=self.args.hex_size)
         self.binary_io.load_network()
 
     def check_for_new_model(self):
@@ -165,7 +167,7 @@ class RLLoop:
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
-                update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name, in_memory_dataset=self.args.in_memory_dataset)
+                self.net = update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name, in_memory_dataset=self.args.in_memory_dataset,cnn_mode=self.args.cnn_mode)
 
                 self.file_io.move_training_logs(self.nn_update_index)
 
@@ -197,11 +199,17 @@ class RLLoop:
             if self.did_contender_win:
                 self.initialize()
                 plt.cla()
-                self.binary_io.generate_starting_eval_img()
-                fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=6)
-                logs["starting_policy"] = wandb.Image(fig)
-                fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=6)
-                logs["swapmap"] = wandb.Image(fig)
+                if self.args.cnn_mode:
+                    fig = compute_and_plot_starting_eval(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
+                    logs["starting_policy"] = wandb.Image(fig)
+                    fig = compute_and_plot_swapmap(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
+                    logs["swapmap"] = wandb.Image(fig)
+                else:
+                    self.binary_io.generate_starting_eval_img()
+                    fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=6)
+                    logs["starting_policy"] = wandb.Image(fig)
+                    fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=6)
+                    logs["swapmap"] = wandb.Image(fig)
                 self.binary_io.stop_process()
             wandb.log(logs)
         else:
@@ -218,6 +226,11 @@ def parse_args(cmd_args: list):
     parse_bool = lambda b: bool(distutils.util.strtobool(b))
     parser = argparse.ArgumentParser(description='Reinforcement learning loop')
 
+    parser.add_argument('--hex_size', type=int, default=11,
+                        help='Hex size to train on')
+
+    parser.add_argument('--cnn_mode', type=parse_bool, default=False,
+                        help='Use with cnn')
     parser.add_argument('--context', type=str, default="gpu",
                         help='Computational device context to use. Possible values ["cpu", "gpu"]. (default: gpu)')
     parser.add_argument("--device-id", type=int, default=0,

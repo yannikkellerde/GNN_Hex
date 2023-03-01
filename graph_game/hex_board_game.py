@@ -12,7 +12,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from matplotlib.patches import RegularPolygon
-from graph_game.shannon_node_switching_game import Node_switching_game
 
 class Hex_board(Abstract_board_game):
     game:"Node_switching_game"
@@ -42,7 +41,7 @@ class Hex_board(Abstract_board_game):
         new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
 
-    def to_input_planes(self,hex_size=None,zero_fill=False):
+    def to_input_planes(self,hex_size=None,zero_fill=False,flip=False):
         if hex_size is None:
             hex_size = self.size
         assert hex_size>=self.size
@@ -62,7 +61,10 @@ class Hex_board(Abstract_board_game):
             onturn_plane = torch.ones_like(red_plane)
         else:
             onturn_plane = torch.zeros_like(red_plane)
-        return torch.stack((red_plane,blue_plane,onturn_plane,torch.flip(red_plane,dims=[0]),torch.flip(blue_plane,dims=[0])))
+        if flip:
+            return torch.stack((red_plane,blue_plane,onturn_plane,torch.flip(red_plane,dims=[0]),torch.flip(blue_plane,dims=[0])))
+        else:
+            return torch.stack((red_plane,blue_plane,onturn_plane))
 
     def sample_legal_move(self):
         free_squares = []

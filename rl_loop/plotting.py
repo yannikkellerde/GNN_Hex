@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+from rl_loop.train_util import input_planes_from_position,get_starting_position
+import torch
 from matplotlib.patches import RegularPolygon
 import numpy as np
 import sys
@@ -38,7 +40,50 @@ def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,f
         plt.pause(0.001)
     return fig
 
-        
+def compute_and_plot_starting_eval(hex_size,model,color="r",fontsize=8,device="cpu"):
+    input = input_planes_from_position(get_starting_position(hex_size),color)
+    policy,value = model(input.unsqueeze(0).to(device))
+    policy = policy.squeeze()
+    colors = ["w" for _ in policy]
+    sort_idx = torch.argsort(policy)
+    colors[int(sort_idx[-1])] = "darkred"
+    colors[int(sort_idx[-2])] = "darkred"
+    colors[int(sort_idx[-3])] = "red"
+    colors[int(sort_idx[-4])] = "red"
+    colors[int(sort_idx[-5])] = "orange"
+    colors[int(sort_idx[-6])] = "orange"
+    colors = np.array(colors).reshape((hex_size,hex_size))
+    labels = [f"{e:.3f}" for e in policy]
+    labels = np.array(labels).reshape((hex_size,hex_size))
+    fig = plt.gcf()
+    fig.clear()
+    fig.add_subplot()
+    return build_hex_grid(colors,labels,fig=fig,do_pause=False,fontsize=fontsize)
+
+def compute_and_plot_swapmap(hex_size,model,starting_player="r",fontsize=8,device="cpu"):
+    next_color = "b" if starting_player=="r" else "b"
+    start_pos = get_starting_position(hex_size)
+    values = []
+    for i in range(len(start_pos)):
+        position = start_pos.copy()
+        position[i] = starting_player
+        input = input_planes_from_position(position,next_color)
+        policy,value = model(input.unsqueeze(0).to(device))
+        value = value.squeeze()
+        values.append(value.cpu().item())
+    swap_probs = 1-((np.array(values)+1)/2)
+    colors = ["r" if e>0.5 else "b" for e in swap_probs]
+    colors = np.array(colors).reshape((hex_size,hex_size))
+
+    labels = [f"{e:.3f}" for e in swap_probs]
+    labels = np.array(labels).reshape((hex_size,hex_size))
+
+    fig = plt.gcf()
+    fig.clear()
+    fig.add_subplot()
+    return build_hex_grid(colors,labels,fig=fig,do_pause=False,fontsize=fontsize)
+
+    
 def show_eval_from_file(fname:str,colored=".5",fontsize=8):
     with open(fname,"r") as f:
         evals = [float(x) for x in f.readline().split(" ") if len(x)>0]

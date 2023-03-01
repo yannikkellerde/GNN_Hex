@@ -43,6 +43,10 @@ class Accuracy(Metric):
             self.correct_cnt += float((scatter_max(preds,graph_indices)[1] == scatter_max(labels,graph_indices)[1]).sum())
         self.total_cnt += torch.max(graph_indices)
 
+    def update_cnn(self, preds:torch.Tensor, labels:torch.Tensor):
+        self.correct_cnt += float(torch.sum(torch.argmax(preds,dim=1)==torch.argmax(labels,dim=1).long()))
+        self.total_cnt += preds.shape[0]
+
     def compute(self) -> float:
         return self.correct_cnt / self.total_cnt
 

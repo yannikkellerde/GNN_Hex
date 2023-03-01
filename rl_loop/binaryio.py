@@ -184,7 +184,7 @@ class BinaryIO:
             elif killit and time.perf_counter()>killit:
                 return False, 0
 
-    def set_uci_options(self, uci_variant: str, context: str, device_id: str, precision: str, model_dir: str, model_contender_dir: str, threads:int, model_name:str, is_arena: bool = False):
+    def set_uci_options(self, uci_variant: str, context: str, device_id: str, precision: str, model_dir: str, model_contender_dir: str, threads:int, model_name:str, is_arena: bool = False, cnn_mode=False,hex_size=11):
         """
         Sets UCI options of the binary.
         :param uci_variant: The UCI variant that shall be trained.
@@ -204,6 +204,8 @@ class BinaryIO:
         self._set_uci_param(f'Last_Device_ID', device_id)
         self._set_uci_param(f'Precision', precision)
         self._set_uci_param(f'Threads', threads)
+        self._set_uci_param(f'CNN_Mode', "True" if cnn_mode else "False")
+        self._set_uci_param(f'Hex_Size', str(hex_size))
 
         uci = UCIConfig()
         uci_arena = UCIConfigArena()

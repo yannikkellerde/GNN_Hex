@@ -28,7 +28,7 @@ import wandb
 
 from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig, TrainObjects
-from rl_loop.dataset_loader import load_pgn_dataset,_get_loader
+from rl_loop.dataset_loader import load_pgn_dataset,get_loader
 from torch_geometric.data import Batch,DataLoader
 
 
@@ -42,7 +42,8 @@ class TrainerAgentPytorch:
         train_config: TrainConfig,
         train_objects: TrainObjects,
         use_rtpt: bool,
-        in_memory_dataset: bool = False
+        in_memory_dataset: bool = False,
+        cnn_mode: bool = False
     ):
         """
         Class for training the neural network.
@@ -52,6 +53,7 @@ class TrainerAgentPytorch:
         :param train_objects: Am instance pf the TrainObject data class.
         :param use_rtpt: If True, an RTPT object will be created and modified within this class.
         """
+        self.cnn_mode = cnn_mode
         self.tc = train_config
         self.to = train_objects
         if self.to.metrics is None:
@@ -94,7 +96,7 @@ class TrainerAgentPytorch:
         self._setup_variables()
         self._model.train()  # set training mode
         if self.in_memory_dataset:
-            train_loaders = [_get_loader(self.tc,part_id=part_id,dataset_type="train") for part_id in self.ordering]
+            train_loaders = [get_loader(self.tc,part_id=part_id,dataset_type="train",cnn_mode=self.cnn_mode) for part_id in self.ordering]
 
         for i in range(self.tc.nb_training_epochs):
             # reshuffle the ordering of the training game batches (shuffle works in place)
@@ -114,14 +116,17 @@ class TrainerAgentPytorch:
                 if self.in_memory_dataset:
                     train_loader = train_loaders[part_id]
                 else:
-                    train_loader = _get_loader(self.tc,part_id=part_id,dataset_type="train")
+                    train_loader = get_loader(self.tc,part_id=part_id,dataset_type="train",cnn_mode=self.cnn_mode)
                 if self.use_rtpt:
                     # update process title according to loss
                     self.rtpt.step(subtitle=f"loss={val_metric_values['loss']:2.2f}")
 
                 losses = []
                 for _, batch in tqdm(enumerate(train_loader),total=len(train_loader)):
-                    combined_loss = self.train_update(batch)
+                    if self.cnn_mode:
+                        combined_loss = self.train_update_cnn(batch)
+                    else:
+                        combined_loss = self.train_update(batch)
                     losses.append(combined_loss.detach().item())
 
                     # add the graph representation of the network to the tensorboard log file
@@ -190,10 +195,7 @@ class TrainerAgentPytorch:
             self._model,
             nb_batches=25,
             ctx=self._ctx,
-            sparse_policy_label=self.tc.sparse_policy_label,
-            apply_select_policy_from_plane=self.tc.select_policy_from_plane and not self.tc.is_policy_from_plane_data,
-            use_wdl=self.tc.use_wdl,
-            use_plys_to_end=self.tc.use_plys_to_end,
+            cnn_mode=self.cnn_mode
         )
         val_metric_values = evaluate_metrics(
             self.to.metrics,
@@ -201,12 +203,31 @@ class TrainerAgentPytorch:
             self._model,
             nb_batches=None,
             ctx=self._ctx,
-            sparse_policy_label=self.tc.sparse_policy_label,
-            apply_select_policy_from_plane=self.tc.select_policy_from_plane and not self.tc.is_policy_from_plane_data,
-            use_wdl=self.tc.use_wdl,
-            use_plys_to_end=self.tc.use_plys_to_end,
+            cnn_mode=self.cnn_mode
         )
         return train_metric_values, val_metric_values
+
+    def train_update_cnn(self, batch):
+        self.optimizer.zero_grad()
+        data, value_label, policy_label = batch
+        data = data.to(self._ctx)
+        value_label = value_label.to(self._ctx)
+        policy_label = policy_label.to(self._ctx)
+        self.old_label = value_label
+        policy_out,value_out = self._model(data)
+        # policy_out = policy_out.softmax(dim=1)
+        value_loss = self.value_loss(torch.flatten(value_out), value_label)
+        policy_loss = self.policy_loss(policy_out, policy_label)
+        # weight the components of the combined loss
+        combined_loss = (
+                self.tc.val_loss_factor * value_loss + self.tc.policy_loss_factor * policy_loss
+        )
+        combined_loss.backward()
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = TrainConfig.lr
+        self.optimizer.step()
+        self.batch_proc_tmp += 1
+        return combined_loss
 
     def train_update(self, batch:Batch):
         self.optimizer.zero_grad()
@@ -400,8 +421,48 @@ def reset_metrics(metrics):
     for metric in metrics.values():
         metric.reset()
 
+def evaluate_metrics_cnn(metrics, data_iterator, model, nb_batches, ctx):
+    reset_metrics(metrics)
+    model.eval()  # set model to evaluation mode
+    with torch.no_grad():  # operations inside don't track history
+        for i, batch in enumerate(data_iterator):
+            data, value_label, policy_label = batch
+            data = data.to(ctx)
+            value_label = value_label.to(ctx)
+            policy_label = policy_label.to(ctx)
 
-def evaluate_metrics(metrics, data_iterator, model, nb_batches, ctx, sparse_policy_label=False,
+            # policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
+            policy_out,value_out = model(data)
+            assert not torch.isnan(policy_out).any()
+            assert not torch.isnan(data).any()
+            assert not torch.isnan(value_out).any()
+
+            # update the metrics
+            metrics["value_loss"].update(preds=torch.flatten(value_out), labels=value_label)
+            metrics["policy_loss"].update(preds=policy_out.flatten(), #.softmax(dim=1),
+                                          labels=policy_label.flatten(),nb_graphs=len(policy_label))
+            metrics["value_acc_sign"].update(preds=torch.flatten(value_out), labels=value_label)
+            metrics["policy_acc"].update_cnn(preds=policy_out,
+                                         labels=policy_label
+                                         )
+
+            # stop after evaluating x batches (only recommended to use this for the train set evaluation)
+            if nb_batches and i+1 == nb_batches:
+                break
+
+    metric_values = {"loss": metrics["value_loss"].compute() + metrics["policy_loss"].compute()}
+    for metric_name in metrics:
+        metric_values[metric_name] = metrics[metric_name].compute()
+    model.train()  # return back to training mode
+    return metric_values
+
+def evaluate_metrics(*args,cnn_mode=False,**kwargs):
+    if cnn_mode:
+        return evaluate_metrics_cnn(*args,**kwargs)
+    else:
+        return evaluate_metrics_gnn(*args,**kwargs)
+
+def evaluate_metrics_gnn(metrics, data_iterator, model, nb_batches, ctx, sparse_policy_label=False,
                      apply_select_policy_from_plane=True, use_wdl=False, use_plys_to_end=False):
     """
     Runs inference of the network on a data_iterator object and evaluates the given metrics.
