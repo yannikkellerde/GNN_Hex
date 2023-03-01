@@ -382,7 +382,7 @@ class HeadNetwork(torch.nn.Module):
         return advantages,value
 
 class Unet(torch.nn.Module):
-    def __init__(self,in_channels,starting_channels=9):
+    def __init__(self,in_channels,starting_channels=16):
         super().__init__()
         self.inc = (unet.DoubleConv(in_channels, starting_channels))
         self.down1 = (unet.Down(starting_channels, starting_channels*2))
@@ -931,6 +931,8 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
                 norm=LayerNorm(args.hidden_channels) if args.norm else None,
                 act="relu"
             ))
+    elif name == "unet":
+        return Unet(3)
     elif name == "pna_two_headed":
         deg_hist = torch.tensor([40,88,3444,8054,6863,3415,8412,1737,1205,300,100,4],dtype=torch.long)
         aggregators = ['mean', 'min', 'max']
