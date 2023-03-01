@@ -21,8 +21,14 @@
 	- Even with this simple fully convolutional architecture (No pooling, no norm, no skip connections), CNN beats GNN on 7x7 Hex.
 		* Not that surprising, main claim for GNN advantage was long range dependencies. 7x7 is somewhat to small for long range dependencies.
 		* Maybe run another experiment training on 11x11 or 13x13? Need another CNN arch for that, current approach does not really scale.
+		* Unet is an option for board sizes > 8
 	- Transfer advantge of GNN shown, but only to very different board sizes. On 8x8 and 9x9, CNN still has advantage.
 	- Long range dependency problem does indeed show GNN advantage. For a high winrate, local patters do have also a significant impact however.
+
+## Supervised/HexAra compare with CNN
++ I don't think my current reproduce Mohex/improve with HexAra results are that meaningful. A CNN comparison would be nice (Some C++ work required, but oh well).
++ To test transfer, a fully convolutional policy value approach would be nice.
+	- However, I am not sure how to compute the value fully convolutionally. I tried with Unet + Symmetric mean of filter as final layer, but that does not really learn well.
 
 ## Motivation in Methods?
 + I spend some paragraphs trying to motivate RainbowDQN and HexAra (AlphaZero) as approaches to use with GNNs.
