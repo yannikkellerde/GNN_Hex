@@ -77,7 +77,7 @@ class TrainConfig:
     nb_parts: int = None
 
     # how many epochs the network will be trained each time there is enough new data available
-    nb_training_epochs: int = 30
+    nb_training_epochs: int = 200
 
     training_keep_files: int = 40
 
