@@ -407,7 +407,7 @@ class PV_CNN(torch.nn.Module):
             x = block(x)
         x = x.reshape((x.shape[0],-1))
         policy = torch.log_softmax(self.policy_final(x),dim=1)
-        value = self.value_final(x)
+        value = torch.tanh(self.value_final(x))
         return policy,value
 
 
