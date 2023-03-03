@@ -406,7 +406,7 @@ class PV_CNN(torch.nn.Module):
         for block in self.blocks:
             x = block(x)
         x = x.reshape((x.shape[0],-1))
-        policy = self.policy_final(x)
+        policy = torch.log_softmax(self.policy_final(x),dim=1)
         value = self.value_final(x)
         return policy,value
 
