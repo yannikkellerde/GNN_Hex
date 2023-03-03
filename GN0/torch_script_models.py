@@ -1,4 +1,5 @@
 import torch
+import math
 from torch import Tensor
 from typing import Optional, List, Tuple, Dict, Type, Union, Callable, Any
 import GN0.unet_parts as unet
@@ -370,6 +371,47 @@ class SAGE_torch_script(torch.nn.Module):
         pi = scatter_log_softmax(pi,index=output_graph_indices)
         return pi,value.reshape(value.size(0)),output_graph_indices,output_batch_ptr
 
+class MultiConvPool(torch.nn.Module):
+    def __init__(self,in_channels,out_channels,num_convs,mid_channels=None):
+        super().__init__()
+        if not mid_channels:
+            mid_channels = out_channels
+        self.mods = ModuleList()
+        for i in range(num_convs):
+            self.mods.append(torch.nn.Conv2d(in_channels if i==0 else mid_channels,out_channels if i==num_convs-1 else mid_channels,kernel_size=3,padding="same"))
+            self.mods.append(torch.nn.ReLU())
+        self.mods.append(torch.nn.MaxPool2d(2))
+
+    def forward(self,x):
+        for m in self.mods:
+            x = m(x)
+        return x
+
+
+class PV_CNN(torch.nn.Module):
+    def __init__(self,in_channels,mid_channels,channel_multipli,out_size,block_size,input_width,num_blocks=3):
+        super().__init__()
+        self.blocks = ModuleList()
+        final_dim = input_width
+        for i in range(num_blocks):
+            self.blocks.append(MultiConvPool(in_channels=in_channels if i==0 else mid_channels*(channel_multipli**i),out_channels=mid_channels*(channel_multipli**(i+1)),mid_channels=mid_channels*(channel_multipli**i),num_convs=block_size))
+            final_dim = int(final_dim/2)
+
+        final_channels = mid_channels*(channel_multipli**num_blocks)
+
+        self.policy_final = torch.nn.Linear(final_dim*final_channels,out_size)
+        self.value_final = torch.nn.Linear(final_dim*final_channels,1)
+        
+    def forward(self,x):
+        for block in self.blocks:
+            x = block(x)
+        x = x.reshape((x.shape[0],-1))
+        policy = self.policy_final(x)
+        value = self.value_final(x)
+        return policy,value
+
+
+
 class Unet(torch.nn.Module):
     def __init__(self,in_channels,starting_channels=9):
         super().__init__()
@@ -407,6 +449,8 @@ def get_current_model(net_type="SAGE",hidden_channels=60,hidden_layers=15,policy
         return SAGE_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels,swap_allowed=swap_allowed,norm=norm)
     elif net_type=="PNA":
         return PNA_torch_script(hidden_channels=hidden_channels,hidden_layers=hidden_layers,policy_layers=policy_layers,value_layers=value_layers,in_channels=in_channels)
+    elif net_type=="PV_CNN":
+        return PV_CNN(3,22,2,11*11,4,11,3)
     else:
         raise ValueError("Invalid net type")
 
