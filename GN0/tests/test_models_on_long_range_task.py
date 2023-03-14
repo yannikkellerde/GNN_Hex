@@ -51,17 +51,17 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
         fill_game_with_long_range_position(hex_size,"m")
-        plt.cla()
-        game.board.matplotlib_me()
-        plt.savefig(f"../../images/long_range_patterns/red_negative_{hex_size}.svg")
+        # plt.cla()
+        # game.board.matplotlib_me()
+        # plt.savefig(f"../../images/long_range_patterns/red_negative_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() == 0:
             fails.append(f"{hex_size}_m_false_positive")
         game.make_move(game.board.board_index_to_vertex[hex_size-1],force_color="b",remove_dead_and_captured=False)
         game.make_move(game.board.board_index_to_vertex[hex_size*2+hex_size//2+((hex_size-2)//2)*hex_size],force_color="m",remove_dead_and_captured=False)
-        plt.cla()
-        game.board.matplotlib_me()
-        plt.savefig(f"../../images/long_range_patterns/red_positive_{hex_size}.svg")
+        # plt.cla()
+        # game.board.matplotlib_me()
+        # plt.savefig(f"../../images/long_range_patterns/red_positive_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() != 0:
             fails.append(f"{hex_size}_m_false_negative")
@@ -69,9 +69,9 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
         fill_game_with_long_range_position(hex_size,"b")
-        plt.cla()
-        game.board.matplotlib_me()
-        plt.savefig(f"../../images/long_range_patterns/blue_negative_{hex_size}.svg")
+        # plt.cla()
+        # game.board.matplotlib_me()
+        # plt.savefig(f"../../images/long_range_patterns/blue_negative_{hex_size}.svg")
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() == 0:
             fails.append(f"{hex_size}_b_false_positive")
@@ -83,18 +83,18 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
         board_outputs = get_board_outputs()
         if torch.argmax(board_outputs).item() != 0:
             fails.append(f"{hex_size}_b_false_negative")
-        plt.cla()
-        game.board.matplotlib_me()
-        plt.savefig(f"../../images/long_range_patterns/blue_positive_{hex_size}.svg")
+        # plt.cla()
+        # game.board.matplotlib_me()
+        # plt.savefig(f"../../images/long_range_patterns/blue_positive_{hex_size}.svg")
     return fails
 
 
 if __name__ == "__main__":
-    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
-    print(test_on_long_range_tasks(model,False,5,13))
-    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
-    print(test_on_long_range_tasks(model,True,5,13))
-    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_5x5_fully_conv/5/checkpoint_40187136.pt"),"fully_conv")
-    # print(test_on_long_range_tasks(model,True,5,13))
-    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_5x5/5/checkpoint_11696256.pt"),"modern_two_headed")
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt"),"unet")
+    print(test_on_long_range_tasks(model,True,8,18))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt"),"modern_two_headed")
+    print(test_on_long_range_tasks(model,False,8,26))
+    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
     # print(test_on_long_range_tasks(model,False,5,13))
+    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
+    # print(test_on_long_range_tasks(model,True,5,13))
