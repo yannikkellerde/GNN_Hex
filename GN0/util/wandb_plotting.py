@@ -74,7 +74,9 @@ def losses():
 if __name__ == "__main__":
     # get_run_df(name="gnn_7x7.csv",run_name="x3qias30")
     # get_run_df(name="fully_cnn_7x7.csv",run_name="icv7ozhh")
+    get_run_df(name="icy_resonance.csv",run_name="40lz3z29")
+    get_run_df(name="beaming_firecracker.csv",run_name="rc0hl84y")
     # get_big_df()
-    vs_random_winrate()
-    losses()
-    runtime_game_frame()
+    # vs_random_winrate()
+    # losses()
+    # runtime_game_frame()

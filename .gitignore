@@ -1,4 +1,6 @@
 .vscode/
+elo_tables/
+equiv_position/
 venv/
 __pycache__/
 solver.log

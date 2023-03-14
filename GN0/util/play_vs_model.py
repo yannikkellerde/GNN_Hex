@@ -20,10 +20,10 @@ def play_in_gui():
     # path = get_highest_model_path("azure-snowball-157")
     # path = get_highest_model_path("misty-firebrand-26/5")
     # path = os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt")
-    cnn_mode = True
-    path = os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_5x5_fully_conv/5/checkpoint_40187136.pt")
+    cnn_mode = False
+    # path = os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_5x5_fully_conv/5/checkpoint_40187136.pt")
     # path = get_highest_model_path("gnn_7x7/7")
-    # path = get_highest_model_path("beaming-firecracker-2201/11")
+    path = get_highest_model_path("beaming-firecracker-2201/11")
     # path = "../alpha_zero/checkpoints/181.pt"
     # path = get_highest_model_path("breezy-morning-37")
     if version is not None:
@@ -34,8 +34,8 @@ def play_in_gui():
     if args is None:
         args = Namespace(num_layers=8,head_layers=2,hidden_channels=25)
     # model = get_pre_defined("policy_value",args).to(device)
-    # model = get_pre_defined("modern_two_headed",args).to(device)
-    model = get_pre_defined("fully_conv",args).to(device)
+    model = get_pre_defined("modern_two_headed",args).to(device)
+    # model = get_pre_defined("fully_conv",args).to(device)
 
     model.load_state_dict(stuff["state_dict"])
     if "cache" in stuff and stuff["cache"] is not None:

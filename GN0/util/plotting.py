@@ -7,8 +7,49 @@ from GN0.RainbowDQN.Rainbow.common.utils import get_highest_model_path
 from GN0.models import get_pre_defined
 import matplotlib.pyplot as plt
 import math
+import json
+import os
 
+basepath = os.path.abspath(os.path.dirname(__file__))
 device = "cpu"
+
+def elo_plot_curriculum():
+    # cuts = [1706,4500,8120,12500,17500]
+    # cuts = np.array([3222680,8490240,15288960,23495040,32868480])/1000000
+    cuts = []
+    folder_path = os.path.join(basepath,"elo_tables")
+    total_min = 0
+    total_max = 0
+    scat_points = []
+    for i in range(5,12):
+        out = []
+        file_path = os.path.join(folder_path,f"{i}.json")
+        with open(file_path,"r") as f:
+            data = json.load(f)
+        if i == 10:
+            with open(os.path.join(folder_path,f"{i}_fillin.json"),"r") as f:
+                data["data"].extend(json.load(f)["data"])
+        for el in data["data"]:
+            if el[0] not in ("random","old_model"):
+                out.append([int(el[0].split("_")[0])/1000000,int(el[1])])
+        data = np.array(list(sorted(out,key=lambda x:x[0])))
+        if i!=5:
+            cuts.append(np.min(data[:,0]))
+        total_min = min(np.min(data[:,1]),total_min)
+        total_max = max(np.max(data[:,1]),total_max)
+        scat_points.append((data[0,0],data[0,1]))
+        plt.plot(data[:,0],data[:,1],color='#1f77b4')
+    print(data)
+    scat_points = np.array(scat_points)
+    plt.scatter(scat_points[:,0],scat_points[:,1],color="red",marker="x")
+    plt.xlabel("game frame (millions)")
+    plt.ylabel("elo")
+    plt.vlines(x=cuts, ymin=total_min-5, ymax=total_max+5, color='black',linestyles="dashed")
+    plt.hlines(y=0, xmin=-1, xmax=np.max(data[:,0]), color='black',linestyles="dashed")
+    plt.gcf().tight_layout()
+    plt.margins(0)
+    plt.show()
+
 
 def plot_transfer_elos():
     e = Elo_handler(7,k=2,device=device)
@@ -81,5 +122,6 @@ def plot_first_move_plot(model_identifier,model_path,cnn_mode,hex_size):
 
 if __name__ == "__main__":
     # plot_transfer_elos()
-    plot_first_move_plot("modern_two_headed","../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt",False,7)
+    # plot_first_move_plot("modern_two_headed","../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt",False,7)
     # plot_first_move_plot("fully_conv","../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_28790784.pt",True,7)
+    elo_plot_curriculum()

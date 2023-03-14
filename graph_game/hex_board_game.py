@@ -173,7 +173,7 @@ class Hex_board(Abstract_board_game):
                 cost += 1
         return cost
 
-    def pos_from_graph(self,redgraph:bool):
+    def pos_from_graph(self,redgraph:bool=True,initialize=True):
         # Defunct
         str_map = {0:"U",1:"f",2:"r",3:"b"}
         step_take_obj = take_step([2,3])
@@ -182,7 +182,10 @@ class Hex_board(Abstract_board_game):
             new_pos = known_pos.copy()
             new_pos[new_pos==0] = assignment
             new_board = Hex_board()
-            new_game = type(self.game)()
+            if type(self.game).__name__=="Node_switching_game":
+                new_game = type(self.game)()
+            else:
+                new_game = type(self.game)(self.size)
             new_board.game = new_game
             some_pos = known_pos.copy()
             some_pos[some_pos==0] = assignment
@@ -193,10 +196,13 @@ class Hex_board(Abstract_board_game):
             return cost
 
         known_pos = np.zeros(self.squares) #0:unknown,1:empty,2:red,3:blue
-        for v in self.game.view.vertices():
-            if v not in self.game.terminals:
-                known_pos[self.vertex_to_board_index[v]] = 1
-        initial_assignment = np.ones(self.squares-self.game.view.num_vertices()+2)*(3 if redgraph else 2)
+        if initialize:
+            for v in self.game.view.vertices():
+                if v not in self.game.terminals:
+                    known_pos[self.vertex_to_board_index[v]] = 1
+            initial_assignment = np.ones(self.squares-self.game.view.num_vertices()+2)*(3 if redgraph else 2)
+        else:
+            initial_assignment = np.ones(self.squares)*(3 if redgraph else 2)
         res,_fun_val = greedy_search(evaluate_assignment,initial_assignment,step_take_obj)
         known_pos[known_pos==0] = res
         self.position = [str_map[x] for x in known_pos]

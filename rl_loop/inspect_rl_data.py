@@ -1,6 +1,8 @@
 import torch
+import matplotlib.pyplot as plt
 import sys,os
 from graph_tool.all import Graph, graph_draw
+from graph_game.graph_tools_games import Hex_game
 import numpy as np
 import time
 
@@ -24,6 +26,21 @@ def load_data(folder):
     for fname in files_tensor_list:
         out[fname] = list(torch.jit.load(os.path.join(folder,fname+".pt")).parameters())
     return out
+
+def visualize_cnn_data(data):
+    game = Hex_game(11)
+    game.board.position = ["f"]*(11*11)
+    vprop = game.view.new_vertex_property("double")
+    for i in range(data["node_features"].shape[1]):
+        if data["node_features"][0][i] == 1:
+            game.board.position[i] = "r"
+        if data["node_features"][1][i]:
+            game.board.position[i] = "b"
+        vprop[game.board.board_index_to_vertex[i]] = data["policy"][i]
+    print(data["node_features"][2])
+    plt.cla()
+    game.board.matplotlib_me(vprop=vprop,fig=plt.gcf())
+    plt.pause(0.01)
 
 def visualize_data(data,do_board_index=False):
     g = Graph(directed = False)
@@ -66,6 +83,7 @@ def visualize_data(data,do_board_index=False):
     graph_draw(g, pos=position, vprops=vprops, vertex_text=text, output="data_graph.pdf")
 
 def exploration_loop():
+    cnn_mode = len(sys.argv)>2 and sys.argv[2]=="cnn"
     data = load_data(sys.argv[1])
     idx = 0
     do_board_index = False
@@ -74,15 +92,19 @@ def exploration_loop():
     # assert len(data['moves']) == len(data['value']) == len(data["best_q"])
     while 1:
         os.system("pkill -f 'mupdf data_graph.pdf'")
-        visualize_data({key:value[idx] for key,value in data.items() if key!="game_start_ptr"},do_board_index=do_board_index)
-        os.system("mupdf data_graph.pdf&")
-        time.sleep(0.1)
-        os.system("bspc node -f west")
+        if cnn_mode:
+            keys = ["node_features","policy","value"]
+            visualize_cnn_data({key:value[idx] for key,value in data.items() if key in keys})
+        else:
+            visualize_data({key:value[idx] for key,value in data.items() if key!="game_start_ptr"},do_board_index=do_board_index)
+            os.system("mupdf data_graph.pdf&")
+            time.sleep(0.1)
+            print(f"Plys to end: {int(data['plys'][idx])}")
+            os.system("bspc node -f west")
         if len(data['policy'][idx])==len(data["node_features"][idx])-1:
             print(f"Swap prob",data['policy'][idx][-1])
         print(f"Value: {int(data['value'][idx])}")
         print(f"Best Q: {float(data['best_q'][idx])}")
-        print(f"Plys to end: {int(data['plys'][idx])}")
         print(f"IDX: {idx}")
         print(f"Next Move: {int(data['moves'][idx])}")
         if last_idx>idx and idx in data['game_start_ptr']-1:
