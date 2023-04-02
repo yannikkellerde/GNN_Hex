@@ -22,6 +22,7 @@ from GN0.torch_script_models import get_current_model, Unet
 import torch
 from torch_geometric.loader import DataLoader
 import os
+import wandb
 
 
 def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name, in_memory_dataset=False, cnn_mode=False):
@@ -54,6 +55,7 @@ def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_c
     val_data = get_loader(train_config, dataset_type="val",cnn_mode=cnn_mode)
 
     net = _get_net(ctx, train_config, pt_filename)
+    # wandb.watch(net,log_freq=5)
 
     train_objects.metrics = get_metrics(train_config)
 

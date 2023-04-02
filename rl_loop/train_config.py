@@ -32,7 +32,7 @@ class TrainConfig:
     # set the context on CPU switch to GPU if there is one available (strongly recommended for training)
     context: str = "gpu"
 
-    cpu_count: int = 8  # increasing above 1 may result in shared memory error
+    cpu_count: int = 1  # increasing above 1 may result in shared memory error
 
     device_id: int = 0
 
@@ -81,7 +81,8 @@ class TrainConfig:
 
     training_keep_files: int = 40
 
-    policy_loss_factor: float = 1  # 0.99
+    # policy_loss_factor: float = 1  # 0.99
+    policy_loss_factor = 1
 
     # gradient scaling for the plys to end output
     plys_to_end_loss_factor: float = 0.1

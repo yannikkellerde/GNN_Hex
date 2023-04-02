@@ -22,14 +22,14 @@ def env_test(model,hex_size=11):
 
 def param_counting():
     # model_path = os.path.join(basepath,"..","RainbowDQN/Rainbow/checkpoints/beaming-firecracker-2201/11/checkpoint_91770624.pt")
-    model_path = os.path.join(basepath,"..","RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt")
-    stuff = torch.load(model_path,map_location="cpu")
-    print(stuff["args"])
-    model = get_pre_defined("modern_two_headed",stuff["args"])
-    print("GNN parameters",count_model_parameters(model))
-    unet = get_pre_defined("unet")
-    print("Unet parameters",count_model_parameters(unet))
-    exit()
+    # model_path = os.path.join(basepath,"..","RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt")
+    # stuff = torch.load(model_path,map_location="cpu")
+    # print(stuff["args"])
+    # model = get_pre_defined("modern_two_headed",stuff["args"])
+    # print("GNN parameters",count_model_parameters(model))
+    # unet = get_pre_defined("unet")
+    # print("Unet parameters",count_model_parameters(unet))
+    # exit()
     # jit_model = torch.jit.load("model_save/mohex_reproduce_large/torch_script_model.pt")
     # args = Namespace(**{
     #     "num_layers":10,
@@ -53,8 +53,8 @@ def param_counting():
         "norm":False
         }
     )
-    gnn_model = get_pre_defined("modern_two_headed",args)
-    print("Q GNN parameters",count_model_parameters(gnn_model))
+    # gnn_model = get_pre_defined("modern_two_headed",args)
+    # print("Q GNN parameters",count_model_parameters(gnn_model))
     # policy_value_model = get_current_model()
     # unet_model = Unet(3)
     # print("CNN parameters",count_model_parameters(cnn_model))

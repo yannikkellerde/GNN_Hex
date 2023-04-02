@@ -216,7 +216,9 @@ class TrainerAgentPytorch:
         self.old_label = value_label
         policy_out,value_out = self._model(data)
         # policy_out = policy_out.softmax(dim=1)
-        value_loss = self.value_loss(torch.flatten(value_out), value_label)
+        # print(value_out)
+        # print(value_out.shape,value_label.shape)
+        value_loss = self.value_loss(torch.squeeze(value_out), value_label)*self.tc.batch_size
         policy_loss = self.policy_loss(policy_out, policy_label)
         # weight the components of the combined loss
         combined_loss = (

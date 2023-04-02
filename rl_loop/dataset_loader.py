@@ -74,7 +74,8 @@ def load_pgn_dataset(
 
     if cnn_mode:
         instack = torch.stack(out["node_features"])
-        print(out["value"].shape)
+        print(out["value"].shape,torch.stack(out["policy"]).shape)
+        print(out["value"])
         instack = instack.reshape((instack.shape[0],instack.shape[1],int(math.sqrt(instack.shape[2])),int(math.sqrt(instack.shape[2]))))
         dataset = TensorDataset(instack,out["value"],torch.stack(out["policy"]))
         return dataset

@@ -6,6 +6,103 @@ basepath = os.path.abspath(os.path.dirname(__file__))
 csv_path = os.path.join(basepath,"../../csv")
 img_path = os.path.join(basepath,"../../images/wandb_plots")
 
+def supervised_stuff():
+    os.makedirs(os.path.join(img_path,"supervised_compare"),exist_ok=True)
+
+    cnn_df:pd.DataFrame = pd.read_csv(os.path.join(csv_path,"supervised_cnn.csv"))
+    gnn_df:pd.DataFrame = pd.read_csv(os.path.join(csv_path,"supervised_gnn.csv"))
+    cnn_df = cnn_df[:3700].dropna(subset=["policy_acc/train","policy_acc/val","loss/val"])
+    gnn_df = gnn_df[:3700].dropna(subset=["policy_acc/train","policy_acc/val","loss/val"])
+
+    cnn_df["policy_rolling_val"] = cnn_df["policy_acc/val"].rolling(20).mean()
+    gnn_df["policy_rolling_val"] = gnn_df["policy_acc/val"].rolling(20).mean()
+    cnn_df["policy_rolling_train"] = cnn_df["policy_acc/train"].rolling(20).mean()
+    gnn_df["policy_rolling_train"] = gnn_df["policy_acc/train"].rolling(20).mean()
+    cnn_df["value_rolling_val"] = cnn_df["value_acc_sign/val"].rolling(20).mean()
+    gnn_df["value_rolling_val"] = gnn_df["value_acc_sign/val"].rolling(20).mean()
+    cnn_df["value_rolling_train"] = cnn_df["value_acc_sign/train"].rolling(20).mean()
+    gnn_df["value_rolling_train"] = gnn_df["value_acc_sign/train"].rolling(20).mean()
+    cnn_df["loss_rolling_train"] = cnn_df["loss/train"].rolling(20).mean()
+    gnn_df["loss_rolling_train"] = gnn_df["loss/train"].rolling(20).mean()
+    cnn_df["loss_rolling_val"] = cnn_df["loss/val"].rolling(20).mean()
+    gnn_df["loss_rolling_val"] = gnn_df["loss/val"].rolling(20).mean()
+
+    print(cnn_df["loss/val"].argmin(), gnn_df["loss/val"].argmin())
+    print(cnn_df["policy_acc/val"].argmax(), gnn_df["policy_acc/val"].argmax())
+    exit()
+
+    plt.plot(cnn_df.index,cnn_df["policy_acc/train"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["policy_acc/train"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["policy_rolling_train"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["policy_rolling_train"],color="C1",alpha=1,label="GNN")
+    plt.ylim(min(cnn_df["policy_acc/train"].min(),gnn_df["policy_acc/train"].min(),cnn_df["policy_acc/val"].min(),gnn_df["policy_acc/val"].min()))
+    plt.legend()
+    plt.xlabel("epoch")
+    plt.ylabel("training policy accuracy")
+    plt.savefig(os.path.join(img_path,"supervised_compare","training_policy_acc.svg"))
+    plt.clf()
+
+    plt.plot(cnn_df.index,cnn_df["policy_acc/val"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["policy_acc/val"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["policy_rolling_val"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["policy_rolling_val"],color="C1",alpha=1,label="GNN")
+    plt.ylim(min(cnn_df["policy_acc/train"].min(),gnn_df["policy_acc/train"].min(),cnn_df["policy_acc/val"].min(),gnn_df["policy_acc/val"].min()),
+             max(cnn_df["policy_acc/train"].max(),gnn_df["policy_acc/train"].max(),cnn_df["policy_acc/val"].max(),gnn_df["policy_acc/val"].max()))
+    plt.xlabel("epoch")
+    plt.ylabel("validation policy accuracy")
+    plt.legend()
+    plt.savefig(os.path.join(img_path,"supervised_compare","validation_policy_acc.svg"))
+    plt.clf()
+
+    plt.plot(cnn_df.index,cnn_df["value_acc_sign/train"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["value_acc_sign/train"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["value_rolling_train"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["value_rolling_train"],color="C1",alpha=1,label="GNN")
+    plt.ylim(min(cnn_df["value_acc_sign/train"].min(),gnn_df["value_acc_sign/train"].min(),cnn_df["value_acc_sign/val"].min(),gnn_df["value_acc_sign/val"].min()),
+             max(cnn_df["value_acc_sign/train"].max(),gnn_df["value_acc_sign/train"].max(),cnn_df["value_acc_sign/val"].max(),gnn_df["value_acc_sign/val"].max()))
+    plt.xlabel("epoch")
+    plt.ylabel("training value sign accuracy")
+    plt.legend()
+    plt.savefig(os.path.join(img_path,"supervised_compare","value_acc_train.svg"))
+    plt.clf()
+
+    plt.plot(cnn_df.index,cnn_df["value_acc_sign/val"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["value_acc_sign/val"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["value_rolling_val"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["value_rolling_val"],color="C1",alpha=1,label="GNN")
+    plt.xlabel("epoch")
+    plt.ylabel("validation value sign accuracy")
+    plt.ylim(min(cnn_df["value_acc_sign/train"].min(),gnn_df["value_acc_sign/train"].min(),cnn_df["value_acc_sign/val"].min(),gnn_df["value_acc_sign/val"].min()),
+             max(cnn_df["value_acc_sign/train"].max(),gnn_df["value_acc_sign/train"].max(),cnn_df["value_acc_sign/val"].max(),gnn_df["value_acc_sign/val"].max()))
+    plt.legend()
+    plt.savefig(os.path.join(img_path,"supervised_compare","value_acc_val.svg"))
+    plt.clf()
+
+    plt.plot(cnn_df.index,cnn_df["loss/train"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["loss/train"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["loss_rolling_train"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["loss_rolling_train"],color="C1",alpha=1,label="GNN")
+    plt.ylim(min(cnn_df["loss/train"].min(),gnn_df["loss/train"].min(),cnn_df["loss/val"].min(),gnn_df["loss/val"].min()),
+             max(cnn_df["loss/train"].max(),gnn_df["loss/train"].max(),cnn_df["loss/val"].max(),gnn_df["loss/val"].max()))
+    plt.xlabel("epoch")
+    plt.ylabel("training loss")
+    plt.legend()
+    plt.savefig(os.path.join(img_path,"supervised_compare","loss_train.svg"))
+    plt.clf()
+
+    plt.plot(cnn_df.index,cnn_df["loss/val"],color="C0",alpha=0.2)
+    plt.plot(gnn_df.index,gnn_df["loss/val"],color="C1",alpha=0.2)
+    plt.plot(cnn_df.index,cnn_df["loss_rolling_val"],color="C0",alpha=1,label="CNN")
+    plt.plot(gnn_df.index,gnn_df["loss_rolling_val"],color="C1",alpha=1,label="GNN")
+    plt.ylim(min(cnn_df["loss/train"].min(),gnn_df["loss/train"].min(),cnn_df["loss/val"].min(),gnn_df["loss/val"].min()),
+             max(cnn_df["loss/train"].max(),gnn_df["loss/train"].max(),cnn_df["loss/val"].max(),gnn_df["loss/val"].max()))
+    plt.xlabel("epoch")
+    plt.ylabel("validation loss")
+    plt.legend()
+    plt.savefig(os.path.join(img_path,"supervised_compare","loss_val.svg"))
+    plt.clf()
+
+
 def curriculum_stuff():
     icy_df:pd.DataFrame = pd.read_csv(os.path.join(csv_path,"icy_resonance.csv"))
     beaming_df:pd.DataFrame = pd.read_csv(os.path.join(csv_path,"beaming_firecracker.csv"))
@@ -28,9 +125,9 @@ def curriculum_stuff():
     plt.cla()
 
 
-def get_run_df(name="project.csv",run_name="icv7ozhh"):
+def get_run_df(name="project.csv",run_name="icv7ozhh",project_name="rainbow_hex"):
     api = wandb.Api()
-    run = api.run(f"yannikkellerde/rainbow_hex/{run_name}")
+    run = api.run(f"yannikkellerde/{project_name}/{run_name}")
     hist = run.scan_history()
     df = pd.DataFrame(hist)
     df.to_csv(os.path.join(csv_path,name))
@@ -98,7 +195,10 @@ if __name__ == "__main__":
     # get_run_df(name="fully_cnn_7x7.csv",run_name="icv7ozhh")
     # get_run_df(name="icy_resonance.csv",run_name="40lz3z29")
     # get_run_df(name="beaming_firecracker.csv",run_name="rc0hl84y")
-    curriculum_stuff()
+    # get_run_df(name="supervised_cnn.csv",run_name="87i7wr1b",project_name="HexAra")
+    # get_run_df(name="supervised_gnn.csv",run_name="2moj3q5f",project_name="HexAra")
+    supervised_stuff()
+    # curriculum_stuff()
     # get_big_df()
     # vs_random_winrate()
     # losses()
