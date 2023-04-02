@@ -3,9 +3,9 @@
 This folder implements all the python algorithms for game play on graph games.
 
 The files in this folder are:
-+ `models.py`: This implements all models used in python in this thesis
-+ `torch_script_models.py`: This implements the models to be traced by torch\_script and imported into C++
-+ `unet_parts.py`: This file is from [https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet\_parts.py](https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py) and implements components for the U-net
++ [models.py](models.py): This implements all models used in python in this thesis
++ [torch\_script\_models.py](torch_script_models.py): This implements the models to be traced by torch\_script and imported into C++
++ [unet\_parts.py](unet_parts.py): This file is from [https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet\_parts.py](https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py) and implements components for the U-net
 
 The thesis-relevant subfolders are:
 + [RainbowDQN](RainbowDQN): This is where my RainbowDQN fork is supposed to be cloned into [https://github.com/yannikkellerde/Rainbow](https://github.com/yannikkellerde/Rainbow)
