@@ -15,7 +15,7 @@ Code:
 
 The documentation of this repository is split into sub-readme files that summarize the contents for each significant subfolder. Additonally, key files include a short description at the top of the file.
 
-All sub-readme:  
+All sub-readme:   
 [/cpp\_hex/README.md](/cpp_hex/README.md)  
 [/cpp\_hex/hex\_graph\_game/README.md](/cpp_hex/hex_graph_game/README.md)  
 [/cpp\_hex/CrazyAra/README.md](/cpp_hex/CrazyAra/README.md)  
@@ -25,6 +25,7 @@ All sub-readme:
 [/GN0/RainbowDQN/README.md](/GN0/RainbowDQN/README.md)  
 [/GN0/util/README.md](/GN0/util/README.md)  
 [/GN0/README.md](/GN0/README.md)  
+[https://github.com/yannikkellerde/Rainbow/blob/main/README.md](https://github.com/yannikkellerde/Rainbow/blob/main/README.md)
 
 ## RainbowDQN
 The RainbowDQN algorithm used in the thesis is forked from `schmidtdominik/Rainbow` and is in the following repository: [https://github.com/yannikkellerde/Rainbow](https://github.com/yannikkellerde/Rainbow). To make this project work with RainbowDQN, clone the repo into `GN0/RainbowDQN`. (Yes I know git submodules exist, but they confuse me :D)
