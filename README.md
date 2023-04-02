@@ -2,16 +2,16 @@
 
 This repository is organized into the following folders:  
 No code:
-+ `images`: Graphics, subplots that where included or not included in the thesis.
-+ `markdown`: Intermediate progress reports
-+ `slides`: The mid-thesis powerpoint presentation
-+ `docker`: Dockerfiles that create docker environments in which the scripts of this repositiory run.
++ [images](images): Graphics, subplots that where included or not included in the thesis.
++ [markdown](markdown): Intermediate progress reports
++ [slides](slides): The mid-thesis powerpoint presentation
++ [docker](docker): Dockerfiles that create docker environments in which the scripts of this repositiory run.
 
 Code:
-+ `graph_game`: The python graph game environments used by this project.
-+ `GN0`: Python algorithms and utilities for this project. E.g. RainbowDQN, elo evaluation, plotting
-+ `rl_loop`: The python part of HexAra.
-+ `cpp_hex`: HexAra and the Hex/Shannon node-switching game c++ environment
++ [graph\_game](graph_game): The python graph game environments used by this project.
++ [GN0](GN0): Python algorithms and utilities for this project. E.g. RainbowDQN, elo evaluation, plotting
++ [rl\_loop](rl_loop): The python part of HexAra.
++ [cpp\_hex](cpp_hex): HexAra and the Hex/Shannon node-switching game c++ environment
 
 The documentation of this repository is split into sub-readme files that summarize the contents for each significant subfolder. Additonally, key files include a short description at the top of the file.
 

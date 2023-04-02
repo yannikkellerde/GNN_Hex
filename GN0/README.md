@@ -8,11 +8,11 @@ The files in this folder are:
 + `unet_parts.py`: This file is from [https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet\_parts.py](https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py) and implements components for the U-net
 
 The thesis-relevant subfolders are:
-+ `RainbowDQN`: This is where my RainbowDQN fork is supposed to be cloned into [https://github.com/yannikkellerde/Rainbow](https://github.com/yannikkellerde/Rainbow)
-+ `util`: This contains key utility for using my graph games with torch\_geometrics graph neural networks.
-+ `tests`: Files to test the algorithm parts for correctness
++ [RainbowDQN](RainbowDQN): This is where my RainbowDQN fork is supposed to be cloned into [https://github.com/yannikkellerde/Rainbow](https://github.com/yannikkellerde/Rainbow)
++ [util](util): This contains key utility for using my graph games with torch\_geometrics graph neural networks.
++ [tests](tests): Files to test the algorithm parts for correctness
 
 Other subfolders are failed/unfinished attempts at other algorithms:
-+ `alpha_zero`: An attempt at implementing alpha\_zero in python. Ultimately unfinished because of environment runtime problems.
-+ `supervised`: Some intial attempts at learning supervised tasks with GNNs on my graph-game. NOT the mohex imitation part.
-+ `other`: Unfinished attempts with Monte-Carlo Policy Iteration or some attempts of GNNs with tensorflow.
++ [alpha\_zero](alpha_zero): An attempt at implementing alpha\_zero in python. Ultimately unfinished because of environment runtime problems.
++ [supervised](supervised): Some intial attempts at learning supervised tasks with GNNs on my graph-game. NOT the mohex imitation part.
++ [other](other): Unfinished attempts with Monte-Carlo Policy Iteration or some attempts of GNNs with tensorflow.
