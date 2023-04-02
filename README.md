@@ -15,7 +15,7 @@ Code:
 
 The documentation of this repository is split into sub-readme files that summarize the contents for each significant subfolder. Additonally, key files include a short description at the top of the file.
 
-All sub-readme:
+All sub-readme:  
 [/cpp\_hex/README.md](/cpp_hex/README.md)  
 [/cpp\_hex/hex\_graph\_game/README.md](/cpp_hex/hex_graph_game/README.md)  
 [/cpp\_hex/CrazyAra/README.md](/cpp_hex/CrazyAra/README.md)  
