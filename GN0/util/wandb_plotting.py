@@ -1,3 +1,12 @@
+"""Uses the wandb api to create plots for the thesis
+
+Key functions include:
+    supervised_stuff: Create Figure 5.7
+    curriculum_stuff: Create Figure 5.6 b
+    losses: Create Figure 5.1 b
+    vs_random_winrate: Create Figure 5.1 c
+"""
+
 import wandb
 import pandas as pd 
 import matplotlib.pyplot as plt
@@ -29,7 +38,6 @@ def supervised_stuff():
 
     print(cnn_df["loss/val"].argmin(), gnn_df["loss/val"].argmin())
     print(cnn_df["policy_acc/val"].argmax(), gnn_df["policy_acc/val"].argmax())
-    exit()
 
     plt.plot(cnn_df.index,cnn_df["policy_acc/train"],color="C0",alpha=0.2)
     plt.plot(gnn_df.index,gnn_df["policy_acc/train"],color="C1",alpha=0.2)

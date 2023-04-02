@@ -1,3 +1,11 @@
+/* Fast shannon node-switching graph game with optional hex board.
+ * Key functions include:
+ * 		make_move: make a move by selecting a node id in the graph.
+ * 		remove_dead_and_captures: Implements dead and captured node removal (See Algorithm 1)
+ * 		convert_graph: Create torch tensors from the graph to process with GNNs. Is pretty fast because of memory layout.
+ * 		graphviz_me: Create dot file for the game graph.
+ */
+
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>

@@ -1,3 +1,5 @@
+"""Some correctness and speed tests for the game classes"""
+
 from graph_tool.all import VertexPropertyMap,GraphView
 from graph_game.graph_tools_games import Tic_tac_toe,Qango6x6,Qango7x7,Qango7x7_plus,Json_game,Hex_game,Clique_hex_game
 from graph_game.hex_board_game import Hex_board

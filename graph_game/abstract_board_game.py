@@ -1,3 +1,5 @@
+"""An abstract class for a grid board game with an associated graph representation"""
+
 from graph_tool.all import VertexPropertyMap, Vertex, Graph, GraphView
 from typing import Set,List,Dict,FrozenSet
 from abc import ABC, abstractmethod

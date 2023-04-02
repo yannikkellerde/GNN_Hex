@@ -1,3 +1,11 @@
+""" A class representing a Hex board in grid representation. It can optionally be connected with a graph representation via the 'game' attribute
+
+Key functions include:
+    graph_from_board: Converts a Hex board representation in a graph representation
+    matplotlib_me: Plot the board state with optional square attributes in matplotlib.
+    draw_me: Draw the board in the terminal.
+"""
+
 from graph_game.abstract_board_game import Abstract_board_game
 
 import random
@@ -172,41 +180,6 @@ class Hex_board(Abstract_board_game):
             if graph1.edge(s_mapped,t_mapped) is None:
                 cost += 1
         return cost
-
-    def pos_from_graph(self,redgraph:bool=True,initialize=True):
-        # Defunct
-        str_map = {0:"U",1:"f",2:"r",3:"b"}
-        step_take_obj = take_step([2,3])
-
-        def evaluate_assignment(assignment):
-            new_pos = known_pos.copy()
-            new_pos[new_pos==0] = assignment
-            new_board = Hex_board()
-            if type(self.game).__name__=="Node_switching_game":
-                new_game = type(self.game)()
-            else:
-                new_game = type(self.game)(self.size)
-            new_board.game = new_game
-            some_pos = known_pos.copy()
-            some_pos[some_pos==0] = assignment
-            new_board.position = [str_map[x] for x in some_pos]
-            new_board.squares = len(new_board.position)
-            new_board.graph_from_board(redgraph)
-            cost = Hex_board.evaluate_graph_similarity(new_game.view,self.game.view,new_board.vertex_to_board_index,self.vertex_to_board_index)
-            return cost
-
-        known_pos = np.zeros(self.squares) #0:unknown,1:empty,2:red,3:blue
-        if initialize:
-            for v in self.game.view.vertices():
-                if v not in self.game.terminals:
-                    known_pos[self.vertex_to_board_index[v]] = 1
-            initial_assignment = np.ones(self.squares-self.game.view.num_vertices()+2)*(3 if redgraph else 2)
-        else:
-            initial_assignment = np.ones(self.squares)*(3 if redgraph else 2)
-        res,_fun_val = greedy_search(evaluate_assignment,initial_assignment,step_take_obj)
-        known_pos[known_pos==0] = res
-        self.position = [str_map[x] for x in known_pos]
-
 
     def graph_from_board(self, redgraph:bool, no_worthless_edges=True):
         self.redgraph=redgraph

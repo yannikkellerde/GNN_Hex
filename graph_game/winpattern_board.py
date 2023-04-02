@@ -1,3 +1,5 @@
+"""A winpattern game as a 2d grid. Winpattern games include games such as Tic-Tac-Toe, Gomoku or Qango"""
+
 from graph_tool.all import VertexPropertyMap, Vertex, Graph, GraphView
 import pickle
 import sys,os

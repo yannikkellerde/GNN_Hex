@@ -1,3 +1,6 @@
+/* Bare bones Hex board with a grid position, a size, a player onturn and a function to get legal moves
+ */
+
 #include <iostream>
 #include <fstream>
 #include <iterator>

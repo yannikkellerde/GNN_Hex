@@ -1,4 +1,4 @@
-"""TODO: Multiprocessing if it becomes nescessary"""
+"""Manage multiple env instances at once for better batching in RainbowDQN"""
 
 from graph_game.graph_tools_games import Hex_game
 from GN0.util.convert_graph import convert_node_switching_game

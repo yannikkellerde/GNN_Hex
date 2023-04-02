@@ -1,35 +1,41 @@
-# GN0
-## Literature
-Graph nets: https://arxiv.org/pdf/1806.01261.pdf  
-Go zero: https://www.nature.com/articles/nature24270  
-Pytorch Geometric: https://arxiv.org/pdf/1903.02428.pdf  
-GNs suck: https://arxiv.org/abs/2010.13993  
-GCN: https://arxiv.org/pdf/1609.02907.pdf  
-Hex Graphs: https://webdocs.cs.ualberta.ca/~hayward/theses/ph.pdf
-Hex Variants, hex information: https://www.taylorfrancis.com/books/mono/10.1201/9780429031960/hex-inside-ryan-hayward-bjarne-toft  
-Computer Hex: https://webdocs.cs.ualberta.ca/~hayward/hex/#wolve  
-Some MCTS engine: https://github.com/FutaAlice/FutaHex2  
-HEX Monte Carlo Value Iteration: https://github.com/harbecke/HexHex  
-General Alpha-Zero player playing HEX: https://github.com/richemslie/galvanise_zero  
-Latex hex package: https://ctan.org/tex-archive/macros/latex/contrib/hexgame/  
-BayesElo: https://github.com/ddugovic/BayesianElo  
-Expert Iteration: https://arxiv.org/pdf/1705.08439.pdf  
-RL + GNN: https://arxiv.org/abs/2104.11434  
+# Using Graph Neural Networks to Improve Generalization in Self-Play Reinforcement Learning
 
-## A path through github repos
-A very inefficent, but simple to understand implementation of Alpha-Zero: https://github.com/suragnair/alpha-zero-general/  
-A more efficent implementation by some python multiprocessing wizard. This makes it much more difficult to modify for GNNs however: https://github.com/bhansconnect/fast-alphazero-general  
-A C++ plus Python implementation by the same guy: https://github.com/bhansconnect/alphazero-pybind11  
-But probably it is better to go with https://github.com/richemslie/galvanise_zero if I wan't to go for a C++ based implementation.  
+This repository is organized into the following folders:  
+No code:
++ `images`: Graphics, subplots that where included or not included in the thesis.
++ `markdown`: Intermediate progress reports
++ `slides`: The mid-thesis powerpoint presentation
++ `docker`: Dockerfiles that create docker environments in which the scripts of this repositiory run.
 
-## Some things to note
-Hex: There is an easy, fairly accurate position evaluation function using "voltage flow".
+Code:
++ `graph_game`: The python graph game environments used by this project.
++ `GN0`: Python algorithms and utilities for this project. E.g. RainbowDQN, elo evaluation, plotting
++ `rl_loop`: The python part of HexAra.
++ `cpp_hex`: HexAra and the Hex/Shannon node-switching game c++ environment
 
-## Benchmark
-https://ogb.stanford.edu/docs/leader_nodeprop/
+The documentation of this repository is split into sub-readme files that summarize the contents for each significant subfolder. Additonally, key files include a short description at the top of the file.
 
-## Tips
-Use build pytorch with gpu support without attached gpu: TORCH_CUDA_ARCH_LIST=Turing
+All sub-readme:
+[/cpp\_hex/README.md](/cpp_hex/README.md)  
+[/cpp\_hex/hex\_graph\_game/README.md](/cpp_hex/hex_graph_game/README.md)  
+[/cpp\_hex/CrazyAra/README.md](/cpp_hex/CrazyAra/README.md)  
+[/rl\_loop/README.md](/rl_loop/README.md)  
+[/graph\_game/README.md](/graph_game/README.md)  
+[/GN0/RainbowDQN/Rainbow/README.md](/GN0/RainbowDQN/Rainbow/README.md)   
+[/GN0/RainbowDQN/README.md](/GN0/RainbowDQN/README.md)  
+[/GN0/util/README.md](/GN0/util/README.md)  
+[/GN0/README.md](/GN0/README.md)  
 
-## Name of thesis
-Maybe: "Improving Generalization of Self-Play Reinforcement Learning Algorithms with Graph Neural Networks"
+## RainbowDQN
+The RainbowDQN algorithm used in the thesis is forked from `schmidtdominik/Rainbow` and is in the following repository: [https://github.com/yannikkellerde/Rainbow](https://github.com/yannikkellerde/Rainbow). To make this project work with RainbowDQN, clone the repo into `GN0/RainbowDQN`. (Yes I know git submodules exist, but they confuse me :D)
+
+## Usage
+Installing graph-tool together with torch\_geometric can be tricky and lead to conflicts if done in wrong order, with wrong python versions or wrong package versions. I can only refer to the dockerfile [gt\_dockerfile](/docker/gt_dockerfile) or to the [environment.yml](environment.yml) which work at the time of writing.
+
+### Running RainbowDQN
+The entrypoint for RainbowDQN after you cloned the Rainbow repository into the correct location is `GN0/RainbowDQN/Rainbow/train.py`. An example training command to train a GNN on 11x11 Hex would be: `python train.py --batch_size=256 --buffer_size=260000 --training_frames=200000000 --cnn_mode=False --use_amp=False --hex_size=11 --norm=False --model_name=modern_two_headed --prune_exploratories=True --grow=False --burnin=20000 --prioritized_er=True --prioritized_er_beta0=0.6 --prioritized_er_time=0 --final_eps=0.05 --init_eps=0.12 --eps_decay_frames=100000 --lr=0.0004 --loss_fn=mse --parallel_envs=128 --n_step=2 --gamma=0.97 --wandb_tag=lower_gamma,two_step,gnn --noisy_dqn=False --use_wandb=True --num_layers=15 --hidden_channels=110 --num_head_layers=2`. All scripts use wandb for logging, so make sure you set up wandb on your machine.
+
+### Running HexAra
+1. Check [/docker/dockerfile](/docker/dockerfile) for how to install C++ dependencies and create HexAra binary. (Or just create a docker container from it.
+2. Use the `rl_loop/trace_model.py` script to trace your desired model with torch\_script
+3. Entrypoint for training is `rl_loop/__main__.py`. Usually you'd want multiple gpus, one for training and multiple for data generation. Training process are started with `python -m rl_loop.__main__ --trainer --device-id=0`. Generator processes just with `python -m rl_loop.__main__ --device-id=N` with N for the GPU device id. Good luck :)

@@ -1,3 +1,5 @@
+"""Utilities for a graph-games"""
+
 from graph_tool.all import Graph, Vertex, GraphView
 import torch
 from torch_scatter import scatter_max, scatter_add

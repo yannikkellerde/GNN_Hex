@@ -1,3 +1,5 @@
+"""A winpattern game as a graph. Winpattern games include games such as Tic-Tac-Toe, Gomoku or Qango"""
+
 from typing import NamedTuple, Union, Dict,List,Set,Tuple
 from functools import reduce
 from collections import defaultdict

@@ -1,3 +1,5 @@
+"""Communicate with the mohex binary to create a hex agent that can play in evaluate_elo.py"""
+
 from subprocess import Popen, PIPE, STDOUT
 import time
 from graph_game.hex_board_game import Hex_board

@@ -1,3 +1,13 @@
+"""Evaluate the elo of hex agents by playing matches between them
+
+The Elo_handler class manages the elo of various hex agents.
+
+Key functions are:
+    play_some_games: play a match on some or all unique opening positions between two hex agents.
+    score_some_statistics: Use statistics of one or many matches to update elo of agents.
+    roundrobin: Play a roundrobin tournament between known hex agents/models and update elos accordingly.
+"""
+
 import os
 import numpy as np
 import random
@@ -401,35 +411,13 @@ if __name__ == "__main__":
     e.load_a_model_player("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt","modern_two_headed","11x11_gnn")
     e.load_a_model_player("/home/kappablanca/github_repos/Gabor_Graph_Networks/GN0/RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt","unet","11x11_cnn",cnn_mode=True)
 
-    # e.load_a_model_player(get_highest_model_path("gnn_5x5/5"),"modern_two_headed","gnn")
-    # e.load_a_model_player(get_highest_model_path("cnn_5x5/5"),"cnn_two_headed","cnn_5x5_final",cnn_mode=True,cnn_hex_size=5)
-    # e.load_a_model_player(get_highest_model_path("cnn_5x5_6x6/5"),"cnn_two_headed","cnn_5x5_transfer",cnn_mode=True,cnn_hex_size=6)
-    # e.load_a_model_player("Rainbow/checkpoints/cnn_5x5/5/checkpoint_26091648.pt","cnn_two_headed","cnn_5x5",cnn_mode=True,cnn_hex_size=5)
-    # e.load_a_model_player("Rainbow/checkpoints/cnn_5x5/5/checkpoint_11996160.pt","cnn_two_headed","cnn_5x5_early",cnn_mode=True,cnn_hex_size=5)
-    
 
     max_time = 2
     max_games = 1000
     e.add_player(name="random",model=random_player,set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"mohex-rep-raw",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"train-raw",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=False),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"mohex-{max_time}s-{max_games}g",model=MohexPlayer(max_time=max_time,max_games=max_games),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"mohex-rep-mcts",model=BinaryPlayer(model_path="../../model_save/mohex_reproduce_large/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"train-mcts",model=BinaryPlayer(model_path="../../model_save/train_after_mohex/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    # e.add_player(name=f"MAZ-final-mcts",model=BinaryPlayer(model_path="../../model_save/MAZ_final/torch_script_model.pt",binary_path="../../data/RL/HexAra",use_mcts=True),set_rating=None,uses_empty_model=False,simple=True)
-    #res = e.play_some_games(f"cnn_5x5_early",f"cnn_5x5_transfer",None,0,progress=True)
-    #print(res)
-    #res = e.play_some_games(f"cnn_5x5_early",f"random",None,0,progress=True)
-    #print(res)
-    #res = e.play_some_games(f"cnn_5x5",f"cnn_5x5_transfer",None,0,progress=True)
-    #print(res)
-    # res = e.play_some_games(f"cnn_5x5_transfer",f"random",None,0,progress=True)
     res = e.play_some_games(f"11x11_gnn",f"curriculum",None,0,progress=True)
     res = e.play_some_games(f"11x11_cnn",f"curriculum",None,0,progress=True)
     res = e.play_some_games(f"curriculum",f"11x11_cnn",None,0,progress=True)
     res = e.play_some_games(f"curriculum",f"11x11_gnn",None,0,progress=True)
     res = e.play_some_games(f"11x11_gnn",f"11x11_cnn",None,0,progress=True)
     res = e.play_some_games(f"11x11_cnn",f"11x11_gnn",None,0,progress=True)
-    #res = e.play_some_games(f"cnn_5x5",f"random",None,0,progress=True)
-    #print(res)
-    # res = e.play_some_games(f"gnn",f"random",None,0,progress=True)

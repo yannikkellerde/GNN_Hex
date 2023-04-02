@@ -1,3 +1,11 @@
+"""File to create the results plots from the thesis.
+
+Key functions include:
+    elo_plot_curriculum: Create Figure 5.6 a
+    plot_transfer_elos: Create Figure 5.3
+    plot_first_move_plot: Create Figure 5.2
+"""
+
 from GN0.RainbowDQN.evaluate_elo import Elo_handler,random_player
 from GN0.util.convert_graph import convert_node_switching_game
 import torch
@@ -39,7 +47,6 @@ def elo_plot_curriculum():
         total_max = max(np.max(data[:,1]),total_max)
         scat_points.append((data[0,0],data[0,1]))
         plt.plot(data[:,0],data[:,1],color='#1f77b4')
-    print(data)
     scat_points = np.array(scat_points)
     plt.scatter(scat_points[:,0],scat_points[:,1],color="red",marker="x")
     plt.xlabel("game frame (millions)")

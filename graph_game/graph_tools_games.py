@@ -1,3 +1,10 @@
+"""Concrete implementations of board games connected with graphs
+
+Hex_game is a class for a Hex board with a specific size that automatically connects graph and board representation.
+Qango6x6 is a class that creates a 6x6 Qango board and the associated winpattern-game graph.
+Etc...
+"""
+
 from graph_game.winpattern_game import Winpattern_game
 from graph_game.winpattern_board import Winpattern_board
 from graph_game.utils import findfivers, findsquares, remove_useless_wsn
@@ -34,16 +41,6 @@ def get_graph_only_hex_game(size:int):
         starting_graphs[size] = board.game.graph
         
     return Node_switching_game.from_graph(Graph(starting_graphs[size]))
-
-class Clique_hex_game(Clique_node_switching_game):
-    def __init__(self,size:int):
-        super().__init__()
-        self.board = Hex_board()
-        self.board.squares = size**2
-        self.board.game = self
-        self.board.position = ["f"]*self.board.squares
-        self.board.clique_graph_from_board(redgraph=True)
-        self.name = f"Clique_Hex {size}x{size}"
 
 class Json_game(Winpattern_game):
     def __init__(self,json_path:str):

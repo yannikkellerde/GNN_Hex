@@ -1,3 +1,5 @@
+"""Some unorganized neural network utilities used in the python algorithms"""
+
 import numpy as np
 from math import sqrt
 import matplotlib.pyplot as plt

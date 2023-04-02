@@ -1,3 +1,5 @@
+"""Weisfeiler-Lehman hashing for graph-tool graphs"""
+
 from collections import Counter
 from hashlib import blake2b
 from graph_tool.all import VertexPropertyMap,GraphPropertyMap,Graph

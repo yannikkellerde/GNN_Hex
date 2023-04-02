@@ -1,3 +1,5 @@
+"""An abstract class for a game played on a graph"""
+
 from abc import ABC,abstractmethod
 from graph_tool.all import VertexPropertyMap,Graph,GraphView,graph_draw,Vertex
 from typing import Union,List

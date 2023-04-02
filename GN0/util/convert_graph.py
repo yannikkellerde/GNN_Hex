@@ -1,3 +1,10 @@
+"""Take the graph-tool graphs from the graph games and convert them to graphs pytorch_geometric understands
+
+Key functions are:
+    convert_node_switching_game: Shannon node-switching game -> pytorch_geometric graph
+    convert_node_switching_game_back: pytorch_geometric graph -> Shannon node-switching game graph
+"""
+
 import torch
 from torch_geometric.data import Data
 import numpy as np

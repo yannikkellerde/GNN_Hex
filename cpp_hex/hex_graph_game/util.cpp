@@ -1,3 +1,10 @@
+/* Utilities for the graph game environment
+ * Key functions:
+ * 		collate_batch: create batched GNN input from vectors of node_features and edge_indices
+ * 		gen_swap_map: create a swapmap using a neural net and saves to txt (e.g. should a player swap after the first player played at x)
+ * 		gen_starting_eval: create a map of evaluations for each possible starting move using a neural net.
+ */
+
 #include "util.h"
 #include "main/customuci.h"
 #include "shannon_node_switching_game.h"

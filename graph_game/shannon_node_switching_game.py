@@ -1,3 +1,12 @@
+"""
+This implements the shannon node switching game class Node_switching_game representing a game graph using graph-tool. Optionally, an instance of this class can be connectected with a board representation of for example a Hex board.
+
+Key functions of Node_switching_game are:
+    make_move: Select a node to make a move in the game
+    dead_and_captured: implements the algorithm to remove dead and captured nodes from the graph
+    draw_me: Draw the current game graph and save to pdf
+"""
+
 from graph_game.abstract_graph_game import Abstract_graph_game
 from graph_game.utils import is_fully_connected, double_loop_iterator
 from graph_tool.all import VertexPropertyMap, Graph, GraphView,graph_draw,Vertex,dfs_iterator,adjacency,boykov_kolmogorov_max_flow,min_st_cut,sfdp_layout

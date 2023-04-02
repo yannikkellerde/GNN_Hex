@@ -1,3 +1,8 @@
+""" Implements an interactive Hex game in matplotlib.
+
+The key function of this file is 'interactive_hex_window' which starts a new instance of the interactive Hex window. Other functions are api for connecting GNN or CNN models to the interactive Hex window
+"""
+
 import matplotlib.pyplot as plt
 import os
 from graph_game.hex_board_game import build_hex_grid

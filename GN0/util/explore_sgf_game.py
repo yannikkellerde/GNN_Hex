@@ -1,3 +1,5 @@
+"""Explore a game in sgf format in an the interactive hex window"""
+
 import matplotlib.pyplot as plt
 from graph_game.graph_tools_games import Hex_game
 import sys
