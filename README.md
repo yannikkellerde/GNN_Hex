@@ -21,7 +21,6 @@ All sub-readme:
 [/cpp\_hex/CrazyAra/README.md](/cpp_hex/CrazyAra/README.md)  
 [/rl\_loop/README.md](/rl_loop/README.md)  
 [/graph\_game/README.md](/graph_game/README.md)  
-[/GN0/RainbowDQN/Rainbow/README.md](/GN0/RainbowDQN/Rainbow/README.md)   
 [/GN0/RainbowDQN/README.md](/GN0/RainbowDQN/README.md)  
 [/GN0/util/README.md](/GN0/util/README.md)  
 [/GN0/README.md](/GN0/README.md)  
