@@ -17,5 +17,6 @@
     - H-search is basically a repeated application of first order logic.
     - Maybe we can create a GNN architecture that can implement fuzzy logic operations?
     - To implement H-search OR operation, we can use the max of incoming messages.
-    - To implement H-search AND operation, we need a fuzzy operation corresponding to at least two neighbors are true. Not sure how to do this the best way.
+    - To implement H-search AND operation, we need a fuzzy operation corresponding to at least two neighbors are true. *second-highest* operation?
+
 ![](/images/h-search.svg)
