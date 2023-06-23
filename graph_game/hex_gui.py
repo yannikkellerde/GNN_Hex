@@ -103,7 +103,7 @@ def playerify_maker_breaker(maker,breaker):
             return player_breaker(game)
     return maker_breaker_player
 
-def advantage_model_to_evaluater(model,cnn_mode=False):
+def advantage_model_to_evaluater(model,device="cpu",cnn_mode=False):
     def evaluater(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None

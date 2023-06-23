@@ -13,7 +13,6 @@ import json
 from collections import defaultdict
 import os,sys
 from graph_game.shannon_node_switching_game import Node_switching_game
-from graph_game.clique_node_switching_game import Clique_node_switching_game
 from graph_game.hex_board_game import Hex_board
 
 base_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")

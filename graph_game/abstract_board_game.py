@@ -9,11 +9,6 @@ class Abstract_board_game(ABC):
     squares:int
     onturn:str
 
-    @abstractmethod
-    def pos_from_graph(self):
-        """Converts the game graph into a 2d grid"""
-        raise NotImplementedError
-
     @abstractmethod 
     def graph_from_board(self):
         """Construct the graph from the current board representation"""

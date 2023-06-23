@@ -16,11 +16,11 @@ def load_a_model(checkpoint,model_identifier):
     model.load_state_dict(stuff["state_dict"])
     return model
 
-def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
+def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=False):
     fails = []
     def get_board_outputs():
         if cnn_mode:
-            model_input = game.board.to_input_planes().unsqueeze(0)
+            model_input = game.board.to_input_planes(flip=flip).unsqueeze(0)
             board_outputs = model(model_input)
             mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
             board_outputs[mask] = -5
@@ -91,10 +91,10 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13):
 
 if __name__ == "__main__":
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt"),"unet")
-    print(test_on_long_range_tasks(model,True,8,18))
+    print(len(test_on_long_range_tasks(model,True,8,25,False)))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt"),"modern_two_headed")
-    print(test_on_long_range_tasks(model,False,8,26))
-    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
-    # print(test_on_long_range_tasks(model,False,5,13))
-    # model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
-    # print(test_on_long_range_tasks(model,True,5,13))
+    print(len(test_on_long_range_tasks(model,False,5,25,False)))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
+    print(len(test_on_long_range_tasks(model,False,5,25,False)))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
+    print(len(test_on_long_range_tasks(model,True,5,25,True)))
