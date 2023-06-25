@@ -90,11 +90,11 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=
 
 
 if __name__ == "__main__":
-    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt"),"unet")
-    print(len(test_on_long_range_tasks(model,True,8,25,False)))
-    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt"),"modern_two_headed")
-    print(len(test_on_long_range_tasks(model,False,5,25,False)))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
-    print(len(test_on_long_range_tasks(model,False,5,25,False)))
+    print("Mistakes by FCN-S",test_on_long_range_tasks(model,False,8,25,False))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
-    print(len(test_on_long_range_tasks(model,True,5,25,True)))
+    print("\nMistakes by GNN-S",test_on_long_range_tasks(model,True,8,25,True))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt"),"unet")
+    print("\nMistakes by FCN-L",test_on_long_range_tasks(model,True,8,25,False))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt"),"modern_two_headed")
+    print("\nMistakes by GNN-L",test_on_long_range_tasks(model,False,8,25,False))

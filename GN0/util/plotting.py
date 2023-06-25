@@ -58,15 +58,23 @@ def elo_plot_curriculum():
     plt.show()
 
 
-def plot_transfer_elos():
-    e = Elo_handler(7,k=2,device=device)
-    e.load_a_model_player(get_highest_model_path("gnn_7x7/7"),"modern_two_headed","gnn")
-    e.load_a_model_player(get_highest_model_path("cnn_7x7_fully_conv/7"),"fully_conv","cnn",cnn_mode=True,cnn_hex_size=None)
+def plot_transfer_elos(size=7):
+    e = Elo_handler(size,k=2,device=device)
+    if size==7:
+        e.load_a_model_player(get_highest_model_path("gnn_7x7/7"),"modern_two_headed","gnn")
+        e.load_a_model_player(get_highest_model_path("cnn_7x7_fully_conv/7"),"fully_conv","cnn",cnn_mode=True,cnn_hex_size=None,cnn_zero_fill=True)
+        start = 5
+        end = 14
+    elif size==11:
+        e.load_a_model_player(get_highest_model_path("rainbow_gnn_11x11/11"),"modern_two_headed","gnn")
+        e.load_a_model_player(get_highest_model_path("rainbow_cnn_11x11/11"),"unet","cnn",cnn_mode=True,cnn_hex_size=None)
+        start = 8
+        end = 16
+    else:
+        raise ValueError("size unknown")
     e.add_player(name="random",model=random_player,set_rating=0,uses_empty_model=False,simple=True,rating_fixed=True)
 
     gnn_win_percents=[]
-    start = 5
-    end = 14
 
     for hex_size in range(start,end):
         e.size = hex_size
@@ -128,7 +136,8 @@ def plot_first_move_plot(model_identifier,model_path,cnn_mode,hex_size):
 
 
 if __name__ == "__main__":
-    # plot_transfer_elos()
+    plot_transfer_elos(11)
+    plot_transfer_elos(7)
     # plot_first_move_plot("modern_two_headed","../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt",False,7)
     # plot_first_move_plot("fully_conv","../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_28790784.pt",True,7)
-    elo_plot_curriculum()
+    # elo_plot_curriculum()

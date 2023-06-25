@@ -1,0 +1,4 @@
+[submodule "GN0/RainbowDQN/Rainbow"]
+	path = GN0/RainbowDQN/Rainbow
+	url = git@github.com:yannikkellerde/Rainbow.git
+	branch = main

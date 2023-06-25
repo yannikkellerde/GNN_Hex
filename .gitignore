@@ -29,7 +29,6 @@ GN0/supervised/run
 !GN0/model/GCN_model.pt 
 !GN0/model/GraphSAGE_hex_best.pt
 !GN0/model/GraphSAGE_unnormalized.pt
-Rainbow/
 alpha_zero_hex_graphs/
 fast_alphazero_general/
 Elo/
