@@ -40,6 +40,8 @@ def param_counting():
     #     }
     # )
     # cnn_model = get_pre_defined("fully_conv",args=args)
+    gao_model = get_pre_defined("gao")
+    print("GAO parameters",count_model_parameters(gao_model))
     PV_CNN = get_current_model(net_type="PV_CNN")
     print("PV_CNN parameters",count_model_parameters(PV_CNN))
     PV_GNN = get_current_model(net_type="SAGE",hidden_channels=110,hidden_layers=15)

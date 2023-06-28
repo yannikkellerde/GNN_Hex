@@ -23,6 +23,7 @@ from torch.nn import Linear,ModuleList
 import copy
 from math import sqrt,ceil
 from argparse import Namespace
+from GN0.baseline_models import Gao_baseline
 from torch_geometric.nn.resolver import (
     activation_resolver,
     normalization_resolver,
@@ -878,6 +879,7 @@ class PolicyValue(torch.nn.Module):
         return pi.reshape(pi.size(0)),value.reshape(value.size(0))
 
 
+
 def get_pre_defined(name,args=None) -> torch.nn.Module:
     if name == "sage+norm":
         body_model = cachify_gnn(GraphSAGE) 
@@ -910,6 +912,9 @@ def get_pre_defined(name,args=None) -> torch.nn.Module:
 
     elif name == "fully_conv":
         model = FullyConv(in_channels=5,num_body_filters=args.cnn_body_filters,num_body_layers=args.num_layers)
+
+    elif name == "gao":
+        model = Gao_baseline(batch_norm=False)
 
     elif name == "modern_two_headed":
         model = DuellingTwoHeaded(cachify_gnn(GraphSAGE),HeadNetwork,

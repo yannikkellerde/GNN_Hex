@@ -13,6 +13,22 @@ from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_scatter import gather_csr, scatter, segment_csr, scatter_add, scatter_max
 from collections import defaultdict
 
+def downsample_gao_outputs(q_values,target_hex_size):
+    assert q_values.shape[1] == target_hex_size+2
+    if len(q_values.shape) == 3:
+        return q_values[:,1:-1,1:-1]
+
+    elif len(q_values.shape) == 2:
+        return q_values.reshape(q_values.shape[0],q_size,q_size)[:,:target_hex_size,:target_hex_size].reshape(q_values.shape[0],-1)
+    elif len(q_values.shape) == 1:
+        if len(q_values) == target_hex_size**2:
+            return q_values
+        q_size = int(sqrt(len(q_values)))
+        return q_values.reshape(q_size,q_size)[:target_hex_size,:target_hex_size].flatten()
+    else:
+        print(q_values.shape)
+        raise ValueError()
+
 def downsample_cnn_outputs(q_values,target_hex_size):
     if len(q_values.shape) == 2:
         if q_values.shape[1] == target_hex_size**2:
