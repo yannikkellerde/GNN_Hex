@@ -71,7 +71,7 @@ class Hex_board(Abstract_board_game):
         else:
             onturn_plane = torch.zeros_like(red_plane)
 
-        return torch.stack((red_plane,blue_plane,empty_plane,onturn_plane))
+        return torch.stack((red_plane,blue_plane,onturn_plane,empty_plane))
         
 
     def to_input_planes(self,hex_size=None,zero_fill=False,flip=False):

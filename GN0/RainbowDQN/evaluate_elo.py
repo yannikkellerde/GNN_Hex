@@ -219,8 +219,10 @@ class Elo_handler():
 
                     while len(games)>0:
                         if self.players[current_player]["cnn"]:
-                            f = game.board.to_gao_input_planes if self.players[current_player]["gao_style"] else game.board.to_input_planes 
-                            datas = [f(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
+                            if self.players[current_player]["gao_style"]:
+                                datas = [game.board.to_gao_input_planes(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
+                            else:
+                                datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
                             batch = torch.stack(datas)
                         else:
                             datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
@@ -243,10 +245,7 @@ class Elo_handler():
                                         actions = torch.argmax(action_values,dim=1)
                                     else:
                                         raise NotImplementedError()
-                                    before_actions = actions
                                     actions = [game.board.board_index_to_vertex_index[a.item()] for game,a in zip(games,actions)]
-                                    print(before_actions,actions)
-                                    print(maker)
 
                                 else:
                                     action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
@@ -296,6 +295,9 @@ class Elo_handler():
                                     print(board_actions[i])
                                     print(games[i].board.position[board_actions[i]])
                                     print(games[i].board.position)
+                                    print(mask[i])
+                                    print(batch[i][0])
+                                    print(batch[i][1])
                                     print(games[i].board.draw_me())
                                     print(games[i].who_won())
                                     games[i].draw_me()

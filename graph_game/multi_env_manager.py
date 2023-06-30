@@ -48,8 +48,10 @@ class Env_manager():
 
     def observe(self) -> List[Data]:
         if self.cnn_rep:
-            f = self.base_game.board.to_gao_input_planes if self.gao_mode else self.base_game.board.to_input_planes
-            return [f(self.cnn_hex_size) for env in self.envs]
+            if self.gao_mode:
+                return [env.board.to_gao_input_planes(self.cnn_hex_size) for env in self.envs]
+            else:
+                return [env.board.to_input_planes(self.cnn_hex_size) for env in self.envs]
         else:
             f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
             return f
@@ -59,7 +61,6 @@ class Env_manager():
         return [state.backmap[action].item() for state,action in zip(states,actions)]
 
     def cnn_validate_actions(self,actions:List[int]):
-        print(actions)
         assert self.cnn_rep
         return [self.envs[i].board.board_index_to_vertex_index[action if type(action)==int else int(action.item())] for i,action in enumerate(actions)]
 
@@ -150,7 +151,6 @@ class Env_manager():
                                 else:
                                     sobs.__delattr__("backmap")
                                     sobs.x[:,2] = start_state[k].x[0,2]
-                                # print("done",len(start_state[k].x),action[k],reward)
                                 transits.append((start_state[k],action[k],reward,sobs,True))
                                 break
                             if self.prune_exploratories and j>i and exploratories_history[j][k]: # Prune transitions where exploratory actions have been taken after the original action.
@@ -158,7 +158,6 @@ class Env_manager():
                         else:
                             if not self.cnn_rep:
                                 sh[i+2*n_step][k].__delattr__("backmap")
-                            # print(len(start_state[k].x),len(sh[i+2*n_step][k].x),reward,start_state[k].x[0,2],sh[i+2*n_step][k].x[0,2])
                             transits.append((start_state[k],action[k],reward,sh[i+2*n_step][k],False))
         return maker_transitions,breaker_transitions
 
