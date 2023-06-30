@@ -49,7 +49,7 @@ class Hex_board(Abstract_board_game):
         new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
 
-    def to_gao_input_planes(self):
+    def to_gao_input_planes(self,*args,**kwargs):
         red_plane_c = torch.tensor([1 if p=="r" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
         blue_plane_c = torch.tensor([1 if p=="b" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
         empty_plane_c = torch.tensor([1 if p=="f" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))

@@ -16,14 +16,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Env_manager():
     last_obs:List[Data]
 
-    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False,cnn_hex_size=5, cnn_zero_fill=False):
+    def __init__(self,num_envs,hex_size,gamma=1,n_steps=[1],prune_exploratories=True,cnn_rep=False,cnn_hex_size=5, gao_mode=False):
         self.num_envs = num_envs
         self.gamma = gamma
         self.global_onturn = "m"
         self.n_steps = n_steps
         self.prune_exploratories = prune_exploratories
         self.cnn_rep = cnn_rep
-        self.cnn_zero_fill = cnn_zero_fill
+        self.gao_mode = gao_mode
         self.cnn_hex_size = cnn_hex_size
         self.change_hex_size(hex_size)
 
@@ -40,14 +40,16 @@ class Env_manager():
     @property
     def starting_obs(self):
         if self.cnn_rep:
-            return self.base_game.board.to_input_planes(self.cnn_hex_size,zero_fill=self.cnn_zero_fill)
+            f = self.base_game.board.to_gao_input_planes if self.gao_mode else self.base_game.board.to_input_planes
+            return f(self.cnn_hex_size)
         else:
             return convert_node_switching_game(self.base_game.view,global_input_properties=[int(self.base_game.view.gp["m"])],need_backmap=True,old_style=True)
         
 
     def observe(self) -> List[Data]:
         if self.cnn_rep:
-            return [env.board.to_input_planes(self.cnn_hex_size,zero_fill=self.cnn_zero_fill) for env in self.envs]
+            f = self.base_game.board.to_gao_input_planes if self.gao_mode else self.base_game.board.to_input_planes
+            return [f(self.cnn_hex_size) for env in self.envs]
         else:
             f = [convert_node_switching_game(env.view,global_input_properties=[int(env.view.gp["m"])],need_backmap=True,old_style=True) for env in self.envs]
             return f
@@ -57,6 +59,7 @@ class Env_manager():
         return [state.backmap[action].item() for state,action in zip(states,actions)]
 
     def cnn_validate_actions(self,actions:List[int]):
+        print(actions)
         assert self.cnn_rep
         return [self.envs[i].board.board_index_to_vertex_index[action if type(action)==int else int(action.item())] for i,action in enumerate(actions)]
 

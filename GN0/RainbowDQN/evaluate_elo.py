@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import json
 import wandb
 from GN0.RainbowDQN.mohex_communicator import MohexPlayer
-from GN0.util.util import downsample_cnn_outputs
+from GN0.util.util import downsample_gao_outputs,downsample_cnn_outputs
 
 
 class Elo_handler():
@@ -56,8 +56,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None, cnn_zero_fill=False):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size, "cnn_zero_fill":cnn_zero_fill}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None, gao_style=False):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size, "gao_style":gao_style}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
@@ -174,13 +174,13 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
-    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,cnn_zero_fill=False):
+    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,gao_style=False):
         if model_name is None:
             model_name = os.path.basename(checkpoint)
         stuff = torch.load(checkpoint,map_location=self.device)
         model = get_pre_defined(model_identifier,stuff["args"]).to(self.device)
         model.load_state_dict(stuff["state_dict"])
-        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,cnn_zero_fill=cnn_zero_fill)
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,gao_style=False)
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
         if log_sgfs:
@@ -219,7 +219,8 @@ class Elo_handler():
 
                     while len(games)>0:
                         if self.players[current_player]["cnn"]:
-                            datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],flip=self.players[current_player]["cnn_zero_fill"]) for game in games]
+                            f = game.board.to_gao_input_planes if self.players[current_player]["gao_style"] else game.board.to_input_planes 
+                            datas = [f(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
                             batch = torch.stack(datas)
                         else:
                             datas = [convert_node_switching_game(game.view,global_input_properties=[game.view.gp["m"]], need_backmap=True,old_style=True) for game in games]
@@ -234,14 +235,18 @@ class Elo_handler():
                                 actions = [game.board.board_index_to_vertex_index[action] for game,action in zip(games,board_actions)]
                             else:
                                 if self.players[current_player]["cnn"]:
-                                    action_values = downsample_cnn_outputs(self.players[current_player]["model"].forward(batch.to(self.device)),self.size).to(self.device)
+                                    down_func = downsample_gao_outputs if self.players[current_player]["gao_style"] else downsample_cnn_outputs 
+                                    action_values = down_func(self.players[current_player]["model"].forward(batch.to(self.device)),self.size).to(self.device)
                                     if temperature == 0:
-                                        mask = downsample_cnn_outputs(torch.logical_or(batch[:,0].reshape(batch.shape[0],-1).bool(),batch[:,1].reshape(batch.shape[0],-1).bool()),self.size)
+                                        mask = down_func(torch.logical_or(batch[:,0].reshape(batch.shape[0],-1).bool(),batch[:,1].reshape(batch.shape[0],-1).bool()),self.size)
                                         action_values[mask] = -5 # Exclude occupied squares
                                         actions = torch.argmax(action_values,dim=1)
                                     else:
                                         raise NotImplementedError()
+                                    before_actions = actions
                                     actions = [game.board.board_index_to_vertex_index[a.item()] for game,a in zip(games,actions)]
+                                    print(before_actions,actions)
+                                    print(maker)
 
                                 else:
                                     action_values = self.players[current_player]["model"].simple_forward(batch.to(self.device)).to(self.device)
@@ -294,7 +299,7 @@ class Elo_handler():
                                     print(games[i].board.draw_me())
                                     print(games[i].who_won())
                                     games[i].draw_me()
-                                    print(action)
+                                    print("action:",action)
                                     print(games[i].view.num_vertices())
                                     print(games[i].view.vertex_index.copy().fa)
                                     raise Exception(e)
