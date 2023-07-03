@@ -180,7 +180,7 @@ class Elo_handler():
         stuff = torch.load(checkpoint,map_location=self.device)
         model = get_pre_defined(model_identifier,stuff["args"]).to(self.device)
         model.load_state_dict(stuff["state_dict"])
-        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,gao_style=False)
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,gao_style=gao_style)
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
         if log_sgfs:

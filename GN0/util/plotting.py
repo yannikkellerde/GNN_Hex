@@ -67,7 +67,8 @@ def plot_transfer_elos(size=7):
         end = 14
     elif size==11:
         e.load_a_model_player(get_highest_model_path("rainbow_gnn_11x11/11"),"modern_two_headed","gnn")
-        e.load_a_model_player(get_highest_model_path("rainbow_cnn_11x11/11"),"unet","cnn",cnn_mode=True,cnn_hex_size=None)
+        # e.load_a_model_player(get_highest_model_path("rainbow_cnn_11x11/11"),"unet","cnn",cnn_mode=True,cnn_hex_size=None)
+        e.load_a_model_player(get_highest_model_path("astral-haze-209/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True)
         start = 8
         end = 16
     else:
@@ -137,7 +138,7 @@ def plot_first_move_plot(model_identifier,model_path,cnn_mode,hex_size):
 
 if __name__ == "__main__":
     plot_transfer_elos(11)
-    plot_transfer_elos(7)
+    # plot_transfer_elos(7)
     # plot_first_move_plot("modern_two_headed","../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt",False,7)
     # plot_first_move_plot("fully_conv","../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_28790784.pt",True,7)
     # elo_plot_curriculum()
