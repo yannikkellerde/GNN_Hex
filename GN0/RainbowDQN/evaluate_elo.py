@@ -56,8 +56,8 @@ class Elo_handler():
         self.empty_model2 = empty_model_func().to(self.device)
         self.empty_model2.eval()
 
-    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None, gao_style=False):
-        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size, "gao_style":gao_style}
+    def add_player(self,name,model=None,set_rating=None,simple=False,rating_fixed=False,episode_number=None,checkpoint=None,can_join_roundrobin=True,uses_empty_model=True,cnn=False,cnn_hex_size=None, gao_style=False,border_fill=True):
+        self.players[name] = {"model":model,"simple":simple,"rating":set_rating,"rating_fixed":rating_fixed,"episode_number":episode_number,"checkpoint":checkpoint,"can_join_roundrobin":can_join_roundrobin,"uses_empty_model":uses_empty_model,"cnn":cnn, "cnn_hex_size":cnn_hex_size, "gao_style":gao_style,"border_fill":border_fill}
 
     def roundrobin(self,num_players,num_games_per_match,must_include_players=[],score_as_n_games=20):
         ok_players = [x for x in self.players if self.players[x]["can_join_roundrobin"]]
@@ -174,13 +174,13 @@ class Elo_handler():
     def get_rating(self,player_name):
         return self.players[player_name]["rating"]
 
-    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,gao_style=False):
+    def load_a_model_player(self,checkpoint,model_identifier,model_name=None,cnn_mode=False,cnn_hex_size=None,gao_style=False,border_fill=True):
         if model_name is None:
             model_name = os.path.basename(checkpoint)
         stuff = torch.load(checkpoint,map_location=self.device)
         model = get_pre_defined(model_identifier,stuff["args"]).to(self.device)
         model.load_state_dict(stuff["state_dict"])
-        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,gao_style=gao_style)
+        self.add_player(name=model_name,model=model,simple=False,uses_empty_model=False,cnn=cnn_mode,cnn_hex_size=cnn_hex_size,gao_style=gao_style,border_fill=border_fill)
 
     def play_some_games(self,maker,breaker,num_games,temperature,random_first_move=False,progress=False,log_sgfs=False):
         if log_sgfs:
@@ -220,7 +220,7 @@ class Elo_handler():
                     while len(games)>0:
                         if self.players[current_player]["cnn"]:
                             if self.players[current_player]["gao_style"]:
-                                datas = [game.board.to_gao_input_planes(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
+                                datas = [game.board.to_gao_input_planes(flip=False,border_fill=self.players[current_player]["border_fill"]) for game in games]
                             else:
                                 datas = [game.board.to_input_planes(self.players[current_player]["cnn_hex_size"],flip=False) for game in games]
                             batch = torch.stack(datas)

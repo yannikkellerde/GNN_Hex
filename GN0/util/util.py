@@ -14,13 +14,20 @@ from torch_scatter import gather_csr, scatter, segment_csr, scatter_add, scatter
 from collections import defaultdict
 
 def downsample_gao_outputs(q_values,target_hex_size):
+    if ((len(q_values.shape)>1 and q_values.shape[1] == target_hex_size)
+            or (len(q_values.shape)>1 and q_values.shape[1]==target_hex_size**2)):
+        return q_values.reshape(q_values.shape[0],-1)
+    if (len(q_values.shape)==1 and q_values.shape[0]==target_hex_size**2):
+        return q_values.flatten()
+
     if len(q_values.shape) == 1 and q_values.shape[0] == (target_hex_size+2)**2 or q_values.shape[1] == (target_hex_size+2)**2:
         if len(q_values.shape) == 1:
             q_values = q_values.reshape((target_hex_size+2,target_hex_size+2))
         else:
             q_values = q_values.reshape((-1,target_hex_size+2,target_hex_size+2))
     else:
-        assert q_values.shape[1] == target_hex_size+2
+        assert q_values.shape[1] == target_hex_size+2, f"{q_values.shape}"
+
     if len(q_values.shape) == 3:
         return q_values[:,1:-1,1:-1].reshape(q_values.shape[0],-1)
     elif len(q_values.shape) == 2:

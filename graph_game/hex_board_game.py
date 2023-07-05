@@ -49,7 +49,7 @@ class Hex_board(Abstract_board_game):
         new_board.board_index_to_vertex_index = self.board_index_to_vertex_index.copy()
         return new_board
 
-    def to_gao_input_planes(self,*args,**kwargs):
+    def to_gao_input_planes(self,do_border_fill=True,*args,**kwargs):
         red_plane_c = torch.tensor([1 if p=="r" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
         blue_plane_c = torch.tensor([1 if p=="b" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
         empty_plane_c = torch.tensor([1 if p=="f" else 0 for p in self.position],dtype=torch.float).reshape((self.size,self.size))
@@ -58,13 +58,18 @@ class Hex_board(Abstract_board_game):
         blue_plane = torch.zeros((self.size+2,self.size+2))
         empty_plane = torch.zeros((self.size+2,self.size+2))
 
-        red_plane[0,:] = 1
-        red_plane[-1,:] = 1
-        blue_plane[:,0] = 1
-        blue_plane[:,-1] = 1
-        red_plane[1:-1,1:-1] = red_plane_c 
-        blue_plane[1:-1,1:-1] = blue_plane_c 
-        empty_plane[1:-1,1:-1] = empty_plane_c
+        if do_border_fill:
+            red_plane[0,:] = 1
+            red_plane[-1,:] = 1
+            blue_plane[:,0] = 1
+            blue_plane[:,-1] = 1
+            red_plane[1:-1,1:-1] = red_plane_c 
+            blue_plane[1:-1,1:-1] = blue_plane_c 
+            empty_plane[1:-1,1:-1] = empty_plane_c
+        else:
+            red_plane = red_plane_c
+            blue_plane = blue_plane_c
+            empty_plane = empty_plane_c
 
         if self.game.view.gp["m"]:
             onturn_plane = torch.ones_like(red_plane)
@@ -74,7 +79,7 @@ class Hex_board(Abstract_board_game):
         return torch.stack((red_plane,blue_plane,onturn_plane,empty_plane))
         
 
-    def to_input_planes(self,hex_size=None,zero_fill=False,flip=False):
+    def to_input_planes(self,hex_size=None,zero_fill=False,flip=False,**kwargs):
         if hex_size is None:
             hex_size = self.size
         assert hex_size>=self.size
