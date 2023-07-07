@@ -11,7 +11,7 @@
 
 I found [this](https://ieeexplore.ieee.org/abstract/document/10108022) very fresh (25 April 2023) publication that tried using GNN for a Risk-like board game. Their results seem very non-convincing. Just using existing GNN architectures for board games seems to be inherently problematic.
 
-** I am worried that the current results are not enough for a publication at a major conference :(. Additonally, the [Risk like](https://ieeexplore.ieee.org/abstract/document/10108022) paper seems to suggest that typical GNN architectures for board games might be a dead end.**
+**I am worried that the current results are not enough for a publication at a major conference :(. Additonally, the [Risk like](https://ieeexplore.ieee.org/abstract/document/10108022) paper seems to suggest that typical GNN architectures for board games might be a dead end.**
 
 ## Where do we go from here?
 * More extensive experiments with Gao architecture, supervised (imitation) learning, fair long range dependency test etc. Does Gao still overfit more that GNN on supervised learning?
