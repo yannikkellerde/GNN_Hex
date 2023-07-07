@@ -42,21 +42,21 @@ def param_counting():
     # cnn_model = get_pre_defined("fully_conv",args=args)
     gao_model = get_pre_defined("gao")
     print("GAO parameters",count_model_parameters(gao_model))
-    PV_CNN = get_current_model(net_type="PV_CNN")
-    print("PV_CNN parameters",count_model_parameters(PV_CNN))
-    PV_GNN = get_current_model(net_type="SAGE",hidden_channels=110,hidden_layers=15)
-    print("PV_GNN parameters",count_model_parameters(PV_GNN))
+    # PV_CNN = get_current_model(net_type="PV_CNN")
+    # print("PV_CNN parameters",count_model_parameters(PV_CNN))
+    # PV_GNN = get_current_model(net_type="SAGE",hidden_channels=110,hidden_layers=15)
+    # print("PV_GNN parameters",count_model_parameters(PV_GNN))
     args = Namespace(**{
         "num_layers":15,
-        "hidden_channels":110,
+        "hidden_channels":68,
         "num_head_layers":2,
         "noisy_dqn":False,
         "noisy_sigma0":False,
         "norm":False
         }
     )
-    # gnn_model = get_pre_defined("modern_two_headed",args)
-    # print("Q GNN parameters",count_model_parameters(gnn_model))
+    gnn_model = get_pre_defined("modern_two_headed",args)
+    print("Q GNN parameters",count_model_parameters(gnn_model))
     # policy_value_model = get_current_model()
     # unet_model = Unet(3)
     # print("CNN parameters",count_model_parameters(cnn_model))
