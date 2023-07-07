@@ -71,7 +71,7 @@ def plot_transfer_elos(size=7):
         e.load_a_model_player(get_highest_model_path("astral-haze-209/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True,border_fill=True)
         # e.load_a_model_player(get_highest_model_path("absurd-paper-213/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True, border_fill=False)
         start = 8
-        end = 16
+        end = 20
     else:
         raise ValueError("size unknown")
     e.add_player(name="random",model=random_player,set_rating=0,uses_empty_model=False,simple=True,rating_fixed=True)
