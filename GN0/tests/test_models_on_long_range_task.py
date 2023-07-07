@@ -4,6 +4,7 @@ from GN0.models import get_pre_defined
 from GN0.util.convert_graph import convert_node_switching_game
 from graph_game.hex_gui import advantage_model_to_evaluater
 import matplotlib.pyplot as plt
+from GN0.util.util import downsample_cnn_outputs, downsample_gao_outputs
 import os
 
 basepath = os.path.abspath(os.path.dirname(__file__))
@@ -16,13 +17,18 @@ def load_a_model(checkpoint,model_identifier):
     model.load_state_dict(stuff["state_dict"])
     return model
 
-def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=False):
+def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=False,gao_mode=False):
     fails = []
     def get_board_outputs():
         if cnn_mode:
-            model_input = game.board.to_input_planes(flip=flip).unsqueeze(0)
-            board_outputs = model(model_input)
-            mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
+            if gao_mode:
+                model_input = game.board.to_gao_input_planes().unsqueeze(0)
+                board_outputs = downsample_gao_outputs(model(model_input).reshape(model_input.shape[0],-1),hex_size)
+                mask = downsample_gao_outputs(torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool()),hex_size)
+            else:
+                model_input = game.board.to_input_planes(flip=flip).unsqueeze(0)
+                board_outputs = model(model_input)
+                mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
             board_outputs[mask] = -5
             board_outputs = board_outputs.squeeze()
         else:
@@ -90,10 +96,12 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=
 
 
 if __name__ == "__main__":
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/astral-haze-209/11/checkpoint_18294144.pt"),"gao")
+    print("Mistakes by gao_baseline",test_on_long_range_tasks(model,True,6,25,False,gao_mode=True))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
-    print("Mistakes by FCN-S",test_on_long_range_tasks(model,False,8,25,False))
+    print("Mistakes by GNN-S",test_on_long_range_tasks(model,False,8,25,False))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn_7x7_fully_conv/7/checkpoint_37488000.pt"),"fully_conv")
-    print("\nMistakes by GNN-S",test_on_long_range_tasks(model,True,8,25,True))
+    print("\nMistakes by FCN-S",test_on_long_range_tasks(model,True,8,25,True))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_cnn_11x11/11/checkpoint_65978880.pt"),"unet")
     print("\nMistakes by FCN-L",test_on_long_range_tasks(model,True,8,25,False))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/rainbow_gnn_11x11/11/checkpoint_44085888.pt"),"modern_two_headed")

@@ -68,8 +68,8 @@ def plot_transfer_elos(size=7):
     elif size==11:
         e.load_a_model_player(get_highest_model_path("rainbow_gnn_11x11/11"),"modern_two_headed","gnn")
         # e.load_a_model_player(get_highest_model_path("rainbow_cnn_11x11/11"),"unet","cnn",cnn_mode=True,cnn_hex_size=None)
-        # e.load_a_model_player(get_highest_model_path("astral-haze-209/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True)
-        e.load_a_model_player(get_highest_model_path("absurd-paper-213/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True, border_fill=False)
+        e.load_a_model_player(get_highest_model_path("astral-haze-209/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True,border_fill=True)
+        # e.load_a_model_player(get_highest_model_path("absurd-paper-213/11"),"gao","cnn",cnn_mode=True,cnn_hex_size=None,gao_style=True, border_fill=False)
         start = 8
         end = 16
     else:

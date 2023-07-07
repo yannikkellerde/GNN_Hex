@@ -10,6 +10,7 @@ import numpy as np
 from graph_game.graph_tools_games import Hex_game
 from graph_game.shannon_node_switching_game import Node_switching_game
 from GN0.util.convert_graph import convert_node_switching_game
+from GN0.util.util import downsample_cnn_outputs, downsample_gao_outputs
 import torch
 import random
 import time
@@ -66,7 +67,7 @@ def make_responding_evaluater(eval_func):
         return vprop
     return evaluater
 
-def playerify_advantage_model(model,cnn_mode=False):
+def playerify_advantage_model(model,cnn_mode=False,gao_mode=False):
     def model_player(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
@@ -74,9 +75,14 @@ def playerify_advantage_model(model,cnn_mode=False):
             if respond_to is not None:
                 plt.title("Last move was dead")
             if cnn_mode:
-                model_input = game.board.to_input_planes().unsqueeze(0)
-                board_outputs = model(model_input)
-                mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
+                if gao_mode:
+                    model_input = game.board.to_gao_input_planes().unsqueeze(0)
+                    board_outputs = downsample_gao_outputs(model(model_input).reshape(model_input.shape[0],-1),game.board.size)
+                    mask = downsample_gao_outputs(torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool()),game.board.size)
+                else:
+                    model_input = game.board.to_input_planes().unsqueeze(0)
+                    board_outputs = model(model_input)
+                    mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
                 board_outputs[mask] = -5
                 board_outputs = board_outputs.squeeze()
                 board_move = torch.argmax(board_outputs).item()
@@ -103,7 +109,7 @@ def playerify_maker_breaker(maker,breaker):
             return player_breaker(game)
     return maker_breaker_player
 
-def advantage_model_to_evaluater(model,device="cpu",cnn_mode=False):
+def advantage_model_to_evaluater(model,device="cpu",cnn_mode=False,gao_mode=False):
     def evaluater(game:Node_switching_game,respond_to=None):
         if respond_to is not None and game.graph.vp.f[respond_to]:
             respond_to = None
@@ -111,9 +117,14 @@ def advantage_model_to_evaluater(model,device="cpu",cnn_mode=False):
             if respond_to is not None:
                 plt.title("Last move was dead")
             if cnn_mode:
-                model_input = game.board.to_input_planes().unsqueeze(0)
-                board_outputs = model(model_input)
-                mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
+                if gao_mode:
+                    model_input = game.board.to_gao_input_planes().unsqueeze(0)
+                    board_outputs = downsample_gao_outputs(model(model_input).reshape(model_input.shape[0],-1),game.board.size)
+                    mask = downsample_gao_outputs(torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool()),game.board.size)
+                else:
+                    model_input = game.board.to_input_planes().unsqueeze(0)
+                    board_outputs = model(model_input)
+                    mask = torch.logical_or(model_input[:,0].reshape(model_input.shape[0],-1).bool(),model_input[:,1].reshape(model_input.shape[0],-1).bool())
                 board_outputs[mask] = -5
                 board_outputs = board_outputs.squeeze()
                 vprop = game.view.new_vertex_property("float")

@@ -91,6 +91,7 @@ def _get_net(ctx, train_config, pt_filename):
         net = Unet(3)
     elif train_config.net_type == "cnn":
         net = get_current_model("PV_CNN")
+    elif train_config.net_type == "gao":
     else:
         net=get_current_model(net_type=train_config.net_type,hidden_channels=train_config.hidden_channels,hidden_layers=train_config.hidden_layers,policy_layers=train_config.policy_layers,value_layers=train_config.value_layers,in_channels=train_config.in_channels,swap_allowed=train_config.swap_allowed,norm=train_config.norm)
     net.to(ctx)
