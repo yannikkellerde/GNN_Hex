@@ -6,10 +6,12 @@
     + Otherwise, using Unet for a board game, was probably a stupid idea.
 * The long-range dependency advantage of GNN does seem to hold up even against the Gao architecture. However, a fair comparison controlling for training time and number of parameters is still TODO.
 * Current evaluation was done for Q-learning. Imitation learning is still TODO.
+* Board size transfer comparison up to very large board sizes (20) seems to suggest that there is still some GNN advantage for transfer to much larger boards. However, I was kind of shocked how quick and easy it is to train a strong CNN Hex agent with the Gao architecture.
 
-** Right now, I feel like that the current results are not enough for a publication at a major conference :(.**
 
 I found [this](https://ieeexplore.ieee.org/abstract/document/10108022) very fresh (25 April 2023) publication that tried using GNN for a Risk-like board game. Their results seem very non-convincing. Just using existing GNN architectures for board games seems to be inherently problematic.
+
+** I am worried that the current results are not enough for a publication at a major conference :(. Additonally, the [Risk like](https://ieeexplore.ieee.org/abstract/document/10108022) paper seems to suggest that typical GNN architectures for board games might be a dead end.**
 
 ## Where do we go from here?
 * More extensive experiments with Gao architecture, supervised (imitation) learning, fair long range dependency test etc. Does Gao still overfit more that GNN on supervised learning?
