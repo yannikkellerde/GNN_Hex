@@ -175,7 +175,12 @@ void TrainDataExporter::save_planes(const Node_switching_game *pos)
 	vector<torch::Tensor> tens;
 	speedcheck.track_next("convert_graph");
 	if (Options["CNN_Mode"]){
-		tens = pos->convert_planes(device);
+		if (Options["Gao_Mode"]){
+			tens = pos->convert_planes_gao(device);
+		}
+		else{
+			tens = pos->convert_planes(device);
+		}
 	}
 	else{
 		tens = pos->convert_graph(device);

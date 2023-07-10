@@ -138,6 +138,7 @@ class MohexSelfplay():
         infos_found = {}
         while True:
             line = proc.stdout.readline()
+            print(line)
             line = line.decode("utf-8")  # bytes to string
             # if len(line)>0:
             #     print(line)
@@ -163,5 +164,5 @@ class MohexSelfplay():
         # sleep for 1 sec to ensure the process exited
 
 if __name__ == "__main__":
-    gen = MohexSelfplay(binary_path="mohex",hex_size=11,max_games=1000,num_parallel_games=15)
+    gen = MohexSelfplay(binary_path="mohex",hex_size=11,max_games=1000,num_parallel_games=1)
     gen.play_n_games(10000,random_first_n_moves=3,safety_writes_every=500)
