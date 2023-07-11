@@ -4,6 +4,8 @@ equiv_position/
 venv/
 __pycache__/
 solver.log
+detect_cuda_compute_capabilities.cu
+detect_cuda_version.cc
 **/CMakeFiles/**
 *.txt
 *.pdf

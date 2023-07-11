@@ -96,6 +96,13 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=
 
 
 if __name__ == "__main__":
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/cnn20/20/checkpoint_42286464.pt"),"gao")
+    mistakes = test_on_long_range_tasks(model,True,6,25,False,gao_mode=True)
+    print("Mistakes by gao20",mistakes,len(mistakes))
+    model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn20/20/checkpoint_25191936.pt"),"modern_two_headed")
+    mistakes = test_on_long_range_tasks(model,False,6,25,False)
+    print("Mistakes by GNN20",mistakes,len(mistakes))
+    exit()
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/astral-haze-209/11/checkpoint_18294144.pt"),"gao")
     print("Mistakes by gao_baseline",test_on_long_range_tasks(model,True,6,25,False,gao_mode=True))
     model = load_a_model(os.path.join(basepath,"../RainbowDQN/Rainbow/checkpoints/gnn_7x7/7/checkpoint_14395392.pt"),"modern_two_headed")
