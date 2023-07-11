@@ -753,16 +753,16 @@ std::vector<torch::Tensor> Node_switching_game::convert_planes_gao(torch::Device
 	torch::Tensor planes = torch::zeros({4,(board_size)*(board_size)},options_float);
 	planes.index_put_({0,torch::tensor(board_moves_red)},1);
 	planes.index_put_({1,torch::tensor(board_moves_blue)},1);
-	planes.index_put_({3,torch::logical_not(torch::logical_or(planes[0],planes[1]))},1);
-	torch::reshape(planes,{4,board_size,board_size});
+	planes.index_put_({3},torch::logical_not(torch::logical_or(planes[0],planes[1])));
+	planes = torch::reshape(planes,{4,board_size,board_size});
 	torch::Tensor final_planes = torch::zeros({4,board_size+2,board_size+2},options_float);
 	final_planes.index_put_({0,0},1);
 	final_planes.index_put_({0,board_size+1},1);
 	final_planes.index_put_({1,Slice(),0},1);
 	final_planes.index_put_({1,Slice(),board_size+1},1);
-	final_planes.index_put_({0,Slice(1,board_size+1),Slice(1,board_size+1)},planes[0]);
-	final_planes.index_put_({1,Slice(1,board_size+1),Slice(1,board_size+1)},planes[1]);
-	final_planes.index_put_({3,Slice(1,board_size+1),Slice(1,board_size+1)},planes[3]);
+	final_planes.index_put_({0,Slice(1,board_size+1),Slice(1,board_size+1)},planes.index({0}));
+	final_planes.index_put_({1,Slice(1,board_size+1),Slice(1,board_size+1)},planes.index({1}));
+	final_planes.index_put_({3,Slice(1,board_size+1),Slice(1,board_size+1)},planes.index({3}));
 	
 	if (onturn==RED){
 		final_planes[2] = 1;
