@@ -37,8 +37,8 @@ using namespace std;
 
 void OptionsUCI::init(OptionsMap &o)
 {
-		o["CNN_Mode"]											 << Option(false);
-		o["Gao_Mode"]											 << Option(false);
+		o["CNN_Mode"]											 << Option(true);
+		o["Gao_Mode"]											 << Option(true);
 		o["Swap_Allowed"]									 << Option(false);
 		o["Hex_Size"]											 << Option(5,1,21);
 		o["Num_Parallel_Games"]						 << Option(128,1,2048);

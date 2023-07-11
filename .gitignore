@@ -4,6 +4,7 @@ equiv_position/
 venv/
 __pycache__/
 solver.log
+**/CMakeFiles/**
 *.txt
 *.pdf
 *.dot
