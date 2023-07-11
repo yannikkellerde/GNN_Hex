@@ -424,56 +424,37 @@ class ResBlock(torch.nn.Module):
     def forward(self,x):
         return self.block(x)+x
 
-class Softmax2d(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-    def forward(self,x:torch.Tensor):
-        y = x.reshape((x.shape[0],-1))
-        y = torch.softmax(y,1)
-        y = y.reshape(x.shape)
-        return y
 
 class Gao_baseline(torch.nn.Module):
     # http://webdocs.cs.ualberta.ca/~hayward/papers/transferable.pdf
-    def __init__(self,num_res_blocks=10,num_planes=4,batch_norm=True):
+    def __init__(self,board_size,num_res_blocks=10,num_planes=4,batch_norm=True):
         super().__init__()
         self.initial_conv = torch.nn.Conv2d(num_planes,32,3,padding="same")
         self.res_blocks = torch.nn.ModuleList()
         for _ in range(num_res_blocks):
             self.res_blocks.append(ResBlock(32,batch_norm=batch_norm))
 
-        self.q_head = torch.nn.Sequential(
-                torch.nn.Conv2d(32,1,1),
-                torch.nn.Tanh()
-        )
-
         self.v_head = torch.nn.Sequential(
                 torch.nn.Conv2d(32,1,1),
+                torch.nn.Flatten(),
+                torch.nn.Linear(board_size*board_size,1),
                 torch.nn.Tanh()
         )
 
         self.p_head = torch.nn.Sequential(
                 torch.nn.Conv2d(32,1,1),
-                Softmax2d()
+                torch.nn.Flatten(),
+                torch.nn.Softmax()
         )
 
     def forward(self,x,**kwargs):
-        return self.q(x)
-
-    def q(self,x,**kwargs):
         x = self.initial_conv(x)
         for block in self.res_blocks:
             x = block(x)
+        p = self.p_head(x)
+        v = self.v_head(x)
+        return p.reshape(p.shape[0],-1),v
 
-        q = self.q_head(x).squeeze(1)
-        return q
-
-    def p(self,x):
-        x = self.initial_conv(x)
-        for block in self.res_blocks:
-            x = block(x)
-
-        p = self.p_head(x).squeeze(1)
 
 class Unet(torch.nn.Module):
     def __init__(self,in_channels,starting_channels=9):

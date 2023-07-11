@@ -8,5 +8,7 @@
     + GNN trained 3 days on 20x20: 6 mistakes on board sizes 6 to 25
     + (old) GNN trained 21 hours on 11x11: 2 mistakes on board sizes 6 to 25
 
+* Imitation learning comparison is in the work.
+
 ## Misc
 Still waiting for my Masters thesis grade...

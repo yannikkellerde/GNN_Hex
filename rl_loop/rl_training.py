@@ -18,14 +18,14 @@ from rl_loop.train_config import TrainConfig, TrainObjects
 from rl_loop.dataset_loader import get_loader
 from rl_loop.train_util import get_metrics
 from rl_loop.trainer_agent_pytorch import TrainerAgentPytorch, load_torch_state, save_torch_state, get_context, export_as_script_module
-from GN0.torch_script_models import get_current_model, Unet
+from GN0.torch_script_models import get_current_model, Unet, Gao_baseline
 import torch
 from torch_geometric.loader import DataLoader
 import os
 import wandb
 
 
-def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name, in_memory_dataset=False, cnn_mode=False):
+def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_config: TrainConfig, model_contender_dir, model_name, in_memory_dataset=False, cnn_mode=False, hex_size=11):
     """
     Creates a new NN checkpoint in the model contender directory after training using the game files stored in the
      training directory
@@ -54,7 +54,7 @@ def update_network(nn_update_idx, pt_filename, trace_torch, main_config, train_c
 
     val_data = get_loader(train_config, dataset_type="val",cnn_mode=cnn_mode)
 
-    net = _get_net(ctx, train_config, pt_filename)
+    net = _get_net(ctx, train_config, pt_filename,hex_size)
     # wandb.watch(net,log_freq=5)
 
     train_objects.metrics = get_metrics(train_config)
@@ -83,7 +83,7 @@ def _export_net(trace_torch, net, prefix,
     if trace_torch:
         export_as_script_module(net,os.path.join(model_contender_dir,model_name+"_model.pt"))
 
-def _get_net(ctx, train_config, pt_filename):
+def _get_net(ctx, train_config, pt_filename,hex_size):
     """
     Loads the network object and weights.
     """
@@ -92,6 +92,7 @@ def _get_net(ctx, train_config, pt_filename):
     elif train_config.net_type == "cnn":
         net = get_current_model("PV_CNN")
     elif train_config.net_type == "gao":
+        net = Gao_baseline(hex_size,batch_norm=False)
     else:
         net=get_current_model(net_type=train_config.net_type,hidden_channels=train_config.hidden_channels,hidden_layers=train_config.hidden_layers,policy_layers=train_config.policy_layers,value_layers=train_config.value_layers,in_channels=train_config.in_channels,swap_allowed=train_config.swap_allowed,norm=train_config.norm)
     net.to(ctx)
