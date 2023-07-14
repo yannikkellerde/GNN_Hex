@@ -437,7 +437,7 @@ class Gao_baseline(torch.nn.Module):
         self.v_head = torch.nn.Sequential(
                 torch.nn.Conv2d(32,1,1),
                 torch.nn.Flatten(),
-                torch.nn.Linear(board_size*board_size,1),
+                torch.nn.Linear((board_size+2)*(board_size+2),1),
                 torch.nn.Tanh()
         )
 
@@ -447,7 +447,7 @@ class Gao_baseline(torch.nn.Module):
                 torch.nn.Softmax()
         )
 
-    def forward(self,x,**kwargs):
+    def forward(self,x):
         x = self.initial_conv(x)
         for block in self.res_blocks:
             x = block(x)

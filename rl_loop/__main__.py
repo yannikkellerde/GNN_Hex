@@ -58,7 +58,7 @@ class RLLoop:
         self.file_io = FileIO(orig_binary_name=self.rl_config.binary_name, binary_dir=self.rl_config.binary_dir, uci_variant=self.rl_config.uci_variant, framework=self.tc.framework, model_name=self.rl_config.model_name,device_id=args.device_id)
         if args.trainer:
             ctx = torch.device("cuda") if self.tc.context == "gpu" else torch.device("cpu")
-            self.starting_net = _get_net(ctx, self.tc, self.file_io.get_current_model_pt_file())
+            self.starting_net = _get_net(ctx, self.tc, self.file_io.get_current_model_pt_file(),hex_size=self.args.hex_size)
         self.binary_io = None
 
         if nb_arena_games % 2 == 1:
@@ -167,7 +167,7 @@ class RLLoop:
                 self.file_io.prepare_data_for_training(self.rl_config.rm_nb_files, self.rl_config.rm_fraction_for_selection,self.did_contender_win)
                 self.tc.device_id = self.args.device_id
                 logging.info("Start Training")
-                self.net = update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name, in_memory_dataset=self.args.in_memory_dataset,cnn_mode=self.args.cnn_mode)
+                self.net = update_network(self.nn_update_index,self.file_io.get_current_model_pt_file(),not self.args.no_trace_torch,main_config,self.tc,self.file_io.model_contender_dir,self.file_io.model_name, in_memory_dataset=self.args.in_memory_dataset,cnn_mode=self.args.cnn_mode, gao_mode=self.args.gao_mode, hex_size=self.args.hex_size)
 
                 self.file_io.move_training_logs(self.nn_update_index)
 
@@ -196,21 +196,21 @@ class RLLoop:
             self.current_binary_name = change_binary_name(self.file_io.binary_dir, self.current_binary_name,
                                                           self.rtpt._get_title(), self.nn_update_index)
             # self.initialize()
-            if self.did_contender_win:
-                self.initialize()
-                plt.cla()
-                if self.args.cnn_mode:
-                    fig = compute_and_plot_starting_eval(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
-                    logs["starting_policy"] = wandb.Image(fig)
-                    fig = compute_and_plot_swapmap(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
-                    logs["swapmap"] = wandb.Image(fig)
-                else:
-                    self.binary_io.generate_starting_eval_img()
-                    fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=6)
-                    logs["starting_policy"] = wandb.Image(fig)
-                    fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=6)
-                    logs["swapmap"] = wandb.Image(fig)
-                self.binary_io.stop_process()
+            # if self.did_contender_win:
+            #     self.initialize()
+            #     plt.cla()
+            #     if self.args.cnn_mode:
+            #         fig = compute_and_plot_starting_eval(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
+            #         logs["starting_policy"] = wandb.Image(fig)
+            #         fig = compute_and_plot_swapmap(self.args.hex_size,self.net,device=get_context(self.args.context,self.args.device_id))
+            #         logs["swapmap"] = wandb.Image(fig)
+            #     else:
+            #         self.binary_io.generate_starting_eval_img()
+            #         fig = show_eval_from_file("starting_eval.txt",colored="top3",fontsize=6)
+            #         logs["starting_policy"] = wandb.Image(fig)
+            #         fig = show_eval_from_file("swap_map.txt",colored=".5",fontsize=6)
+            #         logs["swapmap"] = wandb.Image(fig)
+            #    self.binary_io.stop_process()
             wandb.log(logs)
         else:
             time.sleep(10)
@@ -230,6 +230,8 @@ def parse_args(cmd_args: list):
                         help='Hex size to train on')
 
     parser.add_argument('--cnn_mode', type=parse_bool, default=False,
+                        help='Use with cnn')
+    parser.add_argument('--gao_mode', type=parse_bool, default=False,
                         help='Use with cnn')
     parser.add_argument('--context', type=str, default="gpu",
                         help='Computational device context to use. Possible values ["cpu", "gpu"]. (default: gpu)')

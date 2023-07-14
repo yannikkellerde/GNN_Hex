@@ -121,7 +121,7 @@ class TrainConfig:
     # weight decay
     wd: float = 1e-4
 
-    net_type = "cnn"
+    net_type = "gao"
     hidden_channels = 60
     hidden_layers = 15
     policy_layers = 2

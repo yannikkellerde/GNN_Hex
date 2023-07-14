@@ -30,6 +30,7 @@ from rl_loop.main_config import main_config
 from rl_loop.train_config import TrainConfig, TrainObjects
 from rl_loop.dataset_loader import load_pgn_dataset,get_loader
 from torch_geometric.data import Batch,DataLoader
+from GN0.util.util import downsample_gao_outputs
 
 
 class TrainerAgentPytorch:
@@ -43,7 +44,9 @@ class TrainerAgentPytorch:
         train_objects: TrainObjects,
         use_rtpt: bool,
         in_memory_dataset: bool = False,
-        cnn_mode: bool = False
+        cnn_mode: bool = False,
+        gao_mode: bool = False,
+        hex_size: int = 11
     ):
         """
         Class for training the neural network.
@@ -54,6 +57,8 @@ class TrainerAgentPytorch:
         :param use_rtpt: If True, an RTPT object will be created and modified within this class.
         """
         self.cnn_mode = cnn_mode
+        self.gao_mode = gao_mode
+        self.hex_size = hex_size
         self.tc = train_config
         self.to = train_objects
         if self.to.metrics is None:
@@ -195,7 +200,9 @@ class TrainerAgentPytorch:
             self._model,
             nb_batches=25,
             ctx=self._ctx,
-            cnn_mode=self.cnn_mode
+            cnn_mode=self.cnn_mode,
+            gao_mode=self.gao_mode,
+            hex_size=self.hex_size
         )
         val_metric_values = evaluate_metrics(
             self.to.metrics,
@@ -203,7 +210,9 @@ class TrainerAgentPytorch:
             self._model,
             nb_batches=None,
             ctx=self._ctx,
-            cnn_mode=self.cnn_mode
+            cnn_mode=self.cnn_mode,
+            gao_mode=self.gao_mode,
+            hex_size=self.hex_size
         )
         return train_metric_values, val_metric_values
 
@@ -215,6 +224,8 @@ class TrainerAgentPytorch:
         policy_label = policy_label.to(self._ctx)
         self.old_label = value_label
         policy_out,value_out = self._model(data)
+        if self.gao_mode:
+            policy_out=downsample_gao_outputs(policy_out,self.hex_size)
         # policy_out = policy_out.softmax(dim=1)
         # print(value_out)
         # print(value_out.shape,value_label.shape)
@@ -423,7 +434,7 @@ def reset_metrics(metrics):
     for metric in metrics.values():
         metric.reset()
 
-def evaluate_metrics_cnn(metrics, data_iterator, model, nb_batches, ctx):
+def evaluate_metrics_cnn(metrics, data_iterator, model, nb_batches, ctx, gao_mode=False, hex_size=11):
     reset_metrics(metrics)
     model.eval()  # set model to evaluation mode
     with torch.no_grad():  # operations inside don't track history
@@ -435,6 +446,8 @@ def evaluate_metrics_cnn(metrics, data_iterator, model, nb_batches, ctx):
 
             # policy_out,value_out,graph_indices,_ = model(batch.x,batch.edge_index,batch.batch,batch.ptr)
             policy_out,value_out = model(data)
+            if gao_mode:
+                policy_out = downsample_gao_outputs(policy_out,hex_size)
             assert not torch.isnan(policy_out).any()
             assert not torch.isnan(data).any()
             assert not torch.isnan(value_out).any()
@@ -464,8 +477,7 @@ def evaluate_metrics(*args,cnn_mode=False,**kwargs):
     else:
         return evaluate_metrics_gnn(*args,**kwargs)
 
-def evaluate_metrics_gnn(metrics, data_iterator, model, nb_batches, ctx, sparse_policy_label=False,
-                     apply_select_policy_from_plane=True, use_wdl=False, use_plys_to_end=False):
+def evaluate_metrics_gnn(metrics, data_iterator, model, nb_batches, ctx, **kwargs):
     """
     Runs inference of the network on a data_iterator object and evaluates the given metrics.
     The metric results are returned as a dictionary object.

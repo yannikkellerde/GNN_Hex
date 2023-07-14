@@ -3,7 +3,6 @@
 import numpy as np
 from math import sqrt
 import matplotlib.pyplot as plt
-from graph_tool.all import Graph,Vertex
 from typing import List, Optional
 import torch
 import torch._C
