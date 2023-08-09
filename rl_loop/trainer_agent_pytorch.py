@@ -354,6 +354,7 @@ def get_context(context: str, device_id: int):
 
 
 def load_torch_state(model: nn.Module, optimizer: Optimizer, path: str, device_id: int):
+    print(path)
     checkpoint = torch.load(path, map_location=f"cuda:{device_id}")
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

@@ -11,3 +11,5 @@
 ![](/images/wandb_plots/random_winrate.svg)
 
 * In Imitation learning, the Gao CNN architecture still overfits significantly more than the GNN, but less than the old CNN architecture.
+![](/images/imitate_gnn_vs_cnn.png)
+![](/images/imitate_train_gnn_vs_cnn.png)

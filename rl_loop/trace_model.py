@@ -5,10 +5,10 @@ import time
 import os
 
 if __name__ == "__main__":
-    # model=get_current_model(net_type=TrainConfig.net_type,hidden_channels=TrainConfig.hidden_channels,hidden_layers=TrainConfig.hidden_layers,policy_layers=TrainConfig.policy_layers,value_layers=TrainConfig.value_layers,in_channels=TrainConfig.in_channels,swap_allowed=TrainConfig.swap_allowed,norm=TrainConfig.norm)
+    model=get_current_model(net_type=TrainConfig.net_type,hidden_channels=TrainConfig.hidden_channels,hidden_layers=TrainConfig.hidden_layers,policy_layers=TrainConfig.policy_layers,value_layers=TrainConfig.value_layers,in_channels=TrainConfig.in_channels,swap_allowed=TrainConfig.swap_allowed,norm=TrainConfig.norm)
     # model = Unet(3)
     # model = get_current_model("PV_CNN")
-    model = Gao_baseline(11,batch_norm=False)
+    # model = Gao_baseline(11,batch_norm=False)
     traced = torch.jit.script(model)
     path = "data/RL/model/HexAra/torch_script_model.pt"
     # path = "rl_loop/testmodel.pt"
