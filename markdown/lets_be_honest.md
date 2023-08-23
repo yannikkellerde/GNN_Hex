@@ -10,3 +10,7 @@
 * Suggestion that would acutally help me around my writing blockade is to change the title to something like *GNNs do not beat CNNs in Hex despite advantages on long range dependencies*, make it a pure arxiv paper and include results like the one showing that the Gao CNN cushes the GNN on every board size after training on one.
 * I know that, as a phd student, you face somewhat different pressure to publish than me, but I can not deliver you any results that would make a major conference publication.
 * I would be kind of anxious about meeting with Kristian at that state of the project, I don't think he'll be too happy about the state of things.
+
+![](/images/oh_well.svg)
+![](/images/imitate_cnn_better.png)
+![](/images/imitate_cnn_better2.png)

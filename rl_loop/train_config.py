@@ -64,7 +64,7 @@ class TrainConfig:
 
     # # optimization parameters
     optimizer_name: str = "adam"
-    lr: float = 0.0001
+    lr: float = 0.001
     max_momentum: float = 0.95
     min_momentum: float = 0.8
     # stop training as soon as max_spikes has been reached
