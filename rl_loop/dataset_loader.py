@@ -57,6 +57,7 @@ def load_pgn_dataset(
                         % (len(data_folders), part_id))
 
     pgn_dataset = data_folders[part_id]
+    print(f"loading {pgn_dataset}")
     if verbose:
         logging.debug("loading: %s ...", pgn_dataset)
         logging.debug("")
@@ -83,6 +84,7 @@ def load_pgn_dataset(
         return dataset
     else:
         data_list = []
+        print(out)
         for i in range(len(out["node_features"])):
             # if out["node_features"][i][0,2] == 1:   # Test, remove later
             data_list.append(Data(x=out["node_features"][i], edge_index=out["edge_indices"][i], y=out["value"][i], policy=out["policy"][i]))
