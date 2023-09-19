@@ -286,6 +286,8 @@ class MLP(torch.nn.Module):
 class SAGE_torch_script(torch.nn.Module):
     def __init__(self,hidden_channels,hidden_layers,policy_layers,value_layers,in_channels=3,swap_allowed=False,norm=None,**gnn_kwargs):
         super().__init__()
+        self.final_conv_acts = None
+        self.final_conv_grad = None
         self.swap_allowed = swap_allowed
         self.gnn = ModifiedBaseNet(in_channels=in_channels,norm=None if norm is None else norm(hidden_channels),hidden_channels=hidden_channels,num_layers=hidden_layers,conv_class=ModifiedSAGEConv,**gnn_kwargs)
 
@@ -304,11 +306,16 @@ class SAGE_torch_script(torch.nn.Module):
 
         self.value_activation = torch.nn.Tanh()
 
+    def activations_hook(self, grad):
+        self.final_conv_grads = grad
+
     def forward(self,x:Tensor,edge_index:Tensor,graph_indices:Tensor,batch_ptr:Tensor):
         assert ((batch_ptr[1:]-batch_ptr[:-1])>2).all() # With only 2 nodes left, someone must have won before
         embeds = self.gnn(x,edge_index)
         if self.before_head_norm is not None:
             embeds = self.before_head_norm(embeds)
+        self.final_conv_acts = embeds
+        self.final_conv_acts.register_hook(self.activations_hook)
 
         pi = self.my_modules["policy_head"](embeds,edge_index)
         value_embeds = self.my_modules["value_head"](embeds,edge_index)

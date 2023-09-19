@@ -30,6 +30,8 @@ class Gao_baseline(torch.nn.Module):
     def __init__(self,num_res_blocks=10,num_planes=4,batch_norm=True):
         super().__init__()
         self.initial_conv = torch.nn.Conv2d(num_planes,32,3,padding="same")
+        self.final_conv_acts = None
+        self.final_conv_grads = None
         self.res_blocks = torch.nn.ModuleList()
         for _ in range(num_res_blocks):
             self.res_blocks.append(ResBlock(32,batch_norm=batch_norm))
@@ -43,6 +45,9 @@ class Gao_baseline(torch.nn.Module):
                 torch.nn.Conv2d(32,1,1),
                 Softmax2d()
         )
+
+    def activations_hook(self, grad):
+        self.final_conv_grads = grad
 
     def forward(self,x,**kwargs):
         return self.q(x)
@@ -58,6 +63,9 @@ class Gao_baseline(torch.nn.Module):
         x = self.initial_conv(x)
         for block in self.res_blocks:
             x = block(x)
+
+        self.final_conv_acts = x
+        self.final_conv_acts.register_hook(self.activations_hook)
 
         q = self.q_head(x).squeeze(1)
         return q

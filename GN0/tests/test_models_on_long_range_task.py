@@ -17,6 +17,18 @@ def load_a_model(checkpoint,model_identifier):
     model.load_state_dict(stuff["state_dict"])
     return model
 
+def fill_game_with_long_range_position(game,hex_size,defender_color):
+        md = defender_color=="m"
+        attacker_color = "m" if defender_color == "b" else "b"
+        for i in range(hex_size):
+            game.make_move(game.board.board_index_to_vertex[i+hex_size if md else hex_size*i+1],force_color=defender_color,remove_dead_and_captured=False)
+            if i > 1:
+                game.make_move(game.board.board_index_to_vertex[i*hex_size if md else i],force_color=attacker_color,remove_dead_and_captured=False)
+                game.make_move(game.board.board_index_to_vertex[i*hex_size+hex_size-1 if md else i+(hex_size-1)*hex_size],force_color=attacker_color,remove_dead_and_captured=False)
+            if i!=0 and i!=hex_size-1:
+                game.make_move(game.board.board_index_to_vertex[i if md else hex_size*i],force_color=attacker_color,remove_dead_and_captured=False)
+        game.view.gp["m"] = defender_color=="m"
+
 def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=False,gao_mode=False):
     fails = []
     def get_board_outputs():
@@ -39,24 +51,14 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=
                     board_outputs[game.board.vertex_index_to_board_index[vertex]] = vprop[vertex]
         return board_outputs
 
-    def fill_game_with_long_range_position(hex_size,defender_color):
-        md = defender_color=="m"
-        attacker_color = "m" if defender_color == "b" else "b"
-        for i in range(hex_size):
-            game.make_move(game.board.board_index_to_vertex[i+hex_size if md else hex_size*i+1],force_color=defender_color,remove_dead_and_captured=False)
-            if i > 1:
-                game.make_move(game.board.board_index_to_vertex[i*hex_size if md else i],force_color=attacker_color,remove_dead_and_captured=False)
-                game.make_move(game.board.board_index_to_vertex[i*hex_size+hex_size-1 if md else i+(hex_size-1)*hex_size],force_color=attacker_color,remove_dead_and_captured=False)
-            if i!=0 and i!=hex_size-1:
-                game.make_move(game.board.board_index_to_vertex[i if md else hex_size*i],force_color=attacker_color,remove_dead_and_captured=False)
-        game.view.gp["m"] = defender_color=="m"
+    
 
     if not cnn_mode:
         evaluater = advantage_model_to_evaluater(model)
     for hex_size in range(min_hex_size,max_hex_size+1):
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
-        fill_game_with_long_range_position(hex_size,"m")
+        fill_game_with_long_range_position(game,hex_size,"m")
         # plt.cla()
         # game.board.matplotlib_me()
         # plt.savefig(f"../../images/long_range_patterns/red_negative_{hex_size}.svg")
@@ -74,7 +76,7 @@ def test_on_long_range_tasks(model,cnn_mode,min_hex_size=5,max_hex_size=13,flip=
 
         game = Hex_game(hex_size)
         game.board_callback = game.board.graph_callback
-        fill_game_with_long_range_position(hex_size,"b")
+        fill_game_with_long_range_position(game,hex_size,"b")
         # plt.cla()
         # game.board.matplotlib_me()
         # plt.savefig(f"../../images/long_range_patterns/blue_negative_{hex_size}.svg")

@@ -386,7 +386,7 @@ class Node_switching_game(Abstract_graph_game):
 
 
 
-    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None,decimal_places=0,layout="grid"):
+    def draw_me(self,fname="node_switching.pdf",vprop1=None,vprop2=None,vprop3=None,decimal_places=0,layout="grid"):
         """Draw the state of the graph and save it into a pdf file.
 
         Args:
@@ -422,7 +422,14 @@ class Node_switching_game(Abstract_graph_game):
         fill_color = self.view.new_vertex_property("vector<float>")
         shape = self.view.new_vertex_property("string")
         size = self.view.new_vertex_property("int")
+        halo = self.view.new_vertex_property("bool")
+        halo_color = self.view.new_vertex_property("vector<float>")
+        halo_size = self.view.new_vertex_property("double")
         for vertex in self.view.vertices():
+            if vprop3 is not None:
+                halo[vertex] = True
+                halo_color[vertex] = [0., 0., 1., vprop3[vertex]]
+                halo_size[vertex] = 1+vprop3[vertex]
             if vertex in self.terminals:
                 shape[vertex] = "circle"
                 fill_color[vertex] = (1,0,0,1)
@@ -431,7 +438,7 @@ class Node_switching_game(Abstract_graph_game):
                 shape[vertex] = "hexagon"
                 fill_color[vertex] = (0,0,0,1)
                 size[vertex] = 15
-        vprops = {"fill_color":fill_color,"shape":shape,"size":size}
+        vprops = {"fill_color":fill_color,"shape":shape,"size":size, "halo":halo,"halo_color":halo_color,"halo_size":halo_size}
         if layout=="grid" and hasattr(self,"board") and self.board is not None:
             layout = self.board.get_grid_layout()
         else:

@@ -257,6 +257,7 @@ def cachify_gnn(gnn:Type[BasicGNN]):
                 norm.mean_cache = mean_cache[i].to(norm.weight.device)
                 norm.var_cache = var_cache[i].to(norm.weight.device)
 
+
         def forward(self,x: Tensor,edge_index: Adj,*,edge_weight: OptTensor = None,edge_attr: OptTensor = None,set_cache: bool = False) -> Tensor:
             if set_cache and self.cached_norm:
                 self.has_cache = True
@@ -487,6 +488,8 @@ class DuellingTwoHeaded(torch.nn.Module):
         self.advantage_activation = Tanh()
         self.maker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
         self.breaker_head = advantage_head(in_channels=gnn_kwargs["hidden_channels"],hidden_channels=gnn_kwargs["hidden_channels"],out_channels=1,**head_kwargs)
+        self.final_conv_acts = None
+        self.final_conv_grad = None
 
     def grow_depth(self,additional_layers):
         self.gnn.grow_depth(additional_layers)
@@ -528,6 +531,9 @@ class DuellingTwoHeaded(torch.nn.Module):
             if args[ind] is not None:
                 self.breaker_head.import_norm_cache(*args[ind])
 
+    def activations_hook(self, grad):
+        self.final_conv_grads = grad
+
     def forward(self,x:Tensor,edge_index:Adj,graph_indices:Optional[Tensor]=None,ptr:Optional[Tensor]=None,set_cache:bool=False,advantages_only=False,seperate=False) -> Union[Tensor,Tuple[Tensor,Tensor]]:
         assert torch.all(x[:,2] == x[0,2])
         is_maker = x[0,2]
@@ -543,6 +549,9 @@ class DuellingTwoHeaded(torch.nn.Module):
 
         if self.after_embed_norm is not None:
             embeds = self.after_embed_norm(embeds)
+
+        self.final_conv_acts = embeds
+        self.final_conv_acts.register_hook(self.activations_hook)
 
         if is_maker==1:
             if hasattr(self.maker_head,"supports_cache") and self.maker_head.supports_cache:

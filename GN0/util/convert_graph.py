@@ -153,7 +153,10 @@ def convert_node_switching_game_back(data:Data) -> Union[Tuple[Graph,VertexPrope
     graph.vp.f.a = True
     if hasattr(data,"y") and data.y is not None:
         tprop = graph.new_vertex_property("double")
-        tprop.a = data.y.cpu().numpy()[:,0]
+        if len(data.y.shape)==1:
+            tprop.a = data.y.cpu().numpy()[:]
+        else:
+            tprop.a = data.y.cpu().numpy()[:,0]
         return graph,tprop
     return graph
 

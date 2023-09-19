@@ -250,15 +250,23 @@ class Hex_board(Abstract_board_game):
                 self.game.graph.gp["m"] = False
                 self.game.make_move(self.board_index_to_vertex[i])
 
-    def matplotlib_me(self,vprop=None,color_based_on_vprop=False,fig=None):
+    def matplotlib_me(self,vprop=None,color_based_on_vprop=False,color_heat_list=None,label_numbers=None,fig=None):
         colors = [[("w" if y=="f" else y) for y in self.position[x:x+self.size]] for x in range(0,self.size*self.size,self.size)]
+        if color_heat_list is not None:
+            for i,color_heat in enumerate(color_heat_list):
+                if colors[i//self.size][i%self.size] == "w":
+                    colors[i//self.size][i%self.size] = (1-color_heat,1,1-color_heat,1)
+        print(colors)
         labels = None
         if vprop is not None:
             labelist = [vprop[self.board_index_to_vertex[i]] for i in range(len(self.position))]
             labels = [["" if x == 0 else x for x in labelist[x:x+self.size]] for x in range(0,self.size**2,self.size)]
             if color_based_on_vprop:
-                colors = [["g" if type(x)==str else ("b" if x<-0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
+                colors = [["g" if type(x)==str else ("b" if x< -0.1 else ("r" if x>0.1 else "w")) for x in y] for y in labels]
             labels = [[str(a)[:4] for a in x] for x in labels]
+
+        if label_numbers is not None:
+            labels = [[f"{y:.3f}" if colors[x//self.size][i] not in ("r","b") else "" for i,y in enumerate(label_numbers[x:x+self.size])] for x in range(0,self.size**2,self.size)]
 
         return build_hex_grid(colors,labels,fig=fig,do_pause=False,fontsize=12)
 
@@ -398,7 +406,7 @@ def build_hex_grid(colors,labels=None,fig=None,border_swap=False,do_pause=True,f
             coords = [xstart+0.5*j+i,ystart+np.sqrt(3/4)*j]
             hexagon = RegularPolygon((coords[0], coords[1]), numVertices=6, radius=np.sqrt(1/3), alpha=1, edgecolor='k', facecolor=color,linewidth=2)
             if labels is not None:
-                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color=="white" or color=="w") else "white",fontsize=14)
+                ax.text(coords[0]-0.4, coords[1]-0.05,labels[i][j],color="black" if (color not in ("r","b")) else "white",fontsize=14)
             ax.add_patch(hexagon)
     plt.autoscale(enable=True)
     plt.axis("off")
