@@ -69,7 +69,7 @@ def plot_cnn_explaination(model,data,optimizer,cnn_policy,nsg):
     heatmap = grad_cam_cnn(model.final_conv_acts,model.final_conv_grads)
     heatmap = downsample_gao_outputs(heatmap[np.newaxis,...],nsg.board.size).squeeze()
     print(heatmap)
-    nsg.board.matplotlib_me(color_heat_list=heatmap,label_numbers=board_outputs)
+    nsg.board.matplotlib_me(label_numbers=board_outputs,fontsize=30)
     plt.show()
 
 def grad_cam_cnn(final_conv_acts,final_conv_grads):
@@ -138,11 +138,11 @@ def create_long_range_example(hex_size,is_positive,defender="b"):
 
 
 if __name__=="__main__":
-    example,cnn_example,cnn_policy,nsg = create_long_range_example(9,True,"b")
-    # model = load_a_model("GN0/RainbowDQN/Rainbow/checkpoints/astral-haze-209/11/checkpoint_18294144.pt","gao")
-    # optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0)
-    # plot_cnn_explaination(model,cnn_example,optimizer,cnn_policy,nsg)
-    # exit()
+    example,cnn_example,cnn_policy,nsg = create_long_range_example(9,False,"b")
+    model = load_a_model("GN0/RainbowDQN/Rainbow/checkpoints/astral-haze-209/11/checkpoint_18294144.pt","gao")
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0)
+    plot_cnn_explaination(model,cnn_example,optimizer,cnn_policy,nsg)
+    exit()
 
 
     ex_batch = Batch.from_data_list([example])
