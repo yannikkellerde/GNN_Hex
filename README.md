@@ -17,7 +17,7 @@ No code:
 + [images](images): Graphics, subplots that where included or not included in the thesis.
 + [markdown](markdown): Intermediate progress reports
 + [slides](slides): The mid-thesis powerpoint presentation
-+ [docker](docker): Dockerfiles that create docker environments in which the scripts of this repositiory run.
++ [docker](docker): Dockerfiles that create docker environments in which the scripts of this repository run.
 
 Code:
 + [graph\_game](graph_game): The python graph game environments used by this project.
